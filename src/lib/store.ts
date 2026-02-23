@@ -1,8 +1,10 @@
-import { Task, Activity, Meeting, APP_PASSWORD, ROLES_KEY } from "./types";
+import { Task, Activity, Meeting, Revendedor, BusinessKPIs, APP_PASSWORD, ROLES_KEY } from "./types";
 
 const TASKS_KEY = "mrlion_tasks_v3";
 const ACTIVITY_KEY = "mrlion_activity_v3";
 const MEETINGS_KEY = "mrlion_meetings_v3";
+const CRM_KEY = "crm_revendedores";
+const KPI_KEY = "business_kpis";
 const USER_KEY = "mrlion_user";
 const NEXT_ID_KEY = "mrlion_next_id_v3";
 const PRESENCE_KEY = "mrlion_presence";
@@ -76,12 +78,34 @@ const SEED_TASKS: Task[] = [
   { id: 30060, title: "Mensagem padrão de pré-cadastro PJ", detail: "", responsible: ["Pedro"], priority: "alta", area: "Comercial", status: "concluida", dependencies: [], decision: null, notes: "", dueDate: null, createdBy: "Pedro", isOriginal: true, createdAt: now(), updatedAt: now() },
 ];
 
+const SEED_REVENDEDORES: Revendedor[] = [
+  { id: "r1", nome: "Distribuidora São Paulo Centro", responsavel: "João", status: "Ativo", canal: "WhatsApp", cidade: "São Paulo", volume: 320, ultima: "2026-02-20", obs: "" },
+  { id: "r2", nome: "Revenda Norte Shopping", responsavel: "Luca", status: "Ativo", canal: "Instagram", cidade: "São Paulo", volume: 180, ultima: "2026-02-18", obs: "" },
+  { id: "r3", nome: "Bar do Alemão", responsavel: "Pedro", status: "Em Negociação", canal: "Indicação", cidade: "Campinas", volume: 90, ultima: "2026-02-15", obs: "" },
+  { id: "r4", nome: "Empório Vila Madalena", responsavel: "João", status: "Ativo", canal: "Instagram", cidade: "São Paulo", volume: 240, ultima: "2026-02-22", obs: "" },
+  { id: "r5", nome: "Distribuidora ABC", responsavel: "Guilherme", status: "Inativo", canal: "WhatsApp", cidade: "Santo André", volume: 60, ultima: "2026-01-30", obs: "" },
+  { id: "r6", nome: "Mercado do Bairro Pinheiros", responsavel: "Luhan", status: "Novo Lead", canal: "Instagram", cidade: "São Paulo", volume: 0, ultima: "2026-02-23", obs: "" },
+  { id: "r7", nome: "Club 23", responsavel: "Pedro", status: "Ativo", canal: "Indicação", cidade: "São Paulo", volume: 150, ultima: "2026-02-19", obs: "" },
+  { id: "r8", nome: "Loja Virtual Premium", responsavel: "Luca", status: "Em Negociação", canal: "Outros", cidade: "Online", volume: 500, ultima: "2026-02-21", obs: "" },
+];
+
+const SEED_MEETINGS: Meeting[] = [
+  { id: 9001, title: "Daily Mr. Lion", meetingDate: "2026-02-24", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Alinhamento diário de tarefas e pendências da operação", createdAt: now() },
+  { id: 9002, title: "Review de Distribuição — Fevereiro", meetingDate: "2026-02-25", fileType: "resumo", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Análise de volume por revendedor, metas de março, ações de ativação", createdAt: now() },
+  { id: 9003, title: "Briefing Campanha Março", meetingDate: "2026-02-26", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Definição de criativo, peças e cronograma de conteúdo para março", createdAt: now() },
+];
+
 function initIfNeeded() {
   if (!localStorage.getItem(TASKS_KEY)) {
     localStorage.setItem(TASKS_KEY, JSON.stringify(SEED_TASKS));
     localStorage.setItem(ACTIVITY_KEY, JSON.stringify([]));
-    localStorage.setItem(MEETINGS_KEY, JSON.stringify([]));
     localStorage.setItem(NEXT_ID_KEY, "31000");
+  }
+  if (!localStorage.getItem(MEETINGS_KEY)) {
+    localStorage.setItem(MEETINGS_KEY, JSON.stringify(SEED_MEETINGS));
+  }
+  if (!localStorage.getItem(CRM_KEY)) {
+    localStorage.setItem(CRM_KEY, JSON.stringify(SEED_REVENDEDORES));
   }
 }
 
@@ -91,18 +115,9 @@ export function validatePassword(password: string): boolean {
 }
 
 // User
-export function getUser(): string | null {
-  return localStorage.getItem(USER_KEY);
-}
-export function setUser(name: string) {
-  localStorage.setItem(USER_KEY, name);
-  updatePresence(name);
-}
-export function clearUser() {
-  const user = getUser();
-  if (user) removePresence(user);
-  localStorage.removeItem(USER_KEY);
-}
+export function getUser(): string | null { return localStorage.getItem(USER_KEY); }
+export function setUser(name: string) { localStorage.setItem(USER_KEY, name); updatePresence(name); }
+export function clearUser() { const user = getUser(); if (user) removePresence(user); localStorage.removeItem(USER_KEY); }
 
 // Roles
 export function getRole(name: string): string {
@@ -123,8 +138,8 @@ export function getOnlineUsers(): string[] {
   const raw = localStorage.getItem(PRESENCE_KEY);
   if (!raw) return [];
   const entries: PresenceEntry[] = JSON.parse(raw);
-  const now = Date.now();
-  return entries.filter(e => now - e.lastSeen < 120000).map(e => e.name);
+  const n = Date.now();
+  return entries.filter(e => n - e.lastSeen < 120000).map(e => e.name);
 }
 export function updatePresence(name: string) {
   const raw = localStorage.getItem(PRESENCE_KEY);
@@ -142,16 +157,11 @@ function removePresence(name: string) {
 }
 
 // Tasks
-export function getTasks(): Task[] {
-  initIfNeeded();
-  return JSON.parse(localStorage.getItem(TASKS_KEY) || "[]");
-}
-export function getTaskById(id: number): Task | undefined {
-  return getTasks().find(t => t.id === id);
-}
+export function getTasks(): Task[] { initIfNeeded(); return JSON.parse(localStorage.getItem(TASKS_KEY) || "[]"); }
+export function getTaskById(id: number): Task | undefined { return getTasks().find(t => t.id === id); }
 export function createTask(data: Omit<Task, "id" | "createdAt" | "updatedAt">): Task {
   const tasks = getTasks();
-  const task: Task = { ...data, id: getNextId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  const task: Task = { ...data, id: getNextId(), createdAt: now(), updatedAt: now() };
   tasks.push(task);
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
   return task;
@@ -160,7 +170,7 @@ export function updateTask(id: number, updates: Partial<Task>): Task | undefined
   const tasks = getTasks();
   const idx = tasks.findIndex(t => t.id === id);
   if (idx === -1) return undefined;
-  tasks[idx] = { ...tasks[idx], ...updates, updatedAt: new Date().toISOString() };
+  tasks[idx] = { ...tasks[idx], ...updates, updatedAt: now() };
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
   return tasks[idx];
 }
@@ -173,26 +183,20 @@ export function deleteTask(id: number): boolean {
 }
 
 // Activity
-export function getActivities(): Activity[] {
-  initIfNeeded();
-  return JSON.parse(localStorage.getItem(ACTIVITY_KEY) || "[]");
-}
+export function getActivities(): Activity[] { initIfNeeded(); return JSON.parse(localStorage.getItem(ACTIVITY_KEY) || "[]"); }
 export function logActivity(data: Omit<Activity, "id" | "createdAt">) {
   const activities = getActivities();
-  const activity: Activity = { ...data, id: getNextId(), createdAt: new Date().toISOString() };
+  const activity: Activity = { ...data, id: getNextId(), createdAt: now() };
   activities.unshift(activity);
   if (activities.length > 200) activities.length = 200;
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities));
 }
 
 // Meetings
-export function getMeetings(): Meeting[] {
-  initIfNeeded();
-  return JSON.parse(localStorage.getItem(MEETINGS_KEY) || "[]");
-}
+export function getMeetings(): Meeting[] { initIfNeeded(); return JSON.parse(localStorage.getItem(MEETINGS_KEY) || "[]"); }
 export function createMeeting(data: Omit<Meeting, "id" | "createdAt">): Meeting {
   const meetings = getMeetings();
-  const meeting: Meeting = { ...data, id: getNextId(), createdAt: new Date().toISOString() };
+  const meeting: Meeting = { ...data, id: getNextId(), createdAt: now() };
   meetings.unshift(meeting);
   localStorage.setItem(MEETINGS_KEY, JSON.stringify(meetings));
   return meeting;
@@ -203,6 +207,41 @@ export function deleteMeeting(id: number): boolean {
   if (filtered.length === meetings.length) return false;
   localStorage.setItem(MEETINGS_KEY, JSON.stringify(filtered));
   return true;
+}
+
+// CRM
+export function getRevendedores(): Revendedor[] { initIfNeeded(); return JSON.parse(localStorage.getItem(CRM_KEY) || "[]"); }
+export function createRevendedor(data: Omit<Revendedor, "id">): Revendedor {
+  const revs = getRevendedores();
+  const rev: Revendedor = { ...data, id: `r${Date.now()}` };
+  revs.push(rev);
+  localStorage.setItem(CRM_KEY, JSON.stringify(revs));
+  return rev;
+}
+export function updateRevendedor(id: string, updates: Partial<Revendedor>): Revendedor | undefined {
+  const revs = getRevendedores();
+  const idx = revs.findIndex(r => r.id === id);
+  if (idx === -1) return undefined;
+  revs[idx] = { ...revs[idx], ...updates };
+  localStorage.setItem(CRM_KEY, JSON.stringify(revs));
+  return revs[idx];
+}
+export function deleteRevendedor(id: string): boolean {
+  const revs = getRevendedores();
+  const filtered = revs.filter(r => r.id !== id);
+  if (filtered.length === revs.length) return false;
+  localStorage.setItem(CRM_KEY, JSON.stringify(filtered));
+  return true;
+}
+
+// Business KPIs
+const DEFAULT_KPIS: BusinessKPIs = { metaMensal: 1600, realizado: 1240, receitaEstimada: 43400, ticketMedio: 5425, custoEntrega: 8.5 };
+export function getBusinessKPIs(): BusinessKPIs {
+  const raw = localStorage.getItem(KPI_KEY);
+  return raw ? JSON.parse(raw) : DEFAULT_KPIS;
+}
+export function setBusinessKPIs(kpis: BusinessKPIs) {
+  localStorage.setItem(KPI_KEY, JSON.stringify(kpis));
 }
 
 // Export

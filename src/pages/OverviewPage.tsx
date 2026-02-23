@@ -1,87 +1,68 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getTasks, getActivities, exportTasksMarkdown } from "@/lib/store";
-import { getUser } from "@/lib/store";
-import { Task, TaskStatus, TEAM_MEMBERS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from "@/lib/types";
-import { format } from "date-fns";
+import { getTasks, getActivities, getRevendedores, getBusinessKPIs, setBusinessKPIs, getMeetings, exportTasksMarkdown, getUser } from "@/lib/store";
+import { Task, TaskStatus, TEAM_MEMBERS, STATUS_LABELS, STATUS_COLORS, PRIORITY_COLORS, BusinessKPIs, Revendedor, REVENDEDOR_STATUS_COLORS, RevendedorStatus, Meeting } from "@/lib/types";
+import { format, formatDistanceToNow, addDays, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ListChecks, Clock, Zap, CheckCircle2, AlertTriangle, TrendingUp, Download } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LabelList } from "recharts";
-import { formatDistanceToNow } from "date-fns";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Target, TrendingUp, BarChart2, DollarSign, Package, Truck, Download, Pencil, CheckCircle2, AlertTriangle, Clock, Zap, Calendar, Users, Building2 } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, LabelList } from "recharts";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const OverviewPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activities, setActivities] = useState<ReturnType<typeof getActivities>>([]);
-  const [loading, setLoading] = useState(true);
+  const [revs, setRevs] = useState<Revendedor[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [kpis, setKpis] = useState<BusinessKPIs>(getBusinessKPIs());
+  const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const userName = getUser();
   const navigate = useNavigate();
 
   useEffect(() => {
     setTasks(getTasks());
     setActivities(getActivities());
-    setLoading(false);
+    setRevs(getRevendedores());
+    setMeetings(getMeetings());
+    setKpis(getBusinessKPIs());
   }, []);
 
   const today = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Bom dia";
-    if (h < 18) return "Boa tarde";
-    return "Boa noite";
-  })();
+  const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Bom dia"; if (h < 18) return "Boa tarde"; return "Boa noite"; })();
 
   const total = tasks.length;
   const byStatus = (s: TaskStatus) => tasks.filter(t => t.status === s).length;
   const doneCount = byStatus("concluida");
-  const donePercent = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+  const metaPct = kpis.metaMensal > 0 ? Math.round((kpis.realizado / kpis.metaMensal) * 100) : 0;
+  const metaColor = metaPct >= 80 ? "#22C55E" : metaPct >= 60 ? "#F59E0B" : "#EF4444";
 
-  const handleExport = () => {
-    const md = exportTasksMarkdown();
-    navigator.clipboard.writeText(md);
-    toast.success("Tarefas exportadas para o clipboard ✓");
-  };
+  const handleExport = () => { navigator.clipboard.writeText(exportTasksMarkdown()); toast.success("Tarefas exportadas para o clipboard ✓"); };
 
-  const kpis = [
-    { label: "Total", value: total, icon: ListChecks, color: "hsl(var(--gold))", trend: "↑" },
-    { label: "Pendentes", value: byStatus("pendente"), icon: Clock, color: STATUS_COLORS.pendente, trend: "" },
-    { label: "Em Andamento", value: byStatus("em-andamento"), icon: Zap, color: STATUS_COLORS["em-andamento"], trend: "" },
-    { label: "Concluídas", value: doneCount, icon: CheckCircle2, color: STATUS_COLORS.concluida, trend: "↑" },
-    { label: "Atrasadas", value: byStatus("atrasada"), icon: AlertTriangle, color: STATUS_COLORS.atrasada, trend: byStatus("atrasada") > 0 ? "↑" : "" },
-  ];
-
-  const barData = [
+  // Task charts
+  const pieData = [
     { name: "Pendente", value: byStatus("pendente"), fill: STATUS_COLORS.pendente },
     { name: "Em Andamento", value: byStatus("em-andamento"), fill: STATUS_COLORS["em-andamento"] },
     { name: "Concluída", value: doneCount, fill: STATUS_COLORS.concluida },
     { name: "Atrasada", value: byStatus("atrasada"), fill: STATUS_COLORS.atrasada },
-  ];
-
-  const pieData = [
-    { name: "Alta", value: tasks.filter(t => t.priority === "alta").length, fill: PRIORITY_COLORS.alta },
-    { name: "Média", value: tasks.filter(t => t.priority === "media").length, fill: PRIORITY_COLORS.media },
-    { name: "Baixa", value: tasks.filter(t => t.priority === "baixa").length, fill: PRIORITY_COLORS.baixa },
   ].filter(d => d.value > 0);
 
-  const piePctLabel = ({ name, value }: any) => `${name} ${total > 0 ? Math.round((value / total) * 100) : 0}%`;
+  const lateTasks = tasks.filter(t => t.status === "atrasada").slice(0, 3);
 
-  const lateTasks = tasks.filter(t => t.status === "atrasada");
-  const recentActivities = activities.slice(0, 5);
+  // CRM stats
+  const crmByStatus = (s: RevendedorStatus) => revs.filter(r => r.status === s).length;
+  const topRevs = [...revs].sort((a, b) => b.volume - a.volume).slice(0, 5);
+  const crmBarData = topRevs.map(r => ({ name: r.nome.length > 15 ? r.nome.slice(0, 15) + "…" : r.nome, value: r.volume }));
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div><Skeleton className="h-6 w-40" /><Skeleton className="h-4 w-60 mt-2" /></div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}
-        </div>
-        <Skeleton className="h-16 rounded-lg" />
-        <div className="grid md:grid-cols-2 gap-4"><Skeleton className="h-64 rounded-lg" /><Skeleton className="h-64 rounded-lg" /></div>
-      </div>
-    );
-  }
+  // Today's meetings
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const todayMeetings = meetings.filter(m => m.meetingDate === todayStr);
+
+  // Upcoming tasks (next 3 days)
+  const threeDaysLater = format(addDays(new Date(), 3), "yyyy-MM-dd");
+  const upcomingTasks = tasks.filter(t => t.dueDate && t.dueDate >= todayStr && t.dueDate <= threeDaysLater && t.status !== "concluida").slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -97,155 +78,277 @@ const OverviewPage = () => {
         </Button>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {kpis.map(kpi => (
-          <div key={kpi.label} className="bg-card rounded-lg border border-border p-4 hover:-translate-y-0.5 hover:border-gold/30 transition-all" style={{ borderLeftWidth: 3, borderLeftColor: kpi.color }}>
-            <div className="flex items-center gap-2 mb-2">
-              <kpi.icon className="w-4 h-4" style={{ color: kpi.color }} />
-              <span className="text-xs text-muted-foreground">{kpi.label}</span>
-              {kpi.trend && <span className="text-[10px] ml-auto" style={{ color: kpi.color }}>{kpi.trend}</span>}
-            </div>
-            <span className="text-2xl font-bold font-mono" style={{ color: kpi.color }}>{kpi.value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Progress bar */}
-      <div className="bg-card rounded-lg border border-border p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-muted-foreground">Progresso geral da equipe</span>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{doneCount} de {total} tarefas concluídas</span>
-            <span className="text-sm font-bold font-mono text-gold">{donePercent}%</span>
-          </div>
-        </div>
-        <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
-          <div className="h-full rounded-full gradient-gold transition-all duration-500" style={{ width: `${donePercent}%` }} />
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid md:grid-cols-5 gap-4">
-        <div className="md:col-span-3 bg-card rounded-lg border border-border p-4">
-          <h3 className="text-sm font-semibold mb-4">Tarefas por Status</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={barData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 18% 14%)" />
-              <XAxis dataKey="name" tick={{ fill: "hsl(240 8% 55%)", fontSize: 11 }} />
-              <YAxis tick={{ fill: "hsl(240 8% 55%)", fontSize: 11 }} allowDecimals={false} />
-              <Tooltip contentStyle={{ background: "hsl(240 20% 9%)", border: "1px solid hsl(240 18% 14%)", borderRadius: 6, color: "hsl(240 20% 92%)" }} />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {barData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                <LabelList dataKey="value" position="top" fill="hsl(240 8% 55%)" fontSize={10} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="md:col-span-2 bg-card rounded-lg border border-border p-4">
-          <h3 className="text-sm font-semibold mb-4">Por Prioridade</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" paddingAngle={3} label={piePctLabel}>
-                {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-              </Pie>
-              <Tooltip contentStyle={{ background: "hsl(240 20% 9%)", border: "1px solid hsl(240 18% 14%)", borderRadius: 6, color: "hsl(240 20% 92%)" }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Late tasks + Recent activity */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="bg-card rounded-lg border border-border p-4">
-          <h3 className="text-sm font-semibold mb-3 text-red-400">Tarefas Atrasadas</h3>
-          {lateTasks.length === 0 ? (
-            <div className="flex items-center gap-3 py-6 justify-center">
-              <CheckCircle2 className="w-8 h-8 text-emerald-500/40" />
-              <div>
-                <p className="text-sm font-medium text-emerald-400">Tudo em dia!</p>
-                <p className="text-xs text-muted-foreground">Nenhuma tarefa atrasada</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {lateTasks.map(t => (
-                <div key={t.id} className="flex items-center gap-2 text-sm p-2 rounded bg-red-500/5 border border-red-500/10 cursor-pointer hover:border-red-500/20" onClick={() => navigate(`/tasks?highlight=${t.id}`)}>
-                  <span className="font-mono text-xs text-gold">#{t.id}</span>
-                  <span className="flex-1 truncate">{t.title}</span>
-                  <div className="flex -space-x-1">
-                    {t.responsible.map(r => (
-                      <div key={r} className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center text-[9px] font-bold text-gold">{r.charAt(0)}</div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="bg-card rounded-lg border border-border p-4">
-          <h3 className="text-sm font-semibold mb-3">Atividade Recente</h3>
-          {recentActivities.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma atividade ainda</p>
-          ) : (
-            <div className="space-y-2.5">
-              {recentActivities.map(a => (
-                <div key={a.id} className="flex items-start gap-2 text-xs">
-                  <div className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center text-[9px] font-bold text-gold shrink-0 mt-0.5">{a.userName.charAt(0)}</div>
-                  <div className="flex-1">
-                    <span className="text-gold font-medium">{a.userName}</span>{" "}
-                    <span className="text-muted-foreground">{formatAction(a.action)}</span>{" "}
-                    <span className="text-foreground">'{a.taskTitle}'</span>
-                  </div>
-                  <span className="text-muted-foreground font-mono text-[10px] shrink-0">
-                    {formatDistanceToNow(new Date(a.createdAt), { locale: ptBR, addSuffix: true })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Workload by person */}
+      {/* BLOCO A — KPIs do Negócio */}
       <div>
-        <h3 className="text-sm font-semibold mb-3">Carga por Pessoa</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {TEAM_MEMBERS.map(member => {
-            const memberTasks = tasks.filter(t => t.responsible.includes(member));
-            const done = memberTasks.filter(t => t.status === "concluida").length;
-            const pct = memberTasks.length > 0 ? Math.round((done / memberTasks.length) * 100) : 0;
-            const pending = memberTasks.filter(t => t.status === "pendente" || t.status === "atrasada").length;
-            return (
-              <div key={member} onClick={() => navigate(`/people?member=${member}`)}
-                className="bg-card rounded-lg border border-border p-3 hover:-translate-y-0.5 hover:border-gold/30 transition-all cursor-pointer">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-full gradient-gold flex items-center justify-center text-xs font-bold text-primary-foreground">{member.charAt(0)}</div>
-                  <span className="text-sm font-medium">{member}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-surface-elevated overflow-hidden mb-1.5">
-                  <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>{done}/{memberTasks.length}</span>
-                  <span>{pending} pendente{pending !== 1 ? "s" : ""}</span>
-                </div>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="text-sm font-semibold">Metas do Negócio</h2>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-muted-foreground" onClick={() => setKpiDialogOpen(true)}>
+            <Pencil className="w-3 h-3 mr-1" /> Editar
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: "Meta Mensal", value: `${kpis.metaMensal.toLocaleString()} garr.`, icon: Target, color: "#3B82F6" },
+            { label: "Realizado", value: `${kpis.realizado.toLocaleString()} garr.`, icon: TrendingUp, color: "#22C55E" },
+            { label: "% da Meta", value: `${metaPct}%`, icon: BarChart2, color: metaColor },
+            { label: "Receita Estimada", value: `R$ ${kpis.receitaEstimada.toLocaleString()}`, icon: DollarSign, color: "#22C55E" },
+            { label: "Ticket Médio/Rev.", value: `R$ ${kpis.ticketMedio.toLocaleString()}`, icon: Package, color: "#6B7280" },
+            { label: "Custo Entrega", value: `R$ ${kpis.custoEntrega.toFixed(2)}/garr.`, icon: Truck, color: "#6B7280" },
+          ].map(kpi => (
+            <div key={kpi.label} className="bg-card rounded-lg border border-border p-3 hover:-translate-y-0.5 hover:border-gold/30 transition-all" style={{ borderLeftWidth: 3, borderLeftColor: kpi.color }}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <kpi.icon className="w-3.5 h-3.5" style={{ color: kpi.color }} />
+                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">{kpi.label}</span>
               </div>
-            );
-          })}
+              <span className="text-lg font-bold font-mono" style={{ color: kpi.color }}>{kpi.value}</span>
+            </div>
+          ))}
+        </div>
+        {/* Meta progress bar */}
+        <div className="mt-2 bg-card rounded-lg border border-border p-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-muted-foreground">Progresso da meta mensal</span>
+            <span className="text-xs font-mono font-bold" style={{ color: metaColor }}>{metaPct}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(metaPct, 100)}%`, backgroundColor: metaColor }} />
+          </div>
         </div>
       </div>
+
+      {/* BLOCO B — CRM */}
+      <div className="bg-card rounded-lg border border-border p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold">Revendedores</h2>
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate("/revendedores")}>Ver todos</Button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Stats badges */}
+          <div>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { label: "Ativos", value: crmByStatus("Ativo"), color: "#22C55E" },
+                { label: "Em Negociação", value: crmByStatus("Em Negociação"), color: "#F59E0B" },
+                { label: "Novos Leads", value: crmByStatus("Novo Lead"), color: "#3B82F6" },
+                { label: "Inativos", value: crmByStatus("Inativo"), color: "#6B7280" },
+              ].map(s => (
+                <Badge key={s.label} variant="outline" className="text-xs px-2.5 py-1" style={{ borderColor: `${s.color}40`, color: s.color }}>
+                  {s.label}: <span className="font-mono font-bold ml-1">{s.value}</span>
+                </Badge>
+              ))}
+            </div>
+            {/* Top 5 table */}
+            {topRevs.length > 0 ? (
+              <div className="text-xs">
+                <div className="grid grid-cols-4 gap-1 text-[10px] uppercase text-muted-foreground tracking-wider mb-1 px-1">
+                  <span className="col-span-1">Nome</span><span>Resp.</span><span className="text-right">Vol.</span><span className="text-right">Status</span>
+                </div>
+                {topRevs.map(r => (
+                  <div key={r.id} className="grid grid-cols-4 gap-1 py-1.5 px-1 border-t border-border/40">
+                    <span className="truncate col-span-1">{r.nome}</span>
+                    <span className="text-muted-foreground">{r.responsavel}</span>
+                    <span className="text-right font-mono">{r.volume}</span>
+                    <span className="text-right"><Badge variant="outline" className="text-[8px] h-4" style={{ borderColor: `${REVENDEDOR_STATUS_COLORS[r.status]}40`, color: REVENDEDOR_STATUS_COLORS[r.status] }}>{r.status}</Badge></span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Nenhum revendedor cadastrado</p>
+            )}
+          </div>
+          {/* Mini bar chart */}
+          <div>
+            {crmBarData.length > 0 && (
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={crmBarData} layout="vertical" margin={{ left: 0 }}>
+                  <XAxis type="number" tick={{ fill: "hsl(240 8% 55%)", fontSize: 10 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: "hsl(240 8% 55%)", fontSize: 9 }} width={100} />
+                  <RTooltip contentStyle={{ background: "hsl(240 20% 9%)", border: "1px solid hsl(240 18% 14%)", borderRadius: 6, color: "hsl(240 20% 92%)" }} />
+                  <Bar dataKey="value" fill="hsl(45 64% 55%)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* BLOCO C — Operação */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Left: Tasks */}
+        <div className="space-y-4">
+          <div className="bg-card rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold mb-3">Tarefas</h3>
+            <div className="grid grid-cols-5 gap-2 mb-4">
+              {[
+                { label: "Total", value: total, color: "hsl(var(--gold))", icon: CheckCircle2 },
+                { label: "Pend.", value: byStatus("pendente"), color: STATUS_COLORS.pendente, icon: Clock },
+                { label: "Andamento", value: byStatus("em-andamento"), color: STATUS_COLORS["em-andamento"], icon: Zap },
+                { label: "Concl.", value: doneCount, color: STATUS_COLORS.concluida, icon: CheckCircle2 },
+                { label: "Atrasada", value: byStatus("atrasada"), color: STATUS_COLORS.atrasada, icon: AlertTriangle },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <span className="text-lg font-bold font-mono block" style={{ color: s.color }}>{s.value}</span>
+                  <span className="text-[9px] text-muted-foreground">{s.label}</span>
+                </div>
+              ))}
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value" paddingAngle={3}>
+                  {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Pie>
+                <RTooltip contentStyle={{ background: "hsl(240 20% 9%)", border: "1px solid hsl(240 18% 14%)", borderRadius: 6, color: "hsl(240 20% 92%)" }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Late tasks */}
+          <div className="bg-card rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold mb-2 text-red-400">Tarefas Atrasadas</h3>
+            {lateTasks.length === 0 ? (
+              <div className="flex items-center gap-3 py-4 justify-center">
+                <CheckCircle2 className="w-6 h-6 text-emerald-500/40" />
+                <div><p className="text-sm font-medium text-emerald-400">Tudo em dia!</p><p className="text-xs text-muted-foreground">Nenhuma tarefa atrasada</p></div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {lateTasks.map(t => (
+                  <div key={t.id} className="flex items-center gap-2 text-xs p-2 rounded bg-red-500/5 border border-red-500/10 cursor-pointer hover:border-red-500/20" onClick={() => navigate(`/tasks?highlight=${t.id}`)}>
+                    <span className="font-mono text-gold">#{t.id}</span>
+                    <span className="flex-1 truncate">{t.title}</span>
+                    <Badge variant="outline" className="text-[9px] border-red-500/30 text-red-400">ATRASADA</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Today */}
+        <div className="space-y-4">
+          <div className="bg-card rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gold" /> Reuniões de hoje</h3>
+            {todayMeetings.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-3 text-center">Nenhuma reunião hoje</p>
+            ) : (
+              <div className="space-y-1.5">
+                {todayMeetings.map(m => (
+                  <div key={m.id} className="flex items-center gap-2 text-xs p-2 rounded bg-gold/5 border border-gold/10">
+                    <span className="font-mono text-gold">{m.meetingDate}</span>
+                    <span className="flex-1 truncate">{m.title}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold mb-2">Próximas entregas</h3>
+            {upcomingTasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-3 text-center">Nenhuma entrega nos próximos 3 dias</p>
+            ) : (
+              <div className="space-y-1.5">
+                {upcomingTasks.map(t => (
+                  <div key={t.id} className="flex items-center gap-2 text-xs p-2 rounded bg-secondary/20 border border-border cursor-pointer hover:border-gold/20" onClick={() => navigate(`/tasks?highlight=${t.id}`)}>
+                    <span className="font-mono text-gold">#{t.id}</span>
+                    <span className="flex-1 truncate">{t.title}</span>
+                    <span className="font-mono text-muted-foreground">{t.dueDate}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold mb-3">Carga por Pessoa</h3>
+            <div className="space-y-2.5">
+              {TEAM_MEMBERS.map(member => {
+                const mt = tasks.filter(t => t.responsible.includes(member));
+                const done = mt.filter(t => t.status === "concluida").length;
+                const pct = mt.length > 0 ? Math.round((done / mt.length) * 100) : 0;
+                const open = mt.filter(t => t.status !== "concluida").length;
+                return (
+                  <div key={member} className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full gradient-gold flex items-center justify-center text-[10px] font-bold text-primary-foreground shrink-0">{member.charAt(0)}</div>
+                    <span className="text-xs w-16 truncate">{member}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-surface-elevated overflow-hidden">
+                      <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-[10px] font-mono text-muted-foreground w-10 text-right">{open} aber.</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* BLOCO D — Atividade Recente */}
+      <div className="bg-card rounded-lg border border-border p-4">
+        <h3 className="text-sm font-semibold mb-3">Atividade Recente</h3>
+        {activities.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhuma atividade ainda</p>
+        ) : (
+          <div className="space-y-2">
+            {activities.slice(0, 8).map(a => (
+              <div key={a.id} className="flex items-start gap-2.5 text-xs relative pl-4">
+                <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
+                <div className="absolute left-[-2px] top-1.5 w-[5px] h-[5px] rounded-full bg-gold" />
+                <div className="flex-1">
+                  <span className="text-gold font-medium">{a.userName}</span>{" "}
+                  <span className="text-muted-foreground">{formatActionShort(a.action, a.taskTitle)}</span>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                  {formatDistanceToNow(new Date(a.createdAt), { locale: ptBR, addSuffix: true })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* KPI Edit Dialog */}
+      <KpiEditDialog open={kpiDialogOpen} onOpenChange={setKpiDialogOpen} kpis={kpis} onSave={k => { setBusinessKPIs(k); setKpis(k); setKpiDialogOpen(false); toast.success("Metas salvas"); }} />
     </div>
   );
 };
 
-function formatAction(action: string): string {
-  if (action === "task_created") return "criou";
-  if (action === "task_deleted") return "excluiu";
-  if (action === "status_change") return "alterou status de";
-  if (action === "notes_update") return "atualizou notas de";
-  if (action.startsWith("field_update")) return "editou";
-  return action;
+function formatActionShort(action: string, title: string): string {
+  if (action === "task_created") return `criou "${title}"`;
+  if (action === "task_deleted") return `excluiu "${title}"`;
+  if (action === "status_change") return `alterou status de "${title}"`;
+  if (action === "revendedor_created") return `cadastrou revendedor "${title}"`;
+  if (action === "revendedor_deleted") return `removeu revendedor "${title}"`;
+  return `editou "${title}"`;
+}
+
+function KpiEditDialog({ open, onOpenChange, kpis, onSave }: { open: boolean; onOpenChange: (b: boolean) => void; kpis: BusinessKPIs; onSave: (k: BusinessKPIs) => void }) {
+  const [meta, setMeta] = useState(kpis.metaMensal);
+  const [real, setReal] = useState(kpis.realizado);
+  const [receita, setReceita] = useState(kpis.receitaEstimada);
+  const [ticket, setTicket] = useState(kpis.ticketMedio);
+  const [custo, setCusto] = useState(kpis.custoEntrega);
+
+  useEffect(() => { setMeta(kpis.metaMensal); setReal(kpis.realizado); setReceita(kpis.receitaEstimada); setTicket(kpis.ticketMedio); setCusto(kpis.custoEntrega); }, [kpis, open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm bg-card border-border">
+        <DialogHeader><DialogTitle className="text-gold">Editar Metas</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><label className="text-xs text-muted-foreground block mb-1">Meta Mensal (garrafas)</label><Input type="number" value={meta} onChange={e => setMeta(Number(e.target.value))} className="bg-secondary/40" /></div>
+          <div><label className="text-xs text-muted-foreground block mb-1">Realizado (garrafas)</label><Input type="number" value={real} onChange={e => setReal(Number(e.target.value))} className="bg-secondary/40" /></div>
+          <div><label className="text-xs text-muted-foreground block mb-1">Receita Estimada (R$)</label><Input type="number" value={receita} onChange={e => setReceita(Number(e.target.value))} className="bg-secondary/40" /></div>
+          <div><label className="text-xs text-muted-foreground block mb-1">Ticket Médio/Revendedor (R$)</label><Input type="number" value={ticket} onChange={e => setTicket(Number(e.target.value))} className="bg-secondary/40" /></div>
+          <div><label className="text-xs text-muted-foreground block mb-1">Custo Entrega (R$/garr.)</label><Input type="number" step="0.01" value={custo} onChange={e => setCusto(Number(e.target.value))} className="bg-secondary/40" /></div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button onClick={() => onSave({ metaMensal: meta, realizado: real, receitaEstimada: receita, ticketMedio: ticket, custoEntrega: custo })} className="gradient-gold text-primary-foreground font-semibold">Salvar</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default OverviewPage;

@@ -1,12 +1,12 @@
 export type TaskStatus = "pendente" | "em-andamento" | "concluida" | "atrasada";
 export type TaskPriority = "alta" | "media" | "baixa";
 export type FileType = "pauta" | "resumo" | "ata" | "outro";
+export type RevendedorStatus = "Ativo" | "Inativo" | "Novo Lead" | "Em Negociação";
 
 export interface TaskAttachment {
   name: string;
-  data: string; // base64
+  data: string;
   type: string;
-  // URL-based link attachment fields
   label?: string;
   url?: string;
 }
@@ -52,6 +52,26 @@ export interface Meeting {
   uploadedBy: string;
   notes: string;
   createdAt: string;
+}
+
+export interface Revendedor {
+  id: string;
+  nome: string;
+  responsavel: string;
+  status: RevendedorStatus;
+  canal: string;
+  cidade: string;
+  volume: number;
+  ultima: string;
+  obs: string;
+}
+
+export interface BusinessKPIs {
+  metaMensal: number;
+  realizado: number;
+  receitaEstimada: number;
+  ticketMedio: number;
+  custoEntrega: number;
 }
 
 export const TEAM_MEMBERS = ["Luca", "João", "Luhan", "Pedro", "Guilherme"];
@@ -113,6 +133,12 @@ export const FILE_TYPE_LABELS: Record<FileType, string> = {
   outro: "Outro",
 };
 
-export const APP_PASSWORD = "Mrlion@2026";
+export const REVENDEDOR_STATUS_COLORS: Record<RevendedorStatus, string> = {
+  "Ativo": "#22C55E",
+  "Inativo": "#6B7280",
+  "Novo Lead": "#3B82F6",
+  "Em Negociação": "#F59E0B",
+};
 
+export const APP_PASSWORD = "Mrlion@2026";
 export const ROLES_KEY = "mrlion_roles";
