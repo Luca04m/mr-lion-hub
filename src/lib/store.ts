@@ -137,9 +137,9 @@ const SEED_REVENDEDORES: Revendedor[] = [
 SEED_REVENDEDORES.forEach(r => { r.score = calcScore(r); });
 
 const SEED_MEETINGS: Meeting[] = [
-  { id: 9001, title: "Daily Mr. Lion", meetingDate: "2026-02-24", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Alinhamento diário de tarefas e pendências da operação", createdAt: now() },
-  { id: 9002, title: "Review de Distribuição — Fevereiro", meetingDate: "2026-02-25", fileType: "resumo", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Análise de volume por revendedor, metas de março, ações de ativação", createdAt: now() },
-  { id: 9003, title: "Briefing Campanha Março", meetingDate: "2026-02-26", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Definição de criativo, peças e cronograma de conteúdo para março", createdAt: now() },
+  { id: 9001, title: "Daily Mr. Lion", meetingDate: "2026-02-24", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Alinhamento diário de tarefas e pendências da operação", createdAt: now(), hora: "09:30", tipo: "Recorrente", participantes: ["Luca", "João", "Luhan", "Pedro", "Guilherme"], local: "Google Meet", meetingStatus: "Agendada" },
+  { id: 9002, title: "Review de Distribuição — Fevereiro", meetingDate: "2026-02-25", fileType: "resumo", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Análise de volume por revendedor, metas de março, ações de ativação", createdAt: now(), hora: "14:00", tipo: "Mensal", participantes: ["Luca", "João", "Pedro"], local: "Escritório SP", meetingStatus: "Agendada" },
+  { id: 9003, title: "Briefing Campanha Março", meetingDate: "2026-02-26", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Definição de criativo, peças e cronograma de conteúdo para março", createdAt: now(), hora: "11:00", tipo: "Pontual", participantes: ["Luca", "Luhan", "Guilherme"], local: "Google Meet", meetingStatus: "Agendada" },
 ];
 
 function initIfNeeded() {
@@ -150,6 +150,20 @@ function initIfNeeded() {
   }
   if (!localStorage.getItem(MEETINGS_KEY)) {
     localStorage.setItem(MEETINGS_KEY, JSON.stringify(SEED_MEETINGS));
+  } else {
+    // Migrate meetings to add new fields
+    try {
+      const existing: any[] = JSON.parse(localStorage.getItem(MEETINGS_KEY) || "[]");
+      let migrated = false;
+      existing.forEach((m: any) => {
+        if (!("hora" in m)) { m.hora = ""; migrated = true; }
+        if (!("tipo" in m)) { m.tipo = "Pontual"; migrated = true; }
+        if (!("participantes" in m)) { m.participantes = []; migrated = true; }
+        if (!("local" in m)) { m.local = ""; migrated = true; }
+        if (!("meetingStatus" in m)) { m.meetingStatus = "Agendada"; migrated = true; }
+      });
+      if (migrated) localStorage.setItem(MEETINGS_KEY, JSON.stringify(existing));
+    } catch {}
   }
   if (!localStorage.getItem(CRM_KEY)) {
     localStorage.setItem(CRM_KEY, JSON.stringify(SEED_REVENDEDORES));
@@ -266,6 +280,14 @@ export function createMeeting(data: Omit<Meeting, "id" | "createdAt">): Meeting 
   localStorage.setItem(MEETINGS_KEY, JSON.stringify(meetings));
   return meeting;
 }
+export function updateMeeting(id: number, updates: Partial<Meeting>): Meeting | undefined {
+  const meetings = getMeetings();
+  const idx = meetings.findIndex(m => m.id === id);
+  if (idx === -1) return undefined;
+  meetings[idx] = { ...meetings[idx], ...updates };
+  localStorage.setItem(MEETINGS_KEY, JSON.stringify(meetings));
+  return meetings[idx];
+}
 export function deleteMeeting(id: number): boolean {
   const meetings = getMeetings();
   const filtered = meetings.filter(m => m.id !== id);
@@ -300,8 +322,16 @@ export function deleteRevendedor(id: string): boolean {
 }
 
 // Business KPIs
-const DEFAULT_KPIS: BusinessKPIs = { metaMensal: 1600, realizado: 1240, receitaEstimada: 43400, ticketMedio: 5425, custoEntrega: 8.5 };
+const DEFAULT_KPIS: BusinessKPIs = { metaMensal: 1600, realizado: 619, receitaEstimada: 95175, ticketMedio: 213, custoEntrega: 18.17 };
+const KPI_VERSION = "kpi_v2";
+function migrateKPIs() {
+  if (!localStorage.getItem(KPI_VERSION)) {
+    localStorage.setItem(KPI_KEY, JSON.stringify(DEFAULT_KPIS));
+    localStorage.setItem(KPI_VERSION, "1");
+  }
+}
 export function getBusinessKPIs(): BusinessKPIs {
+  migrateKPIs();
   const raw = localStorage.getItem(KPI_KEY);
   return raw ? JSON.parse(raw) : DEFAULT_KPIS;
 }

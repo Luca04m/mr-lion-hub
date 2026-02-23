@@ -2,15 +2,55 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getTasks, getActivities, getRevendedores, getBusinessKPIs, setBusinessKPIs, getMeetings, exportTasksMarkdown, getUser } from "@/lib/store";
 import { Task, TaskStatus, TEAM_MEMBERS, STATUS_LABELS, STATUS_COLORS, PRIORITY_COLORS, BusinessKPIs, Revendedor, REVENDEDOR_STATUS_COLORS, RevendedorStatus, Meeting } from "@/lib/types";
-import { format, formatDistanceToNow, addDays, isToday } from "date-fns";
+import { format, formatDistanceToNow, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Target, TrendingUp, BarChart2, DollarSign, Package, Truck, Download, Pencil, CheckCircle2, AlertTriangle, Clock, Zap, Calendar, Users, Building2 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, LabelList } from "recharts";
+import { Target, TrendingUp, BarChart2, DollarSign, Package, Truck, Download, Pencil, CheckCircle2, AlertTriangle, Clock, Zap, Calendar, Users, Building2, AlertOctagon } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+
+// ─── DRE Data (hardcoded Jan/26) ───
+const DRE_CARDS = [
+  { label: "Faturamento Bruto", value: "R$ 95.175", icon: TrendingUp, color: "#3B82F6" },
+  { label: "CMV", value: "R$ 50.794 · 53,4%", icon: Package, color: "#EF4444" },
+  { label: "Lucro Bruto", value: "R$ 44.381 · 46,6%", icon: DollarSign, color: "#22C55E" },
+  { label: "Despesas Totais", value: "R$ 92.913 · 97,6%", icon: AlertTriangle, color: "#F59E0B" },
+  { label: "Resultado Líquido", value: "R$ 1.131 · 1,2%", icon: BarChart2, color: "#EAB308", badge: "⚠ Margem crítica", badgeTip: "Margem de 1,2% — qualquer imprevisto gera prejuízo." },
+];
+
+const COST_COMPOSITION = [
+  { name: "CMV", value: 50794, color: "#ef4444" },
+  { name: "Marketing", value: 16708, color: "#f59e0b" },
+  { name: "Logística", value: 7925, color: "#3b82f6" },
+  { name: "Impostos/Taxas", value: 7170, color: "#8b5cf6" },
+  { name: "Pessoal", value: 6200, color: "#06b6d4" },
+  { name: "Reembolsos", value: 5248, color: "#ec4899" },
+  { name: "Resultado", value: 1131, color: "#22c55e" },
+];
+
+const ECOM_CARDS = [
+  { label: "Vendas Totais", value: "R$ 72.200" },
+  { label: "Pedidos", value: "339" },
+  { label: "Itens Vendidos", value: "619" },
+  { label: "ROAS", value: "10,24x", badge: "Saudável", badgeColor: "#22C55E", tip: "R$ 7.053 investidos em Meta + Google Ads" },
+  { label: "Taxa de Devolução", value: "11,5%", badge: "Atenção", badgeColor: "#F59E0B", tip: "R$ 8.278 em devoluções no mês" },
+];
+
+const PRODUCT_TABLE = [
+  { produto: "Blended", itens: 320, pctVol: "51,7%", receita: 33921, cmv: 19010, margem: "44,0%", status: "✅ Saudável", critical: false },
+  { produto: "Honey", itens: 259, pctVol: "41,8%", receita: 32091, cmv: 20196, margem: "37,1%", status: "✅ Saudável", critical: false },
+  { produto: "Cappuccino", itens: 50, pctVol: "8,1%", receita: 5497, cmv: 11588, margem: "-110,7%", status: "🚨 Crítico", critical: true },
+];
+
+const PRODUCT_CHART = [
+  { name: "Blended", receita: 33921, cmv: 19010 },
+  { name: "Honey", receita: 32091, cmv: 20196 },
+  { name: "Cappuccino", receita: 5497, cmv: 11588 },
+];
 
 const OverviewPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -41,7 +81,6 @@ const OverviewPage = () => {
 
   const handleExport = () => { navigator.clipboard.writeText(exportTasksMarkdown()); toast.success("Tarefas exportadas para o clipboard ✓"); };
 
-  // Task charts
   const pieData = [
     { name: "Pendente", value: byStatus("pendente"), fill: STATUS_COLORS.pendente },
     { name: "Em Andamento", value: byStatus("em-andamento"), fill: STATUS_COLORS["em-andamento"] },
@@ -50,19 +89,24 @@ const OverviewPage = () => {
   ].filter(d => d.value > 0);
 
   const lateTasks = tasks.filter(t => t.status === "atrasada").slice(0, 3);
-
-  // CRM stats
   const crmByStatus = (s: RevendedorStatus) => revs.filter(r => r.status === s).length;
   const topRevs = [...revs].sort((a, b) => b.volume - a.volume).slice(0, 5);
   const crmBarData = topRevs.map(r => ({ name: r.nome.length > 15 ? r.nome.slice(0, 15) + "…" : r.nome, value: r.volume }));
-
-  // Today's meetings
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const todayMeetings = meetings.filter(m => m.meetingDate === todayStr);
-
-  // Upcoming tasks (next 3 days)
   const threeDaysLater = format(addDays(new Date(), 3), "yyyy-MM-dd");
   const upcomingTasks = tasks.filter(t => t.dueDate && t.dueDate >= todayStr && t.dueDate <= threeDaysLater && t.status !== "concluida").slice(0, 5);
+
+  const kpiCards = [
+    { label: "Meta Mensal", value: `${kpis.metaMensal.toLocaleString()} unid.`, icon: Target, color: "#3B82F6", sub: "" },
+    { label: "Realizado", value: `${kpis.realizado.toLocaleString()} unid.`, icon: TrendingUp, color: "#22C55E", sub: "e-commerce · jan/26" },
+    { label: "% da Meta", value: `${metaPct}%`, icon: BarChart2, color: metaColor, sub: "" },
+    { label: "Receita Estimada", value: `R$ ${kpis.receitaEstimada.toLocaleString()}`, icon: DollarSign, color: "#22C55E", sub: "faturamento bruto · jan/26" },
+    { label: "Ticket Médio/Rev.", value: `R$ ${kpis.ticketMedio.toLocaleString()}`, icon: Package, color: "#6B7280", sub: "por pedido · WooCommerce" },
+    { label: "Custo Entrega", value: `R$ ${kpis.custoEntrega.toFixed(2)}/unid.`, icon: Truck, color: "#6B7280", sub: "frete total / unidades vendidas" },
+  ];
+
+  const costTotal = COST_COMPOSITION.reduce((s, c) => s + c.value, 0);
 
   return (
     <div className="space-y-6">
@@ -78,7 +122,7 @@ const OverviewPage = () => {
         </Button>
       </div>
 
-      {/* BLOCO A — KPIs do Negócio */}
+      {/* ═══ BLOCO A — KPIs do Negócio ═══ */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-sm font-semibold">Metas do Negócio</h2>
@@ -87,24 +131,17 @@ const OverviewPage = () => {
           </Button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: "Meta Mensal", value: `${kpis.metaMensal.toLocaleString()} garr.`, icon: Target, color: "#3B82F6" },
-            { label: "Realizado", value: `${kpis.realizado.toLocaleString()} garr.`, icon: TrendingUp, color: "#22C55E" },
-            { label: "% da Meta", value: `${metaPct}%`, icon: BarChart2, color: metaColor },
-            { label: "Receita Estimada", value: `R$ ${kpis.receitaEstimada.toLocaleString()}`, icon: DollarSign, color: "#22C55E" },
-            { label: "Ticket Médio/Rev.", value: `R$ ${kpis.ticketMedio.toLocaleString()}`, icon: Package, color: "#6B7280" },
-            { label: "Custo Entrega", value: `R$ ${kpis.custoEntrega.toFixed(2)}/garr.`, icon: Truck, color: "#6B7280" },
-          ].map(kpi => (
+          {kpiCards.map(kpi => (
             <div key={kpi.label} className="bg-card rounded-lg border border-border p-3 hover:-translate-y-0.5 hover:border-gold/30 transition-all" style={{ borderLeftWidth: 3, borderLeftColor: kpi.color }}>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <kpi.icon className="w-3.5 h-3.5" style={{ color: kpi.color }} />
                 <span className="text-[9px] text-muted-foreground uppercase tracking-wider">{kpi.label}</span>
               </div>
               <span className="text-lg font-bold font-mono" style={{ color: kpi.color }}>{kpi.value}</span>
+              {kpi.sub && <p className="text-[9px] text-muted-foreground mt-0.5">{kpi.sub}</p>}
             </div>
           ))}
         </div>
-        {/* Meta progress bar */}
         <div className="mt-2 bg-card rounded-lg border border-border p-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs text-muted-foreground">Progresso da meta mensal</span>
@@ -116,14 +153,173 @@ const OverviewPage = () => {
         </div>
       </div>
 
-      {/* BLOCO B — CRM */}
+      {/* ═══ DRE Simplificado — Jan/26 ═══ */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3">DRE Simplificado — Jan/26</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+          {DRE_CARDS.map(card => (
+            <div key={card.label} className="bg-card rounded-lg border border-border p-3 hover:-translate-y-0.5 transition-all" style={{ borderLeftWidth: 3, borderLeftColor: card.color }}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <card.icon className="w-3.5 h-3.5" style={{ color: card.color }} />
+                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">{card.label}</span>
+              </div>
+              <span className="text-base font-bold font-mono" style={{ color: card.color }}>{card.value}</span>
+              {card.badge && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="destructive" className="text-[9px] mt-1 cursor-help">{card.badge}</Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[250px] text-xs">{card.badgeTip}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Cost composition donut */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <h3 className="text-xs font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Onde foi o dinheiro</h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={COST_COMPOSITION} cx="50%" cy="50%" innerRadius={50} outerRadius={85} dataKey="value" paddingAngle={2}>
+                  {COST_COMPOSITION.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Pie>
+                <RTooltip contentStyle={{ background: "hsl(240 20% 9%)", border: "1px solid hsl(240 18% 14%)", borderRadius: 6, color: "hsl(240 20% 92%)" }} formatter={(val: number) => `R$ ${val.toLocaleString("pt-BR")}`} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="space-y-1.5 flex flex-col justify-center">
+              {COST_COMPOSITION.map(c => (
+                <div key={c.name} className="flex items-center gap-2 text-xs">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                  <span className="flex-1">{c.name}</span>
+                  <span className="font-mono text-muted-foreground">R$ {c.value.toLocaleString("pt-BR")}</span>
+                  <span className="font-mono text-muted-foreground w-10 text-right">{((c.value / costTotal) * 100).toFixed(1)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ E-commerce — Jan/26 ═══ */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3">E-commerce — WooCommerce · Jan/26</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+          {ECOM_CARDS.map(card => (
+            <div key={card.label} className="bg-card rounded-lg border border-border p-3 hover:-translate-y-0.5 transition-all" style={{ borderLeftWidth: 3, borderLeftColor: "hsl(var(--gold))" }}>
+              <span className="text-[9px] text-muted-foreground uppercase tracking-wider block mb-1">{card.label}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold font-mono text-foreground">{card.value}</span>
+                {card.badge && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="text-[9px] cursor-help" style={{ borderColor: `${card.badgeColor}40`, color: card.badgeColor }}>{card.badge}</Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[250px] text-xs">{card.tip}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Product table */}
+        <div className="bg-card rounded-lg border border-border overflow-x-auto mb-4">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-[10px] uppercase text-muted-foreground tracking-wider">
+                <th className="px-3 py-2.5 text-left">Produto</th>
+                <th className="px-3 py-2.5 text-right">Itens</th>
+                <th className="px-3 py-2.5 text-right">% Vol</th>
+                <th className="px-3 py-2.5 text-right">Receita</th>
+                <th className="px-3 py-2.5 text-right">CMV</th>
+                <th className="px-3 py-2.5 text-right">Margem</th>
+                <th className="px-3 py-2.5 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PRODUCT_TABLE.map(p => (
+                <tr key={p.produto} className={`border-b border-border/50 ${p.critical ? "bg-red-500/5" : ""}`}>
+                  <td className="px-3 py-2.5 font-medium">{p.produto}</td>
+                  <td className="px-3 py-2.5 text-right font-mono">{p.itens}</td>
+                  <td className="px-3 py-2.5 text-right font-mono">{p.pctVol}</td>
+                  <td className="px-3 py-2.5 text-right font-mono">R$ {p.receita.toLocaleString("pt-BR")}</td>
+                  <td className="px-3 py-2.5 text-right font-mono">R$ {p.cmv.toLocaleString("pt-BR")}</td>
+                  <td className="px-3 py-2.5 text-right font-mono" style={{ color: p.critical ? "#EF4444" : "#22C55E" }}>{p.margem}</td>
+                  <td className="px-3 py-2.5 text-right">
+                    <span className="text-xs">{p.status}</span>
+                    {p.critical && <Badge variant="destructive" className="text-[8px] ml-1">⚠ CMV &gt; Receita</Badge>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Cappuccino alert */}
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-400">
+              <strong>⚠ Cappuccino:</strong> CMV de R$ 11.588 supera receita e-commerce de R$ 5.497. Decisão urgente sobre o SKU.
+            </p>
+          </div>
+        </div>
+
+        {/* Receita vs CMV chart */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <h3 className="text-xs font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Receita vs CMV por Produto</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={PRODUCT_CHART}>
+              <XAxis dataKey="name" tick={{ fill: "hsl(240 8% 55%)", fontSize: 11 }} />
+              <YAxis tick={{ fill: "hsl(240 8% 55%)", fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+              <RTooltip contentStyle={{ background: "hsl(240 20% 9%)", border: "1px solid hsl(240 18% 14%)", borderRadius: 6, color: "hsl(240 20% 92%)" }} formatter={(val: number) => `R$ ${val.toLocaleString("pt-BR")}`} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="receita" name="Receita" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="cmv" name="CMV" fill="#EF4444" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ═══ 3 Alert Cards ═══ */}
+      <div className="grid md:grid-cols-3 gap-3">
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-400 mb-1">Margem líquida 1,2% · Jan/26</p>
+              <p className="text-xs text-muted-foreground">Qualquer custo adicional gera prejuízo. Prioridade: reduzir CMV e reembolsos.</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
+          <div className="flex items-start gap-2.5">
+            <AlertOctagon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-400 mb-1">Cappuccino em colapso</p>
+              <p className="text-xs text-muted-foreground">CMV (R$ 11.588) supera receita no e-commerce (R$ 5.497). Avaliar descontinuação.</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-4">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-yellow-400 mb-1">11,5% de devolução</p>
+              <p className="text-xs text-muted-foreground">R$ 8.278 devolvidos em jan/26. Investigar causas para proteger receita líquida.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ BLOCO B — CRM ═══ */}
       <div className="bg-card rounded-lg border border-border p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold">Revendedores</h2>
           <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate("/revendedores")}>Ver todos</Button>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
-          {/* Stats badges */}
           <div>
             <div className="flex flex-wrap gap-2 mb-4">
               {[
@@ -137,7 +333,6 @@ const OverviewPage = () => {
                 </Badge>
               ))}
             </div>
-            {/* Top 5 table */}
             {topRevs.length > 0 ? (
               <div className="text-xs">
                 <div className="grid grid-cols-4 gap-1 text-[10px] uppercase text-muted-foreground tracking-wider mb-1 px-1">
@@ -156,7 +351,6 @@ const OverviewPage = () => {
               <p className="text-xs text-muted-foreground">Nenhum revendedor cadastrado</p>
             )}
           </div>
-          {/* Mini bar chart */}
           <div>
             {crmBarData.length > 0 && (
               <ResponsiveContainer width="100%" height={180}>
@@ -172,9 +366,8 @@ const OverviewPage = () => {
         </div>
       </div>
 
-      {/* BLOCO C — Operação */}
+      {/* ═══ BLOCO C — Operação ═══ */}
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Left: Tasks */}
         <div className="space-y-4">
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Tarefas</h3>
@@ -201,8 +394,6 @@ const OverviewPage = () => {
               </PieChart>
             </ResponsiveContainer>
           </div>
-
-          {/* Late tasks */}
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-2 text-red-400">Tarefas Atrasadas</h3>
             {lateTasks.length === 0 ? (
@@ -223,8 +414,6 @@ const OverviewPage = () => {
             )}
           </div>
         </div>
-
-        {/* Right: Today */}
         <div className="space-y-4">
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gold" /> Reuniões de hoje</h3>
@@ -234,14 +423,13 @@ const OverviewPage = () => {
               <div className="space-y-1.5">
                 {todayMeetings.map(m => (
                   <div key={m.id} className="flex items-center gap-2 text-xs p-2 rounded bg-gold/5 border border-gold/10">
-                    <span className="font-mono text-gold">{m.meetingDate}</span>
+                    <span className="font-mono text-gold">{m.hora || m.meetingDate}</span>
                     <span className="flex-1 truncate">{m.title}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-2">Próximas entregas</h3>
             {upcomingTasks.length === 0 ? (
@@ -258,7 +446,6 @@ const OverviewPage = () => {
               </div>
             )}
           </div>
-
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Carga por Pessoa</h3>
             <div className="space-y-2.5">
@@ -283,7 +470,7 @@ const OverviewPage = () => {
         </div>
       </div>
 
-      {/* BLOCO D — Atividade Recente */}
+      {/* ═══ BLOCO D — Atividade Recente ═══ */}
       <div className="bg-card rounded-lg border border-border p-4">
         <h3 className="text-sm font-semibold mb-3">Atividade Recente</h3>
         {activities.length === 0 ? (
@@ -307,7 +494,6 @@ const OverviewPage = () => {
         )}
       </div>
 
-      {/* KPI Edit Dialog */}
       <KpiEditDialog open={kpiDialogOpen} onOpenChange={setKpiDialogOpen} kpis={kpis} onSave={k => { setBusinessKPIs(k); setKpis(k); setKpiDialogOpen(false); toast.success("Metas salvas"); }} />
     </div>
   );
@@ -336,11 +522,11 @@ function KpiEditDialog({ open, onOpenChange, kpis, onSave }: { open: boolean; on
       <DialogContent className="max-w-sm bg-card border-border">
         <DialogHeader><DialogTitle className="text-gold">Editar Metas</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><label className="text-xs text-muted-foreground block mb-1">Meta Mensal (garrafas)</label><Input type="number" value={meta} onChange={e => setMeta(Number(e.target.value))} className="bg-secondary/40" /></div>
-          <div><label className="text-xs text-muted-foreground block mb-1">Realizado (garrafas)</label><Input type="number" value={real} onChange={e => setReal(Number(e.target.value))} className="bg-secondary/40" /></div>
+          <div><label className="text-xs text-muted-foreground block mb-1">Meta Mensal (unidades)</label><Input type="number" value={meta} onChange={e => setMeta(Number(e.target.value))} className="bg-secondary/40" /></div>
+          <div><label className="text-xs text-muted-foreground block mb-1">Realizado (unidades)</label><Input type="number" value={real} onChange={e => setReal(Number(e.target.value))} className="bg-secondary/40" /></div>
           <div><label className="text-xs text-muted-foreground block mb-1">Receita Estimada (R$)</label><Input type="number" value={receita} onChange={e => setReceita(Number(e.target.value))} className="bg-secondary/40" /></div>
           <div><label className="text-xs text-muted-foreground block mb-1">Ticket Médio/Revendedor (R$)</label><Input type="number" value={ticket} onChange={e => setTicket(Number(e.target.value))} className="bg-secondary/40" /></div>
-          <div><label className="text-xs text-muted-foreground block mb-1">Custo Entrega (R$/garr.)</label><Input type="number" step="0.01" value={custo} onChange={e => setCusto(Number(e.target.value))} className="bg-secondary/40" /></div>
+          <div><label className="text-xs text-muted-foreground block mb-1">Custo Entrega (R$/unid.)</label><Input type="number" step="0.01" value={custo} onChange={e => setCusto(Number(e.target.value))} className="bg-secondary/40" /></div>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={() => onSave({ metaMensal: meta, realizado: real, receitaEstimada: receita, ticketMedio: ticket, custoEntrega: custo })} className="gradient-gold text-primary-foreground font-semibold">Salvar</Button>

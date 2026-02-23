@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { getMeetings, createMeeting, deleteMeeting, getUser } from "@/lib/store";
-import { Meeting, FileType, FILE_TYPE_LABELS } from "@/lib/types";
+import { getMeetings, createMeeting, updateMeeting, deleteMeeting, getUser } from "@/lib/store";
+import { Meeting, FileType, FILE_TYPE_LABELS, MeetingTipo, MeetingStatus, MEETING_TIPO_COLORS, MEETING_STATUS_COLORS, TEAM_MEMBERS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,22 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Trash2, FileText, Calendar, ExternalLink, Paperclip } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Trash2, Calendar, Pencil, MapPin, Video, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
-const FILE_TYPE_COLORS: Record<FileType, string> = {
-  pauta: "#3B82F6",
-  resumo: "#22C55E",
-  ata: "#F59E0B",
-  outro: "#6B7280",
-};
+const TIPOS: MeetingTipo[] = ["Recorrente", "Mensal", "Pontual"];
+const STATUSES: MeetingStatus[] = ["Agendada", "Realizada", "Cancelada"];
 
 const MeetingsPage = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editMeeting, setEditMeeting] = useState<Meeting | null>(null);
   const userName = getUser() || "";
 
   const reload = () => setMeetings(getMeetings());
@@ -33,6 +30,14 @@ const MeetingsPage = () => {
     createMeeting(data);
     toast.success("Reunião criada");
     setDialogOpen(false);
+    reload();
+  };
+
+  const handleUpdate = (data: Omit<Meeting, "id" | "createdAt">) => {
+    if (!editMeeting) return;
+    updateMeeting(editMeeting.id, data);
+    toast.success("Reunião atualizada");
+    setEditMeeting(null);
     reload();
   };
 
@@ -60,50 +65,73 @@ const MeetingsPage = () => {
             <span className="text-xs text-gold font-medium">Próxima Reunião</span>
           </div>
           <h3 className="font-semibold">{upcoming.title}</h3>
-          <p className="text-sm text-muted-foreground font-mono">{format(new Date(upcoming.meetingDate), "dd/MM/yyyy", { locale: ptBR })}</p>
+          <p className="text-sm text-muted-foreground font-mono">
+            {format(new Date(upcoming.meetingDate), "dd/MM/yyyy", { locale: ptBR })}
+            {upcoming.hora && ` às ${upcoming.hora}`}
+          </p>
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {meetings.map(m => (
-          <div key={m.id} className="bg-card rounded-lg border border-border p-4 hover:border-gold/20 transition-all">
+          <div key={m.id} className="bg-card rounded-lg border border-border p-4 hover:border-gold/20 transition-all cursor-pointer" onClick={() => setEditMeeting(m)}>
             <div className="flex items-start justify-between mb-2">
-              <span className="text-lg font-bold font-mono text-gold">{format(new Date(m.meetingDate), "dd/MM", { locale: ptBR })}</span>
-              <Badge variant="outline" className="text-[10px]" style={{ borderColor: `${FILE_TYPE_COLORS[m.fileType]}40`, color: FILE_TYPE_COLORS[m.fileType] }}>
-                {FILE_TYPE_LABELS[m.fileType]}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold font-mono text-gold">
+                  {format(new Date(m.meetingDate), "dd/MM", { locale: ptBR })}
+                </span>
+                {m.hora && <span className="text-xs text-muted-foreground font-mono">às {m.hora}</span>}
+              </div>
+              {m.tipo && (
+                <Badge variant="outline" className="text-[10px]" style={{ borderColor: `${MEETING_TIPO_COLORS[m.tipo]}40`, color: MEETING_TIPO_COLORS[m.tipo] }}>
+                  {m.tipo}
+                </Badge>
+              )}
             </div>
+
             <h3 className="text-sm font-semibold mb-1">{m.title}</h3>
-            {m.notes && <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{m.notes}</p>}
-            {m.fileName && (
-              <div className="flex items-center gap-1.5 text-xs text-gold mb-2">
-                <FileText className="w-3 h-3" />
-                <span className="truncate">{m.fileName}</span>
+            {m.notes && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{m.notes}</p>}
+
+            {/* Location */}
+            {m.local && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                {m.local.toLowerCase().includes("meet") || m.local.toLowerCase().includes("zoom") || m.local.toLowerCase().includes("online")
+                  ? <Video className="w-3 h-3" />
+                  : <MapPin className="w-3 h-3" />
+                }
+                <span>{m.local}</span>
               </div>
             )}
-            <div className="flex items-center justify-between mt-3">
+
+            {/* Participants */}
+            {m.participantes && m.participantes.length > 0 && (
+              <div className="flex items-center gap-1.5 mb-3">
+                <div className="flex -space-x-1.5">
+                  {m.participantes.slice(0, 4).map(p => (
+                    <div key={p} className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center text-[9px] font-bold text-gold">
+                      {p.charAt(0)}
+                    </div>
+                  ))}
+                  {m.participantes.length > 4 && (
+                    <div className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center text-[9px] font-bold text-muted-foreground">
+                      +{m.participantes.length - 4}
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-muted-foreground">{m.participantes.length} participantes</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/40">
               <span className="text-[10px] text-muted-foreground">por {m.uploadedBy}</span>
-              <div className="flex gap-1">
-                {m.fileUrl && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => {
-                        const a = document.createElement("a");
-                        a.href = m.fileUrl;
-                        a.target = "_blank";
-                        a.download = m.fileName;
-                        a.click();
-                      }}>
-                        <ExternalLink className="w-3 h-3 mr-1" /> Abrir
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Abrir arquivo</TooltipContent>
-                  </Tooltip>
-                )}
+              <div className="flex gap-0.5" onClick={e => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditMeeting(m)}>
+                  <Pencil className="w-3 h-3 text-muted-foreground" />
+                </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-destructive">
-                      <Trash2 className="w-3 h-3" />
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <Trash2 className="w-3 h-3 text-destructive" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="bg-card border-border">
@@ -132,73 +160,133 @@ const MeetingsPage = () => {
         )}
       </div>
 
-      <MeetingDialog open={dialogOpen} onOpenChange={setDialogOpen} userName={userName} onSave={handleCreate} />
+      {/* Create dialog */}
+      <MeetingDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        userName={userName}
+        onSave={handleCreate}
+      />
+
+      {/* Edit dialog */}
+      {editMeeting && (
+        <MeetingDialog
+          open={!!editMeeting}
+          onOpenChange={b => { if (!b) setEditMeeting(null); }}
+          userName={userName}
+          onSave={handleUpdate}
+          meeting={editMeeting}
+        />
+      )}
     </div>
   );
 };
 
-function MeetingDialog({ open, onOpenChange, userName, onSave }: {
+function MeetingDialog({ open, onOpenChange, userName, onSave, meeting }: {
   open: boolean; onOpenChange: (b: boolean) => void; userName: string;
   onSave: (data: Omit<Meeting, "id" | "createdAt">) => void;
+  meeting?: Meeting;
 }) {
   const [title, setTitle] = useState("");
   const [meetingDate, setMeetingDate] = useState("");
-  const [fileType, setFileType] = useState<FileType>("pauta");
+  const [hora, setHora] = useState("");
+  const [tipo, setTipo] = useState<MeetingTipo>("Pontual");
+  const [local, setLocal] = useState("");
+  const [participantes, setParticipantes] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [meetingStatus, setMeetingStatus] = useState<MeetingStatus>("Agendada");
+  const [fileType, setFileType] = useState<FileType>("pauta");
   const [fileName, setFileName] = useState("");
   const [fileUrl, setFileUrl] = useState("");
 
   useEffect(() => {
-    if (open) { setTitle(""); setMeetingDate(""); setFileType("pauta"); setNotes(""); setFileName(""); setFileUrl(""); }
-  }, [open]);
+    if (open) {
+      if (meeting) {
+        setTitle(meeting.title);
+        setMeetingDate(meeting.meetingDate);
+        setHora(meeting.hora || "");
+        setTipo(meeting.tipo || "Pontual");
+        setLocal(meeting.local || "");
+        setParticipantes(meeting.participantes || []);
+        setNotes(meeting.notes);
+        setMeetingStatus(meeting.meetingStatus || "Agendada");
+        setFileType(meeting.fileType);
+        setFileName(meeting.fileName);
+        setFileUrl(meeting.fileUrl);
+      } else {
+        setTitle(""); setMeetingDate(""); setHora(""); setTipo("Pontual");
+        setLocal(""); setParticipantes([]); setNotes(""); setMeetingStatus("Agendada");
+        setFileType("pauta"); setFileName(""); setFileUrl("");
+      }
+    }
+  }, [open, meeting]);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => setFileUrl(reader.result as string);
-    reader.readAsDataURL(file);
+  const toggleParticipante = (name: string) => {
+    setParticipantes(prev => prev.includes(name) ? prev.filter(p => p !== name) : [...prev, name]);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-card border-border">
-        <DialogHeader><DialogTitle className="text-gold">Nova Reunião</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md bg-card border-border max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-gold">{meeting ? "Editar Reunião" : "Nova Reunião"}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Título" value={title} onChange={e => setTitle(e.target.value)} className="bg-secondary/40" />
-          <Input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} className="bg-secondary/40" />
-          <Select value={fileType} onValueChange={v => setFileType(v as FileType)}>
-            <SelectTrigger className="bg-secondary/40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {(Object.keys(FILE_TYPE_LABELS) as FileType[]).map(f => (
-                <SelectItem key={f} value={f}>{FILE_TYPE_LABELS[f]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          {/* File upload */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block">Arquivo</label>
-            {fileName && (
-              <div className="flex items-center gap-2 text-xs bg-secondary/40 rounded px-2 py-1.5 mb-2">
-                <FileText className="w-3.5 h-3.5 text-gold" />
-                <span className="truncate">{fileName}</span>
-              </div>
-            )}
-            <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-muted-foreground hover:text-foreground hover:border-gold/30 transition-all cursor-pointer">
-              <Paperclip className="w-3.5 h-3.5" /> {fileName ? "Trocar arquivo" : "Anexar arquivo"}
-              <input type="file" className="hidden" accept=".pdf,.doc,.docx,.txt,.md" onChange={handleFile} />
-            </label>
+            <label className="text-xs text-muted-foreground mb-1 block">Título *</label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} className="bg-secondary/40" />
           </div>
-
-          <Textarea placeholder="Notas da reunião" value={notes} onChange={e => setNotes(e.target.value)} className="bg-secondary/40" />
-          <div className="flex gap-2 justify-end">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Data *</label>
+              <Input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} className="bg-secondary/40" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Hora</label>
+              <Input type="time" value={hora} onChange={e => setHora(e.target.value)} className="bg-secondary/40" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Tipo</label>
+              <Select value={tipo} onValueChange={v => setTipo(v as MeetingTipo)}>
+                <SelectTrigger className="bg-secondary/40"><SelectValue /></SelectTrigger>
+                <SelectContent>{TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+              <Select value={meetingStatus} onValueChange={v => setMeetingStatus(v as MeetingStatus)}>
+                <SelectTrigger className="bg-secondary/40"><SelectValue /></SelectTrigger>
+                <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Local</label>
+            <Input value={local} onChange={e => setLocal(e.target.value)} placeholder="Google Meet, Escritório, etc." className="bg-secondary/40" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1.5 block">Participantes</label>
+            <div className="flex flex-wrap gap-2">
+              {TEAM_MEMBERS.map(name => (
+                <label key={name} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <Checkbox checked={participantes.includes(name)} onCheckedChange={() => toggleParticipante(name)} />
+                  <span>{name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Pauta / Notas</label>
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} className="bg-secondary/40 min-h-[60px]" />
+          </div>
+          <div className="flex gap-2 justify-end pt-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button disabled={!title.trim() || !meetingDate}
-              onClick={() => onSave({ title, meetingDate, fileType, fileName, fileUrl, uploadedBy: userName, notes })}
+              onClick={() => onSave({ title, meetingDate, fileType, fileName, fileUrl, uploadedBy: meeting?.uploadedBy || userName, notes, hora, tipo, participantes, local, meetingStatus })}
               className="gradient-gold text-primary-foreground font-semibold">
-              Salvar
+              {meeting ? "Salvar" : "Criar"}
             </Button>
           </div>
         </div>

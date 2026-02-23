@@ -62,6 +62,9 @@ export interface Activity {
   createdAt: string;
 }
 
+export type MeetingTipo = "Recorrente" | "Mensal" | "Pontual";
+export type MeetingStatus = "Agendada" | "Realizada" | "Cancelada";
+
 export interface Meeting {
   id: number;
   title: string;
@@ -72,7 +75,24 @@ export interface Meeting {
   uploadedBy: string;
   notes: string;
   createdAt: string;
+  hora?: string;
+  tipo?: MeetingTipo;
+  participantes?: string[];
+  local?: string;
+  meetingStatus?: MeetingStatus;
 }
+
+export const MEETING_TIPO_COLORS: Record<MeetingTipo, string> = {
+  "Recorrente": "#3B82F6",
+  "Mensal": "#8B5CF6",
+  "Pontual": "#F59E0B",
+};
+
+export const MEETING_STATUS_COLORS: Record<MeetingStatus, string> = {
+  "Agendada": "#3B82F6",
+  "Realizada": "#22C55E",
+  "Cancelada": "#6B7280",
+};
 
 export interface Revendedor {
   id: string;
