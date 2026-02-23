@@ -193,6 +193,7 @@ const TasksPage = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-secondary/40 flex-wrap h-auto gap-1">
           <TabsTrigger value="lista" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Lista</TabsTrigger>
+          <TabsTrigger value="minhas" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Minhas Tarefas</TabsTrigger>
           <TabsTrigger value="kanban" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Kanban</TabsTrigger>
           <TabsTrigger value="pessoa" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Por Pessoa</TabsTrigger>
           <TabsTrigger value="area" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Por Área</TabsTrigger>
@@ -221,6 +222,11 @@ const TasksPage = () => {
             onTitleClick={(t) => setSidePanelTask(t)}
             userName={userName}
           />
+        </TabsContent>
+
+        {/* TAB: Minhas Tarefas */}
+        <TabsContent value="minhas">
+          <MyTasksTabContent tasks={tasks} userName={userName} onToggleComplete={handleToggleComplete} onStatusChange={handleStatusChange} onDelete={handleDelete} onEdit={(t) => { setEditingTask(t); setDialogOpen(true); }} onTitleClick={(t) => setSidePanelTask(t)} reload={reload} />
         </TabsContent>
 
         {/* TAB: Kanban */}
@@ -254,6 +260,89 @@ const TasksPage = () => {
     </div>
   );
 };
+
+// ═══════════════════════════════════════════════════
+// TAB: Minhas Tarefas
+// ═══════════════════════════════════════════════════
+function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, onDelete, onEdit, onTitleClick, reload }: any) {
+  const myTasks = tasks.filter((t: Task) => t.responsible.includes(userName));
+  const pending = myTasks.filter((t: Task) => t.status === "pendente");
+  const inProgress = myTasks.filter((t: Task) => t.status === "em-andamento");
+  const late = myTasks.filter((t: Task) => t.status === "atrasada");
+  const done = myTasks.filter((t: Task) => t.status === "concluida");
+  const doneCount = done.length;
+  const pct = myTasks.length > 0 ? Math.round((doneCount / myTasks.length) * 100) : 0;
+
+  const renderGroup = (label: string, items: Task[], color: string) => (
+    items.length > 0 ? (
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>{label}</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-secondary/60" style={{ color }}>{items.length}</span>
+        </div>
+        <div className="space-y-1">
+          {items.map((task: Task) => (
+            <div key={task.id} className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-center gap-2 hover:border-gold/20 transition-all cursor-pointer group">
+              <button onClick={() => onToggleComplete(task)} className="shrink-0">
+                {task.status === "concluida" ? (
+                  <Check className="w-4 h-4 text-emerald-500" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-muted-foreground/30 group-hover:border-gold/50 transition-colors" />
+                )}
+              </button>
+              <span className="font-mono text-xs text-gold">#{task.id}</span>
+              <span className="text-sm flex-1 truncate cursor-pointer hover:text-gold transition-colors" onClick={() => onTitleClick(task)}>{task.title}</span>
+              <Badge variant="outline" className="text-[10px]" style={{ borderColor: `${STATUS_COLORS[task.status]}40`, color: STATUS_COLORS[task.status] }}>
+                {STATUS_LABELS[task.status]}
+              </Badge>
+              <Badge variant="outline" className="text-[9px] hidden sm:inline-flex" style={{ borderColor: `${AREA_COLORS[task.area] || "#888"}40`, color: AREA_COLORS[task.area] || "#888" }}>
+                {task.area}
+              </Badge>
+              {task.dueDate && <span className="text-[10px] font-mono text-muted-foreground hidden md:inline">{task.dueDate}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null
+  );
+
+  return (
+    <div className="space-y-3 mt-3">
+      <div className="bg-card rounded-lg border border-border p-4 flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center text-lg font-bold text-primary-foreground">{userName.charAt(0)}</div>
+        <div className="flex-1">
+          <h2 className="text-base font-bold">{userName}</h2>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="text-xs text-muted-foreground">{myTasks.length} tarefas · {doneCount} concluídas</span>
+            <div className="w-20 h-1.5 rounded-full bg-surface-elevated overflow-hidden">
+              <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-xs font-mono text-gold">{pct}%</span>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          {([["pendente", STATUS_COLORS.pendente], ["em-andamento", STATUS_COLORS["em-andamento"]], ["atrasada", STATUS_COLORS.atrasada]] as const).map(([s, c]) => (
+            <div key={s} className="text-center">
+              <div className="text-sm font-bold font-mono" style={{ color: c }}>{myTasks.filter((t: Task) => t.status === s).length}</div>
+              <div className="text-[9px] text-muted-foreground">{STATUS_LABELS[s].split(" ")[0]}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {myTasks.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma tarefa atribuída a você</p>
+      ) : (
+        <>
+          {renderGroup("Atrasadas", late, STATUS_COLORS.atrasada)}
+          {renderGroup("Em Andamento", inProgress, STATUS_COLORS["em-andamento"])}
+          {renderGroup("Pendentes", pending, STATUS_COLORS.pendente)}
+          {renderGroup("Concluídas", done, STATUS_COLORS.concluida)}
+        </>
+      )}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════
 // TAB: Lista

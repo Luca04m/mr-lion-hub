@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getTasks, getActivities, getRevendedores, getBusinessKPIs, setBusinessKPIs, getMeetings, exportTasksMarkdown, getUser } from "@/lib/store";
-import { Task, TaskStatus, TEAM_MEMBERS, STATUS_LABELS, STATUS_COLORS, PRIORITY_COLORS, BusinessKPIs, Revendedor, REVENDEDOR_STATUS_COLORS, RevendedorStatus, Meeting } from "@/lib/types";
+import { getTasks, getActivities, getRevendedores, getMeetings, exportTasksMarkdown, getUser } from "@/lib/store";
+import { Task, TaskStatus, TEAM_MEMBERS, STATUS_LABELS, STATUS_COLORS, Revendedor, REVENDEDOR_STATUS_COLORS, RevendedorStatus, Meeting } from "@/lib/types";
 import { format, formatDistanceToNow, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Target, TrendingUp, BarChart2, DollarSign, Package, Truck, Download, Pencil, CheckCircle2, AlertTriangle, Clock, Zap, Calendar, Users, Building2, AlertOctagon } from "lucide-react";
+import { TrendingUp, BarChart2, DollarSign, Package, Download, CheckCircle2, AlertTriangle, Clock, Zap, Calendar, Building2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
@@ -57,8 +55,6 @@ const OverviewPage = () => {
   const [activities, setActivities] = useState<ReturnType<typeof getActivities>>([]);
   const [revs, setRevs] = useState<Revendedor[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [kpis, setKpis] = useState<BusinessKPIs>(getBusinessKPIs());
-  const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const userName = getUser();
   const navigate = useNavigate();
 
@@ -67,7 +63,6 @@ const OverviewPage = () => {
     setActivities(getActivities());
     setRevs(getRevendedores());
     setMeetings(getMeetings());
-    setKpis(getBusinessKPIs());
   }, []);
 
   const today = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
@@ -76,8 +71,6 @@ const OverviewPage = () => {
   const total = tasks.length;
   const byStatus = (s: TaskStatus) => tasks.filter(t => t.status === s).length;
   const doneCount = byStatus("concluida");
-  const metaPct = kpis.metaMensal > 0 ? Math.round((kpis.realizado / kpis.metaMensal) * 100) : 0;
-  const metaColor = metaPct >= 80 ? "#22C55E" : metaPct >= 60 ? "#F59E0B" : "#EF4444";
 
   const handleExport = () => { navigator.clipboard.writeText(exportTasksMarkdown()); toast.success("Tarefas exportadas para o clipboard ✓"); };
 
@@ -97,14 +90,6 @@ const OverviewPage = () => {
   const threeDaysLater = format(addDays(new Date(), 3), "yyyy-MM-dd");
   const upcomingTasks = tasks.filter(t => t.dueDate && t.dueDate >= todayStr && t.dueDate <= threeDaysLater && t.status !== "concluida").slice(0, 5);
 
-  const kpiCards = [
-    { label: "Meta Mensal", value: `${kpis.metaMensal.toLocaleString()} unid.`, icon: Target, color: "#3B82F6", sub: "" },
-    { label: "Realizado", value: `${kpis.realizado.toLocaleString()} unid.`, icon: TrendingUp, color: "#22C55E", sub: "e-commerce · jan/26" },
-    { label: "% da Meta", value: `${metaPct}%`, icon: BarChart2, color: metaColor, sub: "" },
-    { label: "Receita Estimada", value: `R$ ${kpis.receitaEstimada.toLocaleString()}`, icon: DollarSign, color: "#22C55E", sub: "faturamento bruto · jan/26" },
-    { label: "Ticket Médio/Rev.", value: `R$ ${kpis.ticketMedio.toLocaleString()}`, icon: Package, color: "#6B7280", sub: "por pedido · WooCommerce" },
-    { label: "Custo Entrega", value: `R$ ${kpis.custoEntrega.toFixed(2)}/unid.`, icon: Truck, color: "#6B7280", sub: "frete total / unidades vendidas" },
-  ];
 
   const costTotal = COST_COMPOSITION.reduce((s, c) => s + c.value, 0);
 
@@ -122,36 +107,6 @@ const OverviewPage = () => {
         </Button>
       </div>
 
-      {/* ═══ BLOCO A — KPIs do Negócio ═══ */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <h2 className="text-sm font-semibold">Metas do Negócio</h2>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-muted-foreground" onClick={() => setKpiDialogOpen(true)}>
-            <Pencil className="w-3 h-3 mr-1" /> Editar
-          </Button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {kpiCards.map(kpi => (
-            <div key={kpi.label} className="bg-card rounded-lg border border-border p-3 hover:-translate-y-0.5 hover:border-gold/30 transition-all" style={{ borderLeftWidth: 3, borderLeftColor: kpi.color }}>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <kpi.icon className="w-3.5 h-3.5" style={{ color: kpi.color }} />
-                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">{kpi.label}</span>
-              </div>
-              <span className="text-lg font-bold font-mono" style={{ color: kpi.color }}>{kpi.value}</span>
-              {kpi.sub && <p className="text-[9px] text-muted-foreground mt-0.5">{kpi.sub}</p>}
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 bg-card rounded-lg border border-border p-3">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs text-muted-foreground">Progresso da meta mensal</span>
-            <span className="text-xs font-mono font-bold" style={{ color: metaColor }}>{metaPct}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(metaPct, 100)}%`, backgroundColor: metaColor }} />
-          </div>
-        </div>
-      </div>
 
       {/* ═══ DRE Simplificado — Jan/26 ═══ */}
       <div>
@@ -256,15 +211,6 @@ const OverviewPage = () => {
           </table>
         </div>
 
-        {/* Cappuccino alert */}
-        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-400">
-              <strong>⚠ Cappuccino:</strong> CMV de R$ 11.588 supera receita e-commerce de R$ 5.497. Decisão urgente sobre o SKU.
-            </p>
-          </div>
-        </div>
 
         {/* Receita vs CMV chart */}
         <div className="bg-card rounded-lg border border-border p-4">
@@ -282,36 +228,6 @@ const OverviewPage = () => {
         </div>
       </div>
 
-      {/* ═══ 3 Alert Cards ═══ */}
-      <div className="grid md:grid-cols-3 gap-3">
-        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-red-400 mb-1">Margem líquida 1,2% · Jan/26</p>
-              <p className="text-xs text-muted-foreground">Qualquer custo adicional gera prejuízo. Prioridade: reduzir CMV e reembolsos.</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-          <div className="flex items-start gap-2.5">
-            <AlertOctagon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-red-400 mb-1">Cappuccino em colapso</p>
-              <p className="text-xs text-muted-foreground">CMV (R$ 11.588) supera receita no e-commerce (R$ 5.497). Avaliar descontinuação.</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-4">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-yellow-400 mb-1">11,5% de devolução</p>
-              <p className="text-xs text-muted-foreground">R$ 8.278 devolvidos em jan/26. Investigar causas para proteger receita líquida.</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ═══ BLOCO B — CRM ═══ */}
       <div className="bg-card rounded-lg border border-border p-4">
@@ -494,7 +410,7 @@ const OverviewPage = () => {
         )}
       </div>
 
-      <KpiEditDialog open={kpiDialogOpen} onOpenChange={setKpiDialogOpen} kpis={kpis} onSave={k => { setBusinessKPIs(k); setKpis(k); setKpiDialogOpen(false); toast.success("Metas salvas"); }} />
+      
     </div>
   );
 };
@@ -506,35 +422,6 @@ function formatActionShort(action: string, title: string): string {
   if (action === "revendedor_created") return `cadastrou revendedor "${title}"`;
   if (action === "revendedor_deleted") return `removeu revendedor "${title}"`;
   return `editou "${title}"`;
-}
-
-function KpiEditDialog({ open, onOpenChange, kpis, onSave }: { open: boolean; onOpenChange: (b: boolean) => void; kpis: BusinessKPIs; onSave: (k: BusinessKPIs) => void }) {
-  const [meta, setMeta] = useState(kpis.metaMensal);
-  const [real, setReal] = useState(kpis.realizado);
-  const [receita, setReceita] = useState(kpis.receitaEstimada);
-  const [ticket, setTicket] = useState(kpis.ticketMedio);
-  const [custo, setCusto] = useState(kpis.custoEntrega);
-
-  useEffect(() => { setMeta(kpis.metaMensal); setReal(kpis.realizado); setReceita(kpis.receitaEstimada); setTicket(kpis.ticketMedio); setCusto(kpis.custoEntrega); }, [kpis, open]);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm bg-card border-border">
-        <DialogHeader><DialogTitle className="text-gold">Editar Metas</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div><label className="text-xs text-muted-foreground block mb-1">Meta Mensal (unidades)</label><Input type="number" value={meta} onChange={e => setMeta(Number(e.target.value))} className="bg-secondary/40" /></div>
-          <div><label className="text-xs text-muted-foreground block mb-1">Realizado (unidades)</label><Input type="number" value={real} onChange={e => setReal(Number(e.target.value))} className="bg-secondary/40" /></div>
-          <div><label className="text-xs text-muted-foreground block mb-1">Receita Estimada (R$)</label><Input type="number" value={receita} onChange={e => setReceita(Number(e.target.value))} className="bg-secondary/40" /></div>
-          <div><label className="text-xs text-muted-foreground block mb-1">Ticket Médio/Revendedor (R$)</label><Input type="number" value={ticket} onChange={e => setTicket(Number(e.target.value))} className="bg-secondary/40" /></div>
-          <div><label className="text-xs text-muted-foreground block mb-1">Custo Entrega (R$/unid.)</label><Input type="number" step="0.01" value={custo} onChange={e => setCusto(Number(e.target.value))} className="bg-secondary/40" /></div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={() => onSave({ metaMensal: meta, realizado: real, receitaEstimada: receita, ticketMedio: ticket, custoEntrega: custo })} className="gradient-gold text-primary-foreground font-semibold">Salvar</Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 export default OverviewPage;

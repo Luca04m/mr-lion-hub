@@ -98,43 +98,7 @@ function calcScore(r: Partial<Revendedor>): number {
 
 export { calcScore };
 
-const SEED_REVENDEDORES: Revendedor[] = [
-  { id: "r1", nome: "Distribuidora São Paulo Centro", responsavel: "João", status: "Ativo", canal: "WhatsApp", cidade: "São Paulo", volume: 320, ultima: "2026-02-20", obs: "Principal distribuidor da zona central", whatsapp: "5511988881111", instagram: "@distspcentro", email: "contato@distspcentro.com.br", telefone: "(11) 3333-1111", tags: ["alta prioridade", "atacado"], score: 0, proximaAcao: { data: "2026-02-28", descricao: "Enviar proposta de março com desconto volume" }, volumeHistorico: genVolHist(320), historico: [
-    { id: "h1", data: "2026-02-20", tipo: "WhatsApp", descricao: "Confirmou pedido de 320 garrafas para fevereiro", autor: "João" },
-    { id: "h2", data: "2026-02-10", tipo: "Reunião", descricao: "Reunião presencial para alinhar logística de entrega", autor: "João" },
-    { id: "h3", data: "2026-01-28", tipo: "Email", descricao: "Enviado catálogo atualizado com novos produtos", autor: "João" },
-  ]},
-  { id: "r2", nome: "Revenda Norte Shopping", responsavel: "Luca", status: "Ativo", canal: "Instagram", cidade: "São Paulo", volume: 180, ultima: "2026-02-18", obs: "", whatsapp: "5511977772222", instagram: "@revendanorte", email: "vendas@revendanorte.com", telefone: "(11) 4444-2222", tags: ["shopping", "varejo"], score: 0, proximaAcao: null, volumeHistorico: genVolHist(180), historico: [
-    { id: "h4", data: "2026-02-18", tipo: "WhatsApp", descricao: "Enviou foto da vitrine com produtos Mr. Lion", autor: "Luca" },
-    { id: "h5", data: "2026-02-05", tipo: "Visita", descricao: "Visita para reposição de estoque", autor: "Luca" },
-  ]},
-  { id: "r3", nome: "Bar do Alemão", responsavel: "Pedro", status: "Em Negociação", canal: "Indicação", cidade: "Campinas", volume: 90, ultima: "2026-02-15", obs: "Indicação do Vinícius. Interesse em ser PDV exclusivo em Campinas.", whatsapp: "5519966663333", instagram: "@bardoalemao", email: "", telefone: "(19) 3322-3333", tags: ["bar", "interior"], score: 0, proximaAcao: { data: "2026-02-27", descricao: "Agendar degustação presencial no bar" }, volumeHistorico: genVolHist(90), historico: [
-    { id: "h6", data: "2026-02-15", tipo: "Ligação", descricao: "Ligação para apresentar condições comerciais", autor: "Pedro" },
-    { id: "h7", data: "2026-02-08", tipo: "WhatsApp", descricao: "Primeiro contato via indicação", autor: "Pedro" },
-  ]},
-  { id: "r4", nome: "Empório Vila Madalena", responsavel: "João", status: "Ativo", canal: "Instagram", cidade: "São Paulo", volume: 240, ultima: "2026-02-22", obs: "", whatsapp: "5511955554444", instagram: "@emporiovilamada", email: "compras@emporiovm.com.br", telefone: "(11) 3456-4444", tags: ["empório", "premium"], score: 0, proximaAcao: { data: "2026-03-01", descricao: "Negociar espaço para display exclusivo" }, volumeHistorico: genVolHist(240), historico: [
-    { id: "h8", data: "2026-02-22", tipo: "Visita", descricao: "Entrega de material PDV atualizado", autor: "João" },
-    { id: "h9", data: "2026-02-12", tipo: "WhatsApp", descricao: "Pedido mensal confirmado", autor: "João" },
-  ]},
-  { id: "r5", nome: "Distribuidora ABC", responsavel: "Guilherme", status: "Inativo", canal: "WhatsApp", cidade: "Santo André", volume: 60, ultima: "2026-01-30", obs: "Parou de comprar por questões financeiras. Reavaliar em março.", whatsapp: "5511944445555", instagram: "", email: "dist.abc@gmail.com", telefone: "(11) 4455-5555", tags: ["inativo"], score: 0, proximaAcao: null, volumeHistorico: genVolHist(60), historico: [
-    { id: "h10", data: "2026-01-30", tipo: "Ligação", descricao: "Tentativa de reativação — sem sucesso", autor: "Guilherme" },
-  ]},
-  { id: "r6", nome: "Mercado do Bairro Pinheiros", responsavel: "Luhan", status: "Novo Lead", canal: "Instagram", cidade: "São Paulo", volume: 0, ultima: "2026-02-23", obs: "Encontrado via Instagram, demonstrou interesse no DM", whatsapp: "5511933336666", instagram: "@mercadopinheiros", email: "mercadopinheiros@gmail.com", telefone: "", tags: ["lead quente"], score: 0, proximaAcao: { data: "2026-02-25", descricao: "Enviar catálogo e condições iniciais" }, volumeHistorico: genVolHist(0), historico: [
-    { id: "h11", data: "2026-02-23", tipo: "WhatsApp", descricao: "Primeiro contato — enviou apresentação da marca", autor: "Luhan" },
-  ]},
-  { id: "r7", nome: "Club 23", responsavel: "Pedro", status: "Ativo", canal: "Indicação", cidade: "São Paulo", volume: 150, ultima: "2026-02-19", obs: "", whatsapp: "5511922227777", instagram: "@club23sp", email: "contato@club23.com.br", telefone: "(11) 3210-7777", tags: ["bar", "noturno"], score: 0, proximaAcao: null, volumeHistorico: genVolHist(150), historico: [
-    { id: "h12", data: "2026-02-19", tipo: "Reunião", descricao: "Reunião para alinhar próximos eventos com a marca", autor: "Pedro" },
-    { id: "h13", data: "2026-02-01", tipo: "WhatsApp", descricao: "Confirmação de pedido mensal", autor: "Pedro" },
-  ]},
-  { id: "r8", nome: "Loja Virtual Premium", responsavel: "Luca", status: "Em Negociação", canal: "Outros", cidade: "Online", volume: 500, ultima: "2026-02-21", obs: "Marketplace premium. Potencial enorme se fechar exclusividade online.", whatsapp: "5511911118888", instagram: "@lojavirtualpremium", email: "parceiros@lvpremium.com.br", telefone: "(11) 3000-8888", tags: ["e-commerce", "alta prioridade", "marketplace"], score: 0, proximaAcao: { data: "2026-02-26", descricao: "Enviar contrato de exclusividade para análise jurídica" }, volumeHistorico: genVolHist(500), historico: [
-    { id: "h14", data: "2026-02-21", tipo: "Email", descricao: "Enviado termos comerciais e proposta de exclusividade", autor: "Luca" },
-    { id: "h15", data: "2026-02-14", tipo: "Reunião", descricao: "Call para apresentação da marca e linha de produtos", autor: "Luca" },
-    { id: "h16", data: "2026-02-07", tipo: "WhatsApp", descricao: "Primeiro contato — interesse vindo do site", autor: "Luca" },
-  ]},
-];
-
-// Calculate scores for seed data
-SEED_REVENDEDORES.forEach(r => { r.score = calcScore(r); });
+const SEED_REVENDEDORES: Revendedor[] = [];
 
 const SEED_MEETINGS: Meeting[] = [
   { id: 9001, title: "Daily Mr. Lion", meetingDate: "2026-02-24", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Alinhamento diário de tarefas e pendências da operação", createdAt: now(), hora: "09:30", tipo: "Recorrente", participantes: ["Luca", "João", "Luhan", "Pedro", "Guilherme"], local: "Google Meet", meetingStatus: "Agendada" },
@@ -165,8 +129,9 @@ function initIfNeeded() {
       if (migrated) localStorage.setItem(MEETINGS_KEY, JSON.stringify(existing));
     } catch {}
   }
-  if (!localStorage.getItem(CRM_KEY)) {
+  if (!localStorage.getItem(CRM_KEY) || localStorage.getItem("crm_reset_v2") !== "1") {
     localStorage.setItem(CRM_KEY, JSON.stringify(SEED_REVENDEDORES));
+    localStorage.setItem("crm_reset_v2", "1");
   } else {
     // Migrate existing revendedores to add new fields
     try {
