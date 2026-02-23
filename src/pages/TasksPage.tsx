@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Search, X, ChevronDown, ChevronRight, Trash2, Check, Download, Pencil, Paperclip, FileText } from "lucide-react";
+import { Plus, Search, X, ChevronDown, ChevronRight, Trash2, Check, Download, Pencil, Paperclip, FileText, Link2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -303,7 +303,16 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
         {(task.tags || []).slice(0, 1).map(tag => (
           <Badge key={tag} variant="secondary" className="text-[9px] shrink-0 hidden lg:inline-flex">{tag}</Badge>
         ))}
-        {(task.attachments || []).length > 0 && <Paperclip className="w-3 h-3 text-gold shrink-0" />}
+        {(() => {
+          const linkCount = (task.attachments || []).filter(a => a.type === "link" || a.url).length;
+          const fileCount = (task.attachments || []).filter(a => a.type !== "link" && !a.url && a.data).length;
+          return (
+            <>
+              {linkCount > 0 && <span className="inline-flex items-center gap-0.5 text-[10px] text-gold shrink-0">🔗{linkCount}</span>}
+              {fileCount > 0 && <Paperclip className="w-3 h-3 text-gold shrink-0" />}
+            </>
+          );
+        })()}
         <div className="hidden sm:flex -space-x-1">
           {task.responsible.slice(0, 3).map(r => (
             <div key={r} className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center text-[9px] font-bold text-gold">{r.charAt(0)}</div>
@@ -509,21 +518,24 @@ export function TaskFormDialog({ open, onOpenChange, task, onSave, defaultDueDat
             />
           </div>
 
-          {/* Attachments */}
+          {/* File Attachments */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block">Anexos</label>
-            {attachments.map((att, i) => (
+            <label className="text-xs text-muted-foreground mb-1.5 block">Documentos</label>
+            {attachments.filter(a => a.type !== "link").map((att, i) => (
               <div key={i} className="flex items-center gap-2 text-xs bg-secondary/40 rounded px-2 py-1.5 mb-1">
                 <FileText className="w-3.5 h-3.5 text-gold shrink-0" />
                 <span className="truncate flex-1">{att.name}</span>
-                <button onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} className="text-destructive"><X className="w-3 h-3" /></button>
+                <button onClick={() => setAttachments(attachments.filter(a => a !== att))} className="text-destructive"><X className="w-3 h-3" /></button>
               </div>
             ))}
             <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-muted-foreground hover:text-foreground hover:border-gold/30 transition-all cursor-pointer">
-              <Paperclip className="w-3.5 h-3.5" /> Anexar
+              <Paperclip className="w-3.5 h-3.5" /> Anexar documento
               <input type="file" className="hidden" accept=".pdf,.doc,.docx,.txt,.md,.xls,.xlsx,.png,.jpg,.jpeg" onChange={handleFileAttach} />
             </label>
           </div>
+
+          {/* Link Attachments */}
+          <LinkAttachmentsEditor attachments={attachments} setAttachments={setAttachments} />
 
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
@@ -535,6 +547,47 @@ export function TaskFormDialog({ open, onOpenChange, task, onSave, defaultDueDat
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Link attachments inline editor for TaskFormDialog
+function LinkAttachmentsEditor({ attachments, setAttachments }: { attachments: TaskAttachment[]; setAttachments: (a: TaskAttachment[]) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [label, setLabel] = useState("");
+  const [url, setUrl] = useState("");
+  const links = attachments.filter(a => a.type === "link" || a.url);
+
+  const handleAdd = () => {
+    if (!label.trim() || !url.trim()) return;
+    setAttachments([...attachments, { name: label.trim(), data: "", type: "link", label: label.trim(), url: url.trim() }]);
+    setLabel(""); setUrl(""); setAdding(false);
+  };
+
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground mb-1.5 block">Anexos (Links)</label>
+      {links.map((att, i) => (
+        <div key={i} className="flex items-center gap-2 text-xs bg-secondary/40 rounded px-2 py-1.5 mb-1">
+          <span className="shrink-0">🔗</span>
+          <span className="truncate flex-1 text-gold">{att.label || att.name}</span>
+          <button onClick={() => setAttachments(attachments.filter(a => a !== att))} className="text-destructive"><X className="w-3 h-3" /></button>
+        </div>
+      ))}
+      {adding ? (
+        <div className="space-y-1.5 p-2 bg-secondary/20 rounded-md border border-border">
+          <Input placeholder="Label" value={label} onChange={e => setLabel(e.target.value)} className="bg-secondary/40 h-7 text-xs" />
+          <Input placeholder="URL (https://...)" value={url} onChange={e => setUrl(e.target.value)} className="bg-secondary/40 h-7 text-xs" />
+          <div className="flex gap-1.5">
+            <Button size="sm" onClick={handleAdd} disabled={!label.trim() || !url.trim()} className="h-6 text-[10px] gradient-gold text-primary-foreground">Salvar</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setLabel(""); setUrl(""); }} className="h-6 text-[10px]">Cancelar</Button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAdding(true)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-muted-foreground hover:text-foreground hover:border-gold/30 transition-all">
+          <Plus className="w-3.5 h-3.5" /> Adicionar Link
+        </button>
+      )}
+    </div>
   );
 }
 

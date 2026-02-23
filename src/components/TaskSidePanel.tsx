@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, X as XIcon, Paperclip, FileText } from "lucide-react";
-import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from "@/lib/types";
+import { Trash2, X as XIcon, Paperclip, FileText, Link2, ExternalLink, Plus } from "lucide-react";
+import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment } from "@/lib/types";
 import { updateTask, deleteTask, logActivity, getUser, getActivities } from "@/lib/store";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -25,6 +25,10 @@ interface Props {
 
 export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
   const userName = getUser() || "";
+  const [addingLink, setAddingLink] = useState(false);
+  const [linkLabel, setLinkLabel] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+
   if (!task) return null;
 
   const save = (field: string, updates: Partial<Task>) => {
@@ -68,6 +72,23 @@ export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
     reader.readAsDataURL(file);
     e.target.value = "";
   };
+
+  const handleAddLink = () => {
+    if (!linkLabel.trim() || !linkUrl.trim()) return;
+    const attachments: TaskAttachment[] = [...(task.attachments || []), { name: linkLabel.trim(), data: "", type: "link", label: linkLabel.trim(), url: linkUrl.trim() }];
+    save("attachment", { attachments });
+    setLinkLabel("");
+    setLinkUrl("");
+    setAddingLink(false);
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    const attachments = (task.attachments || []).filter((_, i) => i !== index);
+    save("attachment", { attachments });
+  };
+
+  const fileAttachments = (task.attachments || []).filter(a => a.type !== "link");
+  const linkAttachments = (task.attachments || []).filter(a => a.type === "link" || a.url);
 
   const taskActivities = getActivities().filter(a => a.taskId === task.id);
 
@@ -186,21 +207,66 @@ export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
             />
           </div>
 
-          {/* Attachments */}
+          {/* File Attachments */}
           <div>
-            <label className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1.5 block">Anexos</label>
+            <label className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1.5 block">Documentos</label>
             <div className="space-y-1 mb-2">
-              {(task.attachments || []).map((att, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs bg-secondary/40 rounded px-2 py-1.5">
-                  <FileText className="w-3.5 h-3.5 text-gold shrink-0" />
-                  <a href={att.data} download={att.name} className="text-gold hover:underline truncate flex-1">{att.name}</a>
-                </div>
-              ))}
+              {fileAttachments.map((att, i) => {
+                const realIndex = (task.attachments || []).indexOf(att);
+                return (
+                  <div key={i} className="flex items-center gap-2 text-xs bg-secondary/40 rounded px-2 py-1.5">
+                    <FileText className="w-3.5 h-3.5 text-gold shrink-0" />
+                    <a href={att.data} download={att.name} className="text-gold hover:underline truncate flex-1">{att.name}</a>
+                    <button onClick={() => handleRemoveAttachment(realIndex)} className="text-muted-foreground hover:text-destructive"><XIcon className="w-3 h-3" /></button>
+                  </div>
+                );
+              })}
             </div>
             <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-muted-foreground hover:text-foreground hover:border-gold/30 transition-all cursor-pointer">
               <Paperclip className="w-3.5 h-3.5" /> Anexar documento
               <input type="file" className="hidden" accept=".pdf,.doc,.docx,.txt,.md,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg" onChange={handleFileAttach} />
             </label>
+          </div>
+
+          {/* Link Attachments */}
+          <div>
+            <label className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1.5 block">Anexos (Links)</label>
+            <div className="space-y-1 mb-2">
+              {linkAttachments.map((att, i) => {
+                const realIndex = (task.attachments || []).indexOf(att);
+                return (
+                  <div key={i} className="flex items-center gap-2 text-xs bg-secondary/40 rounded px-2 py-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-gold shrink-0" />
+                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-gold hover:underline truncate flex-1">
+                      {att.label || att.name}
+                    </a>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-gold">
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent>Abrir link</TooltipContent>
+                    </Tooltip>
+                    <button onClick={() => handleRemoveAttachment(realIndex)} className="text-muted-foreground hover:text-destructive"><XIcon className="w-3 h-3" /></button>
+                  </div>
+                );
+              })}
+            </div>
+            {addingLink ? (
+              <div className="space-y-1.5 p-2 bg-secondary/20 rounded-md border border-border">
+                <Input placeholder="Label (ex: Documento RTD)" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} className="bg-secondary/40 h-7 text-xs" />
+                <Input placeholder="URL (https://...)" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className="bg-secondary/40 h-7 text-xs" />
+                <div className="flex gap-1.5">
+                  <Button size="sm" onClick={handleAddLink} disabled={!linkLabel.trim() || !linkUrl.trim()} className="h-6 text-[10px] gradient-gold text-primary-foreground">Salvar</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setAddingLink(false); setLinkLabel(""); setLinkUrl(""); }} className="h-6 text-[10px]">Cancelar</Button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setAddingLink(true)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-muted-foreground hover:text-foreground hover:border-gold/30 transition-all">
+                <Plus className="w-3.5 h-3.5" /> Adicionar Link
+              </button>
+            )}
           </div>
 
           {/* Dependencies */}

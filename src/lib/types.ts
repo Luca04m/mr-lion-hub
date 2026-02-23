@@ -6,6 +6,9 @@ export interface TaskAttachment {
   name: string;
   data: string; // base64
   type: string;
+  // URL-based link attachment fields
+  label?: string;
+  url?: string;
 }
 
 export interface Task {
@@ -54,24 +57,26 @@ export interface Meeting {
 export const TEAM_MEMBERS = ["Luca", "João", "Luhan", "Pedro", "Guilherme"];
 
 export const AREAS = [
+  "Operacional", "Comercial", "Marketing", "Produto", "Conteúdo",
   "Nuvemshop", "Carnaval", "Orochi", "Nation", "Carlos Prates",
-  "Comercial", "Kit PDV", "Garrafa Nova", "RTD", "Conteúdo",
-  "Produtos", "Marketing", "Press-kit",
+  "Kit PDV", "Garrafa Nova", "RTD", "Produtos", "Press-kit",
 ];
 
 export const AREA_COLORS: Record<string, string> = {
+  "Operacional": "#64748B",
+  "Comercial": "#3B82F6",
+  "Marketing": "#E879F9",
+  "Produto": "#F472B6",
+  "Conteúdo": "#06B6D4",
   "Nuvemshop": "#6366F1",
   "Carnaval": "#F59E0B",
   "Orochi": "#EF4444",
   "Nation": "#10B981",
   "Carlos Prates": "#8B5CF6",
-  "Comercial": "#3B82F6",
   "Kit PDV": "#EC4899",
   "Garrafa Nova": "#14B8A6",
   "RTD": "#F97316",
-  "Conteúdo": "#06B6D4",
   "Produtos": "#84CC16",
-  "Marketing": "#E879F9",
   "Press-kit": "#A78BFA",
 };
 

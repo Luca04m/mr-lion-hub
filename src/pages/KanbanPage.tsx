@@ -6,7 +6,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { GripVertical, Plus } from "lucide-react";
+import { GripVertical, Plus, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TaskSidePanel } from "@/components/TaskSidePanel";
 
@@ -125,10 +125,15 @@ function KanbanCard({ task, isDragging, onClick }: { task: Task; isDragging?: bo
             </Badge>
           </div>
           <div className="flex items-center justify-between mt-2">
-            <div className="flex -space-x-1">
-              {task.responsible.slice(0, 3).map(r => (
-                <div key={r} className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center text-[8px] font-bold text-gold">{r.charAt(0)}</div>
-              ))}
+            <div className="flex items-center gap-1.5">
+              <div className="flex -space-x-1">
+                {task.responsible.slice(0, 3).map(r => (
+                  <div key={r} className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center text-[8px] font-bold text-gold">{r.charAt(0)}</div>
+                ))}
+              </div>
+              {(task.attachments || []).some(a => a.type === "link" || a.url) && (
+                <span className="text-[9px] text-gold">🔗</span>
+              )}
             </div>
             {task.dueDate && (
               <span className={`text-[9px] font-mono ${isLate ? "text-red-400" : "text-muted-foreground"}`}>{task.dueDate}</span>
