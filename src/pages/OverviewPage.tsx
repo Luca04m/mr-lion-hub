@@ -85,14 +85,14 @@ const OverviewPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold text-foreground">Visão Geral</h1>
-          <p className="text-sm text-muted-foreground capitalize">{today}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground capitalize">{today}</p>
           <p className="text-sm text-gold mt-1">{greeting}, {userName}!</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleExport} className="text-xs gap-1.5 border-border">
-          <Download className="w-3.5 h-3.5" /> Exportar
+        <Button variant="outline" size="sm" onClick={handleExport} className="text-xs gap-1.5 border-border self-start">
+          <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Exportar</span><span className="sm:hidden">Exp.</span>
         </Button>
       </div>
 
@@ -122,7 +122,7 @@ const OverviewPage = () => {
         {/* Cost composition donut */}
         <div className="bg-card rounded-lg border border-border p-4">
           <h3 className="text-xs font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Onde foi o dinheiro</h3>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie data={COST_COMPOSITION} cx="50%" cy="50%" innerRadius={50} outerRadius={85} dataKey="value" paddingAngle={2}>
@@ -229,7 +229,7 @@ const OverviewPage = () => {
         <div className="space-y-4">
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Tarefas</h3>
-            <div className="grid grid-cols-5 gap-2 mb-4">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
               {[
                 { label: "Total", value: total, color: "hsl(var(--gold))", icon: CheckCircle2 },
                 { label: "Pend.", value: byStatus("pendente"), color: STATUS_COLORS.pendente, icon: Clock },

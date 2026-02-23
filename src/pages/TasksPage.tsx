@@ -163,7 +163,7 @@ const TasksPage = () => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold">Tarefas</h1>
           <div className="flex items-center gap-3 mt-1">
@@ -174,17 +174,17 @@ const TasksPage = () => {
             <span className="text-xs font-mono text-gold">{progress}%</span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-start">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="outline" size="sm" onClick={handleExport} className="text-xs gap-1.5">
-                <Download className="w-3.5 h-3.5" /> Exportar
+                <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Exportar</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Copiar tarefas em Markdown</TooltipContent>
           </Tooltip>
           <Button onClick={() => { setEditingTask(undefined); setDialogOpen(true); }} className="gradient-gold text-primary-foreground font-semibold glow-pulse" size="sm">
-            <Plus className="w-4 h-4 mr-1" /> Nova Tarefa
+            <Plus className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Nova Tarefa</span><span className="sm:hidden">Nova</span>
           </Button>
         </div>
       </div>
@@ -308,19 +308,23 @@ function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, 
 
   return (
     <div className="space-y-3 mt-3">
-      <div className="bg-card rounded-lg border border-border p-4 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center text-lg font-bold text-primary-foreground">{userName.charAt(0)}</div>
-        <div className="flex-1">
-          <h2 className="text-base font-bold">{userName}</h2>
-          <div className="flex items-center gap-3 mt-0.5">
-            <span className="text-xs text-muted-foreground">{myTasks.length} tarefas · {doneCount} concluídas</span>
-            <div className="w-20 h-1.5 rounded-full bg-surface-elevated overflow-hidden">
-              <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
+      <div className="bg-card rounded-lg border border-border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center text-lg font-bold text-primary-foreground shrink-0">{userName.charAt(0)}</div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-bold truncate">{userName}</h2>
+            <div className="flex items-center gap-2 sm:gap-3 mt-0.5 flex-wrap">
+              <span className="text-xs text-muted-foreground">{myTasks.length} tarefas · {doneCount} concluídas</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-16 sm:w-20 h-1.5 rounded-full bg-surface-elevated overflow-hidden">
+                  <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-xs font-mono text-gold">{pct}%</span>
+              </div>
             </div>
-            <span className="text-xs font-mono text-gold">{pct}%</span>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 justify-around sm:justify-end">
           {([["pendente", STATUS_COLORS.pendente], ["em-andamento", STATUS_COLORS["em-andamento"]], ["atrasada", STATUS_COLORS.atrasada]] as const).map(([s, c]) => (
             <div key={s} className="text-center">
               <div className="text-sm font-bold font-mono" style={{ color: c }}>{myTasks.filter((t: Task) => t.status === s).length}</div>

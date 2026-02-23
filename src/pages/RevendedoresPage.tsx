@@ -227,9 +227,9 @@ const RevendedoresPage = () => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h1 className="text-xl font-bold">CRM — Revendedores</h1>
-        <Button onClick={() => { setNewDialogPreStatus(undefined); setNewDialogOpen(true); }} className="gradient-gold text-primary-foreground font-semibold glow-pulse" size="sm">
+        <Button onClick={() => { setNewDialogPreStatus(undefined); setNewDialogOpen(true); }} className="gradient-gold text-primary-foreground font-semibold glow-pulse self-start" size="sm">
           <Plus className="w-4 h-4 mr-1" /> Novo Revendedor
         </Button>
       </div>
@@ -254,43 +254,45 @@ const RevendedoresPage = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[180px]">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar nome, cidade, instagram..." className="pl-8 h-8 text-sm bg-secondary/40" />
         </div>
-        <Select value={filterResp} onValueChange={setFilterResp}>
-          <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Responsável" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {TEAM_MEMBERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {ALL_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterCanal} onValueChange={setFilterCanal}>
-          <SelectTrigger className="w-[120px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Canal" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {CANAIS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {(search || filterResp !== "all" || filterStatus !== "all" || filterCanal !== "all") && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs text-muted-foreground">
-            <X className="w-3 h-3 mr-1" /> Limpar
-          </Button>
-        )}
-        <div className="flex border border-border rounded-md ml-auto">
-          {([["lista", List], ["pipeline", Columns3], ["analytics", BarChart3]] as [ViewMode, any][]).map(([v, Icon]) => (
-            <Button key={v} variant={view === v ? "secondary" : "ghost"} size="sm" className="h-8 w-8 p-0" onClick={() => setView(v)}>
-              <Icon className="w-3.5 h-3.5" />
+        <div className="flex flex-wrap gap-2 items-center">
+          <Select value={filterResp} onValueChange={setFilterResp}>
+            <SelectTrigger className="w-[120px] sm:w-[130px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {TEAM_MEMBERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[120px] sm:w-[140px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {ALL_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterCanal} onValueChange={setFilterCanal}>
+            <SelectTrigger className="w-[110px] sm:w-[120px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Canal" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {CANAIS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {(search || filterResp !== "all" || filterStatus !== "all" || filterCanal !== "all") && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs text-muted-foreground">
+              <X className="w-3 h-3 mr-1" /> Limpar
             </Button>
-          ))}
+          )}
+          <div className="flex border border-border rounded-md ml-auto">
+            {([["lista", List], ["pipeline", Columns3], ["analytics", BarChart3]] as [ViewMode, any][]).map(([v, Icon]) => (
+              <Button key={v} variant={view === v ? "secondary" : "ghost"} size="sm" className="h-8 w-8 p-0" onClick={() => setView(v)}>
+                <Icon className="w-3.5 h-3.5" />
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 

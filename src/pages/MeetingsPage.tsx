@@ -51,9 +51,9 @@ const MeetingsPage = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <h1 className="text-xl font-bold">Reuniões</h1>
-        <Button onClick={() => setDialogOpen(true)} className="gradient-gold text-primary-foreground font-semibold glow-pulse" size="sm">
+        <Button onClick={() => setDialogOpen(true)} className="gradient-gold text-primary-foreground font-semibold glow-pulse self-start" size="sm">
           <Plus className="w-4 h-4 mr-1" /> Nova Reunião
         </Button>
       </div>
