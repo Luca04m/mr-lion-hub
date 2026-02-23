@@ -3,11 +3,13 @@ import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, CheckSquare, Columns3, Calendar, Users, FolderKanban,
-  Activity, FileText, LogOut, Search, Menu, X
+  Activity, FileText, LogOut, Menu, X
 } from "lucide-react";
 import { getUser, clearUser, getOnlineUsers, updatePresence, getTasks } from "@/lib/store";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
+import { CommandPalette } from "@/components/CommandPalette";
 
 const NAV_ITEMS = [
   { to: "/overview", icon: LayoutDashboard, label: "Visão Geral" },
@@ -20,6 +22,17 @@ const NAV_ITEMS = [
   { to: "/meetings", icon: FileText, label: "Reuniões" },
 ];
 
+const PAGE_TITLES: Record<string, string> = {
+  "/overview": "Visão Geral",
+  "/tasks": "Tarefas",
+  "/kanban": "Kanban",
+  "/calendar": "Calendário",
+  "/people": "Por Pessoa",
+  "/areas": "Por Área",
+  "/activity": "Atividade",
+  "/meetings": "Reuniões",
+};
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,6 +40,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [lateCount, setLateCount] = useState(0);
+  const [cmdOpen, setCmdOpen] = useState(false);
 
   useEffect(() => {
     if (!userName) { navigate("/"); return; }
@@ -34,12 +49,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     const interval = setInterval(() => {
       updatePresence(userName);
       setOnlineUsers(getOnlineUsers());
-      setPendingCount(getTasks().filter(t => t.status === "pendente").length);
+      const tasks = getTasks();
+      setPendingCount(tasks.filter(t => t.status === "pendente").length);
+      setLateCount(tasks.filter(t => t.status === "atrasada").length);
     }, 5000);
     setOnlineUsers(getOnlineUsers());
-    setPendingCount(getTasks().filter(t => t.status === "pendente").length);
+    const tasks = getTasks();
+    setPendingCount(tasks.filter(t => t.status === "pendente").length);
+    setLateCount(tasks.filter(t => t.status === "atrasada").length);
     return () => clearInterval(interval);
   }, [userName, navigate]);
+
+  // Dynamic title
+  useEffect(() => {
+    const title = PAGE_TITLES[location.pathname] || "MR. LION HUB";
+    document.title = `${title} | MR. LION HUB`;
+  }, [location.pathname]);
+
+  // Scroll to top on navigate
+  useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
+
+  // Cmd+K listener
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const handleLogout = () => {
     clearUser();
@@ -66,7 +106,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* User */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-3">
         <div className="flex items-center gap-2.5 px-2 py-2 rounded-md bg-secondary/40">
           <div className="w-7 h-7 rounded-full gradient-gold flex items-center justify-center text-xs font-bold text-primary-foreground">
             {initial}
@@ -74,6 +114,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-medium text-foreground truncate">{userName}</span>
         </div>
       </div>
+
+      {/* Search shortcut */}
+      <div className="px-4 pb-3">
+        <button onClick={() => setCmdOpen(true)} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-muted-foreground border border-border hover:border-gold/30 hover:text-foreground transition-all">
+          <span className="flex-1 text-left">Buscar...</span>
+          <kbd className="text-[9px] bg-secondary px-1 py-0.5 rounded font-mono">⌘K</kbd>
+        </button>
+      </div>
+
+      <Separator className="mx-4 mb-2" />
 
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-0.5">
@@ -83,7 +133,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             to={item.to}
             onClick={() => setMobileOpen(false)}
             className={({ isActive }) => cn(
-              "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
+              "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors relative",
               isActive
                 ? "bg-accent text-gold font-medium"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
@@ -96,9 +146,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 {pendingCount}
               </span>
             )}
+            {item.badge && lateCount > 0 && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-destructive online-pulse" />
+            )}
           </NavLink>
         ))}
       </nav>
+
+      <Separator className="mx-4 mt-2 mb-2" />
 
       {/* Footer */}
       <div className="px-4 pb-4 mt-auto space-y-3">
@@ -176,6 +231,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </motion.div>
       </main>
+
+      <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
     </div>
   );
 }

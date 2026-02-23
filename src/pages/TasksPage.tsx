@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
-import { getTasks, getUser, updateTask, deleteTask, createTask, logActivity } from "@/lib/store";
-import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from "@/lib/types";
+import { useSearchParams } from "react-router-dom";
+import { getTasks, getUser, updateTask, deleteTask, createTask, logActivity, exportTasksMarkdown } from "@/lib/store";
+import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, X, ChevronDown, ChevronRight, Trash2, Check, Filter } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, Search, X, ChevronDown, ChevronRight, Trash2, Check, Download, Pencil, Paperclip, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { TaskSidePanel } from "@/components/TaskSidePanel";
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -17,25 +23,48 @@ const TasksPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [areaFilter, setAreaFilter] = useState<string>("all");
   const [responsibleFilter, setResponsibleFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const [myTasks, setMyTasks] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [sidePanelTask, setSidePanelTask] = useState<Task | null>(null);
+  const [highlightId, setHighlightId] = useState<number | null>(null);
   const userName = getUser() || "";
+  const [searchParams] = useSearchParams();
 
   const reload = useCallback(() => setTasks(getTasks()), []);
   useEffect(() => { reload(); }, [reload]);
+
+  // Handle URL params
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (status) setStatusFilter(status);
+    const highlight = searchParams.get("highlight");
+    if (highlight) {
+      const id = Number(highlight);
+      setHighlightId(id);
+      setTimeout(() => {
+        document.getElementById(`task-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => setHighlightId(null), 3000);
+      }, 300);
+    }
+  }, [searchParams]);
+
+  // Get all unique tags
+  const allTags = [...new Set(tasks.flatMap(t => t.tags || []))];
 
   const filtered = tasks.filter(t => {
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (areaFilter !== "all" && t.area !== areaFilter) return false;
     if (responsibleFilter !== "all" && !t.responsible.includes(responsibleFilter)) return false;
+    if (tagFilter !== "all" && !(t.tags || []).includes(tagFilter)) return false;
     if (myTasks && !t.responsible.includes(userName)) return false;
     return true;
   });
 
-  const hasFilters = search || statusFilter !== "all" || areaFilter !== "all" || responsibleFilter !== "all" || myTasks;
+  const hasFilters = search || statusFilter !== "all" || areaFilter !== "all" || responsibleFilter !== "all" || tagFilter !== "all" || myTasks;
   const doneCount = tasks.filter(t => t.status === "concluida").length;
   const progress = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
 
@@ -84,7 +113,7 @@ const TasksPage = () => {
         priority: data.priority || "media", area: data.area || "Comercial",
         status: data.status || "pendente", dependencies: data.dependencies || [],
         decision: data.decision || null, notes: data.notes || "", dueDate: data.dueDate || null,
-        createdBy: userName, isOriginal: false,
+        createdBy: userName, isOriginal: false, tags: data.tags || [], attachments: data.attachments || [],
       });
       logActivity({ taskId: t.id, taskTitle: t.title, userName, action: "task_created", oldValue: null, newValue: t.title });
       toast.success("Tarefa criada");
@@ -94,36 +123,27 @@ const TasksPage = () => {
     reload();
   };
 
-  const handleInlineNotes = (id: number, notes: string) => {
-    updateTask(id, { notes });
-    reload();
-  };
-
-  const handleInlineDecision = (id: number, decision: string) => {
-    updateTask(id, { decision: decision || null });
-    reload();
-  };
+  const handleInlineNotes = (id: number, notes: string) => { updateTask(id, { notes }); reload(); };
+  const handleInlineDecision = (id: number, decision: string) => { updateTask(id, { decision: decision || null }); reload(); };
 
   const clearFilters = () => {
-    setSearch("");
-    setStatusFilter("all");
-    setAreaFilter("all");
-    setResponsibleFilter("all");
-    setMyTasks(false);
+    setSearch(""); setStatusFilter("all"); setAreaFilter("all"); setResponsibleFilter("all"); setTagFilter("all"); setMyTasks(false);
+  };
+
+  const handleExport = () => {
+    navigator.clipboard.writeText(exportTasksMarkdown());
+    toast.success("Tarefas exportadas para o clipboard ✓");
   };
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "n" && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
-        e.preventDefault();
-        setEditingTask(undefined);
-        setDialogOpen(true);
+        e.preventDefault(); setEditingTask(undefined); setDialogOpen(true);
       }
       if (e.key === "Escape") setDialogOpen(false);
       if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
-        e.preventDefault();
-        document.getElementById("task-search")?.focus();
+        e.preventDefault(); document.getElementById("task-search")?.focus();
       }
     };
     window.addEventListener("keydown", handler);
@@ -145,9 +165,19 @@ const TasksPage = () => {
               <span className="text-xs font-mono text-gold">{progress}%</span>
             </div>
           </div>
-          <Button onClick={() => { setEditingTask(undefined); setDialogOpen(true); }} className="gradient-gold text-primary-foreground font-semibold glow-pulse" size="sm">
-            <Plus className="w-4 h-4 mr-1" /> Nova Tarefa
-          </Button>
+          <div className="flex gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleExport} className="text-xs gap-1.5">
+                  <Download className="w-3.5 h-3.5" /> Exportar
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copiar tarefas em Markdown</TooltipContent>
+            </Tooltip>
+            <Button onClick={() => { setEditingTask(undefined); setDialogOpen(true); }} className="gradient-gold text-primary-foreground font-semibold glow-pulse" size="sm">
+              <Plus className="w-4 h-4 mr-1" /> Nova Tarefa
+            </Button>
+          </div>
         </div>
 
         {/* Status pills */}
@@ -159,14 +189,9 @@ const TasksPage = () => {
             { key: "concluida", label: "Concluídas", count: tasks.filter(t => t.status === "concluida").length, color: STATUS_COLORS.concluida },
             { key: "atrasada", label: "Atrasadas", count: tasks.filter(t => t.status === "atrasada").length, color: STATUS_COLORS.atrasada },
           ].map(s => (
-            <button
-              key={s.key}
-              onClick={() => setStatusFilter(statusFilter === s.key ? "all" : s.key)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                statusFilter === s.key ? "border-current opacity-100" : "border-transparent opacity-60 hover:opacity-80"
-              }`}
-              style={{ color: s.color }}
-            >
+            <button key={s.key} onClick={() => setStatusFilter(statusFilter === s.key ? "all" : s.key)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${statusFilter === s.key ? "border-current opacity-100" : "border-transparent opacity-60 hover:opacity-80"}`}
+              style={{ color: s.color }}>
               {s.label} <span className="font-mono">{s.count}</span>
             </button>
           ))}
@@ -192,6 +217,15 @@ const TasksPage = () => {
               {TEAM_MEMBERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
             </SelectContent>
           </Select>
+          {allTags.length > 0 && (
+            <Select value={tagFilter} onValueChange={setTagFilter}>
+              <SelectTrigger className="w-[110px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Tag" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas tags</SelectItem>
+                {allTags.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
           <button onClick={() => setMyTasks(!myTasks)} className={`px-2.5 py-1 rounded-md text-xs border transition-all ${myTasks ? "border-gold/50 text-gold bg-accent/40" : "border-border text-muted-foreground hover:text-foreground"}`}>
             Minhas
           </button>
@@ -211,6 +245,7 @@ const TasksPage = () => {
               key={task.id}
               task={task}
               expanded={expandedId === task.id}
+              highlighted={highlightId === task.id}
               onToggleExpand={() => setExpandedId(expandedId === task.id ? null : task.id)}
               onToggleComplete={() => handleToggleComplete(task)}
               onStatusChange={(s) => handleStatusChange(task.id, s)}
@@ -218,30 +253,38 @@ const TasksPage = () => {
               onEdit={() => { setEditingTask(task); setDialogOpen(true); }}
               onNotesChange={(n) => handleInlineNotes(task.id, n)}
               onDecisionChange={(d) => handleInlineDecision(task.id, d)}
+              onTitleClick={() => { setSidePanelTask(task); }}
             />
           ))}
         </AnimatePresence>
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground text-sm">Nenhuma tarefa encontrada</div>
+          <div className="text-center py-12">
+            <Search className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Nenhuma tarefa encontrada</p>
+            {hasFilters && (
+              <button onClick={clearFilters} className="text-xs text-gold hover:underline mt-2">Limpar filtros</button>
+            )}
+          </div>
         )}
       </div>
 
       <TaskFormDialog open={dialogOpen} onOpenChange={setDialogOpen} task={editingTask} onSave={handleSave} />
+      <TaskSidePanel task={sidePanelTask} open={!!sidePanelTask} onOpenChange={b => { if (!b) setSidePanelTask(null); }} onUpdate={() => { reload(); if (sidePanelTask) setSidePanelTask(getTasks().find(t => t.id === sidePanelTask.id) || null); }} />
     </div>
   );
 };
 
 // Task Row Component
-function TaskRow({ task, expanded, onToggleExpand, onToggleComplete, onStatusChange, onDelete, onEdit, onNotesChange, onDecisionChange }: {
-  task: Task; expanded: boolean;
+function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete, onStatusChange, onDelete, onEdit, onNotesChange, onDecisionChange, onTitleClick }: {
+  task: Task; expanded: boolean; highlighted?: boolean;
   onToggleExpand: () => void; onToggleComplete: () => void;
   onStatusChange: (s: TaskStatus) => void; onDelete: () => void; onEdit: () => void;
-  onNotesChange: (n: string) => void; onDecisionChange: (d: string) => void;
+  onNotesChange: (n: string) => void; onDecisionChange: (d: string) => void; onTitleClick: () => void;
 }) {
   const isDone = task.status === "concluida";
   return (
-    <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-      className="bg-card rounded-lg border border-border hover:border-gold/20 transition-all"
+    <motion.div id={`task-${task.id}`} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+      className={`bg-card rounded-lg border transition-all ${highlighted ? "border-gold/50 ring-1 ring-gold/20" : "border-border hover:border-gold/20"}`}
     >
       <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer" onClick={onToggleExpand}>
         <button onClick={e => { e.stopPropagation(); onToggleComplete(); }}
@@ -249,13 +292,18 @@ function TaskRow({ task, expanded, onToggleExpand, onToggleComplete, onStatusCha
           {isDone && <Check className="w-3 h-3 text-white" />}
         </button>
         <span className="font-mono text-xs text-gold shrink-0">#{task.id}</span>
-        <span className={`text-sm font-medium flex-1 truncate ${isDone ? "line-through opacity-50" : ""}`}>{task.title}</span>
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ backgroundColor: `${PRIORITY_COLORS[task.priority]}15`, color: PRIORITY_COLORS[task.priority] }}>
+        <span onClick={e => { e.stopPropagation(); onTitleClick(); }}
+          className={`text-sm font-medium flex-1 truncate hover:text-gold cursor-pointer ${isDone ? "line-through opacity-50" : ""}`}>{task.title}</span>
+        <Badge variant="outline" className="text-[10px] shrink-0 hidden sm:inline-flex" style={{ borderColor: `${PRIORITY_COLORS[task.priority]}40`, color: PRIORITY_COLORS[task.priority] }}>
           {PRIORITY_LABELS[task.priority]}
-        </span>
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium hidden sm:inline" style={{ backgroundColor: `${AREA_COLORS[task.area] || "#888"}15`, color: AREA_COLORS[task.area] || "#888" }}>
+        </Badge>
+        <Badge variant="outline" className="text-[10px] shrink-0 hidden sm:inline-flex" style={{ borderColor: `${AREA_COLORS[task.area] || "#888"}40`, color: AREA_COLORS[task.area] || "#888" }}>
           {task.area}
-        </span>
+        </Badge>
+        {(task.tags || []).slice(0, 1).map(tag => (
+          <Badge key={tag} variant="secondary" className="text-[9px] shrink-0 hidden lg:inline-flex">{tag}</Badge>
+        ))}
+        {(task.attachments || []).length > 0 && <Paperclip className="w-3 h-3 text-gold shrink-0" />}
         <div className="hidden sm:flex -space-x-1">
           {task.responsible.slice(0, 3).map(r => (
             <div key={r} className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center text-[9px] font-bold text-gold">{r.charAt(0)}</div>
@@ -287,9 +335,10 @@ function TaskRow({ task, expanded, onToggleExpand, onToggleComplete, onStatusCha
                 </div>
                 <div>
                   <label className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1 block">Decisão registrada</label>
+                  <Separator className="mb-2" />
                   <input className="w-full bg-secondary/40 border border-border rounded-md p-2 text-sm focus:border-gold/50 focus:outline-none"
                     defaultValue={task.decision || ""} onBlur={e => onDecisionChange(e.target.value)} />
-                  {task.decision && <span className="inline-block mt-1 text-[10px] text-gold bg-gold/10 px-1.5 py-0.5 rounded">{task.decision}</span>}
+                  {task.decision && <Badge className="mt-1 bg-gold/10 text-gold border-gold/20 text-[10px]">{task.decision}</Badge>}
                 </div>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -297,10 +346,26 @@ function TaskRow({ task, expanded, onToggleExpand, onToggleComplete, onStatusCha
                 {task.dependencies.length > 0 && <span>Deps: {task.dependencies.map(d => <span key={d} className="font-mono text-gold">#{d} </span>)}</span>}
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="ghost" onClick={onEdit} className="text-xs text-muted-foreground">Editar</Button>
-                <Button size="sm" variant="ghost" onClick={onDelete} className="text-xs text-destructive hover:text-destructive">
-                  <Trash2 className="w-3 h-3 mr-1" /> Excluir
-                </Button>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button size="sm" variant="ghost" onClick={onEdit} className="text-xs text-muted-foreground"><Pencil className="w-3 h-3 mr-1" />Editar</Button>
+                </TooltipTrigger><TooltipContent>Editar tarefa</TooltipContent></Tooltip>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="ghost" className="text-xs text-destructive hover:text-destructive">
+                      <Trash2 className="w-3 h-3 mr-1" /> Excluir
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-card border-border">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+                      <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </motion.div>
@@ -311,8 +376,9 @@ function TaskRow({ task, expanded, onToggleExpand, onToggleComplete, onStatusCha
 }
 
 // Task Form Dialog
-function TaskFormDialog({ open, onOpenChange, task, onSave }: {
+export function TaskFormDialog({ open, onOpenChange, task, onSave, defaultDueDate, defaultResponsible }: {
   open: boolean; onOpenChange: (b: boolean) => void; task?: Task; onSave: (d: Partial<Task>) => void;
+  defaultDueDate?: string; defaultResponsible?: string[];
 }) {
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
@@ -323,20 +389,36 @@ function TaskFormDialog({ open, onOpenChange, task, onSave }: {
   const [dueDate, setDueDate] = useState("");
   const [decision, setDecision] = useState("");
   const [notes, setNotes] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
 
   useEffect(() => {
     if (task) {
       setTitle(task.title); setDetail(task.detail); setResponsible(task.responsible);
       setPriority(task.priority); setArea(task.area); setStatus(task.status);
       setDueDate(task.dueDate || ""); setDecision(task.decision || ""); setNotes(task.notes);
+      setTags(task.tags || []); setAttachments(task.attachments || []);
     } else {
-      setTitle(""); setDetail(""); setResponsible([]); setPriority("media");
-      setArea("Comercial"); setStatus("pendente"); setDueDate(""); setDecision(""); setNotes("");
+      setTitle(""); setDetail(""); setResponsible(defaultResponsible || []); setPriority("media");
+      setArea("Comercial"); setStatus("pendente"); setDueDate(defaultDueDate || ""); setDecision(""); setNotes("");
+      setTags([]); setAttachments([]);
     }
-  }, [task, open]);
+  }, [task, open, defaultDueDate, defaultResponsible]);
 
   const toggleMember = (m: string) => {
     setResponsible(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
+  };
+
+  const handleFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAttachments(prev => [...prev, { name: file.name, data: reader.result as string, type: file.type }]);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   return (
@@ -346,7 +428,7 @@ function TaskFormDialog({ open, onOpenChange, task, onSave }: {
           <DialogTitle className="text-gold">{task ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Título" value={title} onChange={e => setTitle(e.target.value)} className="bg-secondary/40" />
+          <Input placeholder="Título (min. 3 caracteres)" value={title} onChange={e => setTitle(e.target.value)} className="bg-secondary/40" />
           <Textarea placeholder="Descrição detalhada" value={detail} onChange={e => setDetail(e.target.value)} className="bg-secondary/40 min-h-[60px]" />
           <div>
             <label className="text-xs text-muted-foreground mb-1.5 block">Responsáveis</label>
@@ -400,10 +482,53 @@ function TaskFormDialog({ open, onOpenChange, task, onSave }: {
           </div>
           <Input placeholder="Decisão registrada" value={decision} onChange={e => setDecision(e.target.value)} className="bg-secondary/40" />
           <Textarea placeholder="Notas" value={notes} onChange={e => setNotes(e.target.value)} className="bg-secondary/40 min-h-[50px]" />
+          
+          {/* Tags */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1.5 block">Tags</label>
+            <div className="flex flex-wrap gap-1 mb-1.5">
+              {tags.map(tag => (
+                <Badge key={tag} variant="secondary" className="text-[10px] gap-1">
+                  {tag}
+                  <button onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-destructive"><X className="w-2.5 h-2.5" /></button>
+                </Badge>
+              ))}
+            </div>
+            <Input
+              placeholder="Adicionar tag (Enter)"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              className="bg-secondary/40 h-7 text-xs"
+              onKeyDown={e => {
+                if (e.key === "Enter" && tagInput.trim()) {
+                  e.preventDefault();
+                  setTags([...tags, tagInput.trim()]);
+                  setTagInput("");
+                }
+              }}
+            />
+          </div>
+
+          {/* Attachments */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1.5 block">Anexos</label>
+            {attachments.map((att, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs bg-secondary/40 rounded px-2 py-1.5 mb-1">
+                <FileText className="w-3.5 h-3.5 text-gold shrink-0" />
+                <span className="truncate flex-1">{att.name}</span>
+                <button onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} className="text-destructive"><X className="w-3 h-3" /></button>
+              </div>
+            ))}
+            <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-muted-foreground hover:text-foreground hover:border-gold/30 transition-all cursor-pointer">
+              <Paperclip className="w-3.5 h-3.5" /> Anexar
+              <input type="file" className="hidden" accept=".pdf,.doc,.docx,.txt,.md,.xls,.xlsx,.png,.jpg,.jpeg" onChange={handleFileAttach} />
+            </label>
+          </div>
+
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={() => onSave({ title, detail, responsible, priority, area, status, dueDate: dueDate || null, decision: decision || null, notes })}
-              disabled={!title.trim()} className="gradient-gold text-primary-foreground font-semibold">
+            <Button onClick={() => onSave({ title, detail, responsible, priority, area, status, dueDate: dueDate || null, decision: decision || null, notes, tags, attachments })}
+              disabled={title.trim().length < 3} className="gradient-gold text-primary-foreground font-semibold">
               Salvar
             </Button>
           </div>

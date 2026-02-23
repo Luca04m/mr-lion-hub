@@ -1,19 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
-import { getTasks, updateTask, logActivity, getUser } from "@/lib/store";
+import { getTasks, updateTask, logActivity, getUser, createTask } from "@/lib/store";
 import { Task, TaskStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, AREA_COLORS } from "@/lib/types";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCorners, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { motion } from "framer-motion";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { TaskSidePanel } from "@/components/TaskSidePanel";
 
 const COLUMNS: TaskStatus[] = ["pendente", "em-andamento", "concluida", "atrasada"];
 
 const KanbanPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [sidePanelTask, setSidePanelTask] = useState<Task | null>(null);
   const userName = getUser() || "";
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -33,7 +35,6 @@ const KanbanPage = () => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Determine target column
     let targetStatus: TaskStatus | null = null;
     if (COLUMNS.includes(over.id as TaskStatus)) {
       targetStatus = over.id as TaskStatus;
@@ -62,20 +63,19 @@ const KanbanPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {COLUMNS.map(status => {
             const columnTasks = tasks.filter(t => t.status === status);
-            return (
-              <KanbanColumn key={status} status={status} tasks={columnTasks} />
-            );
+            return <KanbanColumn key={status} status={status} tasks={columnTasks} onCardClick={t => setSidePanelTask(t)} />;
           })}
         </div>
         <DragOverlay>
           {activeTask && <KanbanCard task={activeTask} isDragging />}
         </DragOverlay>
       </DndContext>
+      <TaskSidePanel task={sidePanelTask} open={!!sidePanelTask} onOpenChange={b => { if (!b) setSidePanelTask(null); }} onUpdate={() => { reload(); if (sidePanelTask) setSidePanelTask(getTasks().find(t => t.id === sidePanelTask.id) || null); }} />
     </div>
   );
 };
 
-function KanbanColumn({ status, tasks }: { status: TaskStatus; tasks: Task[] }) {
+function KanbanColumn({ status, tasks, onCardClick }: { status: TaskStatus; tasks: Task[]; onCardClick: (t: Task) => void }) {
   const { setNodeRef } = useSortable({ id: status });
   return (
     <div ref={setNodeRef} className="bg-card/50 rounded-lg border border-border min-h-[300px] flex flex-col"
@@ -86,38 +86,43 @@ function KanbanColumn({ status, tasks }: { status: TaskStatus; tasks: Task[] }) 
       </div>
       <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
         <div className="flex-1 px-2 pb-2 space-y-1.5 overflow-y-auto max-h-[60vh]">
-          {tasks.map(task => <SortableKanbanCard key={task.id} task={task} />)}
+          {tasks.map(task => <SortableKanbanCard key={task.id} task={task} onCardClick={onCardClick} />)}
+          {tasks.length === 0 && (
+            <div className="border-2 border-dashed border-border rounded-md p-4 text-center text-xs text-muted-foreground">
+              Arraste tarefas aqui
+            </div>
+          )}
         </div>
       </SortableContext>
     </div>
   );
 }
 
-function SortableKanbanCard({ task }: { task: Task }) {
+function SortableKanbanCard({ task, onCardClick }: { task: Task; onCardClick: (t: Task) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <KanbanCard task={task} />
+      <KanbanCard task={task} onClick={() => onCardClick(task)} />
     </div>
   );
 }
 
-function KanbanCard({ task, isDragging }: { task: Task; isDragging?: boolean }) {
+function KanbanCard({ task, isDragging, onClick }: { task: Task; isDragging?: boolean; onClick?: () => void }) {
   const isLate = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "concluida";
   return (
-    <div className={`bg-card rounded-md border border-border p-2.5 cursor-grab active:cursor-grabbing hover:border-gold/20 transition-all ${isDragging ? "shadow-lg shadow-gold/10 border-gold/30" : ""}`}>
+    <div onClick={onClick} className={`bg-card rounded-md border border-border p-2.5 cursor-grab active:cursor-grabbing hover:border-gold/20 transition-all ${isDragging ? "shadow-lg shadow-gold/10 border-gold/30" : ""}`}>
       <div className="flex items-start gap-1.5">
         <GripVertical className="w-3 h-3 text-muted-foreground/40 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{task.title}</p>
           <div className="flex flex-wrap gap-1 mt-1.5">
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ backgroundColor: `${PRIORITY_COLORS[task.priority]}15`, color: PRIORITY_COLORS[task.priority] }}>
+            <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${PRIORITY_COLORS[task.priority]}40`, color: PRIORITY_COLORS[task.priority] }}>
               {PRIORITY_LABELS[task.priority]}
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ backgroundColor: `${AREA_COLORS[task.area] || "#888"}15`, color: AREA_COLORS[task.area] || "#888" }}>
+            </Badge>
+            <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${AREA_COLORS[task.area] || "#888"}40`, color: AREA_COLORS[task.area] || "#888" }}>
               {task.area}
-            </span>
+            </Badge>
           </div>
           <div className="flex items-center justify-between mt-2">
             <div className="flex -space-x-1">

@@ -1,4 +1,4 @@
-import { Task, Activity, Meeting } from "./types";
+import { Task, Activity, Meeting, APP_PASSWORD, ROLES_KEY } from "./types";
 
 const TASKS_KEY = "mrlion_tasks_v2";
 const ACTIVITY_KEY = "mrlion_activity_v2";
@@ -25,22 +25,22 @@ function daysFromNow(n: number) {
 }
 
 const SEED_TASKS: Task[] = [
-  { id: 1, title: "Design da nova garrafa Mr. Lion", detail: "Finalizar arte e mockup 3D da garrafa premium 750ml", responsible: ["Luhan"], priority: "alta", area: "Garrafa Nova", status: "em-andamento", dependencies: [], decision: "Formato slim aprovado", notes: "Aguardando feedback da fábrica", dueDate: daysFromNow(5), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(10), updatedAt: daysAgo(1) },
-  { id: 2, title: "Lançamento collab Orochi", detail: "Coordenar lançamento do whisky edição limitada com Orochi", responsible: ["Luca", "Pedro"], priority: "alta", area: "Orochi", status: "pendente", dependencies: [1], decision: null, notes: "", dueDate: daysFromNow(15), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(8), updatedAt: daysAgo(8) },
-  { id: 3, title: "Campanha Carnaval 2025", detail: "Criar materiais visuais e estratégia para carnaval", responsible: ["Pedro", "Guilherme"], priority: "alta", area: "Carnaval", status: "atrasada", dependencies: [], decision: "Foco em stories e reels", notes: "Prazo apertado", dueDate: daysAgo(2), createdBy: "Pedro", isOriginal: true, createdAt: daysAgo(20), updatedAt: daysAgo(1) },
-  { id: 4, title: "Setup loja Nuvemshop", detail: "Configurar produtos, frete e meios de pagamento na Nuvemshop", responsible: ["João"], priority: "alta", area: "Nuvemshop", status: "em-andamento", dependencies: [], decision: null, notes: "PIX e cartão configurados", dueDate: daysFromNow(3), createdBy: "João", isOriginal: true, createdAt: daysAgo(12), updatedAt: daysAgo(2) },
-  { id: 5, title: "Materiais Kit PDV", detail: "Produzir displays, wobblers e adesivos para pontos de venda", responsible: ["Luhan", "Guilherme"], priority: "media", area: "Kit PDV", status: "pendente", dependencies: [1], decision: null, notes: "", dueDate: daysFromNow(10), createdBy: "Luhan", isOriginal: true, createdAt: daysAgo(7), updatedAt: daysAgo(7) },
-  { id: 6, title: "Negociação Carlos Prates", detail: "Fechar parceria de distribuição com Carlos Prates", responsible: ["Luca"], priority: "media", area: "Carlos Prates", status: "em-andamento", dependencies: [], decision: "Proposta enviada 15% margem", notes: "Reunião agendada para próxima semana", dueDate: daysFromNow(7), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(15), updatedAt: daysAgo(3) },
-  { id: 7, title: "Press-kit para imprensa", detail: "Montar kit digital com fotos, textos e ficha técnica", responsible: ["Pedro"], priority: "baixa", area: "Press-kit", status: "concluida", dependencies: [], decision: null, notes: "Enviado para 12 veículos", dueDate: daysAgo(5), createdBy: "Pedro", isOriginal: true, createdAt: daysAgo(25), updatedAt: daysAgo(5) },
-  { id: 8, title: "Conteúdo redes sociais - Março", detail: "Calendário editorial e criação de posts para março", responsible: ["Guilherme", "Luhan"], priority: "media", area: "Conteúdo", status: "pendente", dependencies: [], decision: null, notes: "", dueDate: daysFromNow(8), createdBy: "Guilherme", isOriginal: true, createdAt: daysAgo(5), updatedAt: daysAgo(5) },
-  { id: 9, title: "Proposta comercial Nation", detail: "Elaborar proposta de exclusividade para rede Nation", responsible: ["Luca", "João"], priority: "alta", area: "Nation", status: "atrasada", dependencies: [], decision: null, notes: "Pendente aprovação diretoria", dueDate: daysAgo(3), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(14), updatedAt: daysAgo(1) },
-  { id: 10, title: "Receita RTD (Ready to Drink)", detail: "Testar e aprovar receita do Mr. Lion RTD lata 350ml", responsible: ["Luca", "Pedro"], priority: "media", area: "RTD", status: "em-andamento", dependencies: [], decision: "Sabor limão siciliano aprovado", notes: "Teste de shelf life em andamento", dueDate: daysFromNow(20), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(30), updatedAt: daysAgo(2) },
-  { id: 11, title: "Catálogo digital de produtos", detail: "Criar PDF interativo com todos os produtos da linha", responsible: ["Luhan"], priority: "baixa", area: "Produtos", status: "concluida", dependencies: [], decision: null, notes: "Versão final aprovada", dueDate: daysAgo(10), createdBy: "Luhan", isOriginal: true, createdAt: daysAgo(35), updatedAt: daysAgo(10) },
-  { id: 12, title: "Estratégia marketing Q2", detail: "Definir budget, canais e metas de marketing para Q2 2025", responsible: ["Pedro", "Luca"], priority: "alta", area: "Marketing", status: "pendente", dependencies: [3], decision: null, notes: "", dueDate: daysFromNow(12), createdBy: "Pedro", isOriginal: true, createdAt: daysAgo(4), updatedAt: daysAgo(4) },
-  { id: 13, title: "Tabela de preços comercial", detail: "Atualizar tabela com novos produtos e margens", responsible: ["João"], priority: "media", area: "Comercial", status: "concluida", dependencies: [], decision: "Margem mínima 25%", notes: "Distribuído para representantes", dueDate: daysAgo(8), createdBy: "João", isOriginal: true, createdAt: daysAgo(18), updatedAt: daysAgo(8) },
-  { id: 14, title: "Ensaio fotográfico produtos", detail: "Coordenar ensaio com fotógrafo para todas as garrafas", responsible: ["Luhan", "Pedro"], priority: "media", area: "Conteúdo", status: "pendente", dependencies: [1], decision: null, notes: "Fotógrafo confirmado para dia 15", dueDate: daysFromNow(14), createdBy: "Luhan", isOriginal: true, createdAt: daysAgo(6), updatedAt: daysAgo(6) },
-  { id: 15, title: "Contrato distribuição Orochi", detail: "Revisar e assinar contrato da edição limitada", responsible: ["Luca"], priority: "alta", area: "Orochi", status: "pendente", dependencies: [2], decision: null, notes: "Jurídico revisando", dueDate: daysFromNow(10), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(3), updatedAt: daysAgo(3) },
-  { id: 16, title: "Setup analytics Nuvemshop", detail: "Configurar Google Analytics e Meta Pixel na loja", responsible: ["João"], priority: "baixa", area: "Nuvemshop", status: "concluida", dependencies: [4], decision: null, notes: "GA4 + Pixel configurados", dueDate: daysAgo(1), createdBy: "João", isOriginal: true, createdAt: daysAgo(10), updatedAt: daysAgo(1) },
+  { id: 1, title: "Design da nova garrafa Mr. Lion", detail: "Finalizar arte e mockup 3D da garrafa premium 750ml", responsible: ["Luhan"], priority: "alta", area: "Garrafa Nova", status: "em-andamento", dependencies: [], decision: "Formato slim aprovado", notes: "Aguardando feedback da fábrica", dueDate: daysFromNow(5), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(10), updatedAt: daysAgo(1), tags: ["design", "produto"] },
+  { id: 2, title: "Lançamento collab Orochi", detail: "Coordenar lançamento do whisky edição limitada com Orochi", responsible: ["Luca", "Pedro"], priority: "alta", area: "Orochi", status: "pendente", dependencies: [1], decision: null, notes: "", dueDate: daysFromNow(15), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(8), updatedAt: daysAgo(8), tags: ["collab"] },
+  { id: 3, title: "Campanha Carnaval 2025", detail: "Criar materiais visuais e estratégia para carnaval", responsible: ["Pedro", "Guilherme"], priority: "alta", area: "Carnaval", status: "atrasada", dependencies: [], decision: "Foco em stories e reels", notes: "Prazo apertado", dueDate: daysAgo(2), createdBy: "Pedro", isOriginal: true, createdAt: daysAgo(20), updatedAt: daysAgo(1), tags: ["marketing", "urgente"] },
+  { id: 4, title: "Setup loja Nuvemshop", detail: "Configurar produtos, frete e meios de pagamento na Nuvemshop", responsible: ["João"], priority: "alta", area: "Nuvemshop", status: "em-andamento", dependencies: [], decision: null, notes: "PIX e cartão configurados", dueDate: daysFromNow(3), createdBy: "João", isOriginal: true, createdAt: daysAgo(12), updatedAt: daysAgo(2), tags: ["ecommerce"] },
+  { id: 5, title: "Materiais Kit PDV", detail: "Produzir displays, wobblers e adesivos para pontos de venda", responsible: ["Luhan", "Guilherme"], priority: "media", area: "Kit PDV", status: "pendente", dependencies: [1], decision: null, notes: "", dueDate: daysFromNow(10), createdBy: "Luhan", isOriginal: true, createdAt: daysAgo(7), updatedAt: daysAgo(7), tags: ["material"] },
+  { id: 6, title: "Negociação Carlos Prates", detail: "Fechar parceria de distribuição com Carlos Prates", responsible: ["Luca"], priority: "media", area: "Carlos Prates", status: "em-andamento", dependencies: [], decision: "Proposta enviada 15% margem", notes: "Reunião agendada para próxima semana", dueDate: daysFromNow(7), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(15), updatedAt: daysAgo(3), tags: ["parceria"] },
+  { id: 7, title: "Press-kit para imprensa", detail: "Montar kit digital com fotos, textos e ficha técnica", responsible: ["Pedro"], priority: "baixa", area: "Press-kit", status: "concluida", dependencies: [], decision: null, notes: "Enviado para 12 veículos", dueDate: daysAgo(5), createdBy: "Pedro", isOriginal: true, createdAt: daysAgo(25), updatedAt: daysAgo(5), tags: ["press"] },
+  { id: 8, title: "Conteúdo redes sociais - Março", detail: "Calendário editorial e criação de posts para março", responsible: ["Guilherme", "Luhan"], priority: "media", area: "Conteúdo", status: "pendente", dependencies: [], decision: null, notes: "", dueDate: daysFromNow(8), createdBy: "Guilherme", isOriginal: true, createdAt: daysAgo(5), updatedAt: daysAgo(5), tags: ["social"] },
+  { id: 9, title: "Proposta comercial Nation", detail: "Elaborar proposta de exclusividade para rede Nation", responsible: ["Luca", "João"], priority: "alta", area: "Nation", status: "atrasada", dependencies: [], decision: null, notes: "Pendente aprovação diretoria", dueDate: daysAgo(3), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(14), updatedAt: daysAgo(1), tags: ["comercial", "urgente"] },
+  { id: 10, title: "Receita RTD (Ready to Drink)", detail: "Testar e aprovar receita do Mr. Lion RTD lata 350ml", responsible: ["Luca", "Pedro"], priority: "media", area: "RTD", status: "em-andamento", dependencies: [], decision: "Sabor limão siciliano aprovado", notes: "Teste de shelf life em andamento", dueDate: daysFromNow(20), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(30), updatedAt: daysAgo(2), tags: ["produto"] },
+  { id: 11, title: "Catálogo digital de produtos", detail: "Criar PDF interativo com todos os produtos da linha", responsible: ["Luhan"], priority: "baixa", area: "Produtos", status: "concluida", dependencies: [], decision: null, notes: "Versão final aprovada", dueDate: daysAgo(10), createdBy: "Luhan", isOriginal: true, createdAt: daysAgo(35), updatedAt: daysAgo(10), tags: ["design"] },
+  { id: 12, title: "Estratégia marketing Q2", detail: "Definir budget, canais e metas de marketing para Q2 2025", responsible: ["Pedro", "Luca"], priority: "alta", area: "Marketing", status: "pendente", dependencies: [3], decision: null, notes: "", dueDate: daysFromNow(12), createdBy: "Pedro", isOriginal: true, createdAt: daysAgo(4), updatedAt: daysAgo(4), tags: ["estratégia"] },
+  { id: 13, title: "Tabela de preços comercial", detail: "Atualizar tabela com novos produtos e margens", responsible: ["João"], priority: "media", area: "Comercial", status: "concluida", dependencies: [], decision: "Margem mínima 25%", notes: "Distribuído para representantes", dueDate: daysAgo(8), createdBy: "João", isOriginal: true, createdAt: daysAgo(18), updatedAt: daysAgo(8), tags: ["preços"] },
+  { id: 14, title: "Ensaio fotográfico produtos", detail: "Coordenar ensaio com fotógrafo para todas as garrafas", responsible: ["Luhan", "Pedro"], priority: "media", area: "Conteúdo", status: "pendente", dependencies: [1], decision: null, notes: "Fotógrafo confirmado para dia 15", dueDate: daysFromNow(14), createdBy: "Luhan", isOriginal: true, createdAt: daysAgo(6), updatedAt: daysAgo(6), tags: ["foto"] },
+  { id: 15, title: "Contrato distribuição Orochi", detail: "Revisar e assinar contrato da edição limitada", responsible: ["Luca"], priority: "alta", area: "Orochi", status: "pendente", dependencies: [2], decision: null, notes: "Jurídico revisando", dueDate: daysFromNow(10), createdBy: "Luca", isOriginal: true, createdAt: daysAgo(3), updatedAt: daysAgo(3), tags: ["legal"] },
+  { id: 16, title: "Setup analytics Nuvemshop", detail: "Configurar Google Analytics e Meta Pixel na loja", responsible: ["João"], priority: "baixa", area: "Nuvemshop", status: "concluida", dependencies: [4], decision: null, notes: "GA4 + Pixel configurados", dueDate: daysAgo(1), createdBy: "João", isOriginal: true, createdAt: daysAgo(10), updatedAt: daysAgo(1), tags: ["analytics"] },
 ];
 
 const SEED_ACTIVITIES: Activity[] = [
@@ -60,6 +60,11 @@ function initIfNeeded() {
   }
 }
 
+// Password
+export function validatePassword(password: string): boolean {
+  return password === APP_PASSWORD;
+}
+
 // User
 export function getUser(): string | null {
   return localStorage.getItem(USER_KEY);
@@ -74,7 +79,20 @@ export function clearUser() {
   localStorage.removeItem(USER_KEY);
 }
 
-// Presence (simulated with localStorage)
+// Roles
+export function getRole(name: string): string {
+  const raw = localStorage.getItem(ROLES_KEY);
+  const roles: Record<string, string> = raw ? JSON.parse(raw) : {};
+  return roles[name] || "";
+}
+export function setRole(name: string, role: string) {
+  const raw = localStorage.getItem(ROLES_KEY);
+  const roles: Record<string, string> = raw ? JSON.parse(raw) : {};
+  roles[name] = role;
+  localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
+}
+
+// Presence
 interface PresenceEntry { name: string; lastSeen: number; }
 export function getOnlineUsers(): string[] {
   const raw = localStorage.getItem(PRESENCE_KEY);

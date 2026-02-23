@@ -2,6 +2,12 @@ export type TaskStatus = "pendente" | "em-andamento" | "concluida" | "atrasada";
 export type TaskPriority = "alta" | "media" | "baixa";
 export type FileType = "pauta" | "resumo" | "ata" | "outro";
 
+export interface TaskAttachment {
+  name: string;
+  data: string; // base64
+  type: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -18,6 +24,8 @@ export interface Task {
   isOriginal: boolean;
   createdAt: string;
   updatedAt: string;
+  tags?: string[];
+  attachments?: TaskAttachment[];
 }
 
 export interface Activity {
@@ -99,3 +107,7 @@ export const FILE_TYPE_LABELS: Record<FileType, string> = {
   ata: "Ata",
   outro: "Outro",
 };
+
+export const APP_PASSWORD = "Mrlion@2026";
+
+export const ROLES_KEY = "mrlion_roles";

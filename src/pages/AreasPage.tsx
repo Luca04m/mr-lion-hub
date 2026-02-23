@@ -3,11 +3,16 @@ import { getTasks } from "@/lib/store";
 import { Task, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, TaskStatus } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { TaskSidePanel } from "@/components/TaskSidePanel";
 
 const AreasPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
+  const [sidePanelTask, setSidePanelTask] = useState<Task | null>(null);
   useEffect(() => { setTasks(getTasks()); }, []);
+
+  const reload = () => setTasks(getTasks());
 
   return (
     <div>
@@ -37,9 +42,9 @@ const AreasPage = () => {
                     const count = areaTasks.filter(t => t.status === s).length;
                     if (count === 0) return null;
                     return (
-                      <span key={s} className="text-[9px] px-1.5 py-0.5 rounded font-mono" style={{ backgroundColor: `${STATUS_COLORS[s]}15`, color: STATUS_COLORS[s] }}>
+                      <Badge key={s} variant="outline" className="text-[9px] font-mono h-4" style={{ borderColor: `${STATUS_COLORS[s]}40`, color: STATUS_COLORS[s] }}>
                         {count} {STATUS_LABELS[s].split(" ")[0].toLowerCase()}
-                      </span>
+                      </Badge>
                     );
                   })}
                 </div>
@@ -50,12 +55,13 @@ const AreasPage = () => {
                   <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
                     <div className="border-t border-border px-3 py-2 space-y-1">
                       {areaTasks.map(t => (
-                        <div key={t.id} className="flex items-center gap-2 py-1 text-xs">
+                        <div key={t.id} onClick={() => setSidePanelTask(t)}
+                          className="flex items-center gap-2 py-1 text-xs cursor-pointer hover:bg-secondary/30 rounded px-1">
                           <span className="font-mono text-gold">#{t.id}</span>
                           <span className="flex-1 truncate">{t.title}</span>
-                          <span className="px-1.5 py-0.5 rounded text-[9px]" style={{ backgroundColor: `${STATUS_COLORS[t.status]}15`, color: STATUS_COLORS[t.status] }}>
+                          <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${STATUS_COLORS[t.status]}40`, color: STATUS_COLORS[t.status] }}>
                             {STATUS_LABELS[t.status]}
-                          </span>
+                          </Badge>
                         </div>
                       ))}
                     </div>
@@ -66,6 +72,7 @@ const AreasPage = () => {
           );
         })}
       </div>
+      <TaskSidePanel task={sidePanelTask} open={!!sidePanelTask} onOpenChange={b => { if (!b) setSidePanelTask(null); }} onUpdate={reload} />
     </div>
   );
 };
