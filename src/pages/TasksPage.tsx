@@ -191,14 +191,14 @@ const TasksPage = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-secondary/40 flex-wrap h-auto gap-1">
-          <TabsTrigger value="minhas" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Minhas Tarefas</TabsTrigger>
-          <TabsTrigger value="lista" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Lista</TabsTrigger>
-          <TabsTrigger value="kanban" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Kanban</TabsTrigger>
-          <TabsTrigger value="pessoa" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Por Pessoa</TabsTrigger>
-          <TabsTrigger value="area" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Por Área</TabsTrigger>
-          <TabsTrigger value="calendario" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Calendário</TabsTrigger>
-          <TabsTrigger value="atividade" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">Atividade</TabsTrigger>
+        <TabsList className="bg-secondary/40 h-auto gap-1 w-full overflow-x-auto flex justify-start p-1">
+          <TabsTrigger value="minhas" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Minhas</TabsTrigger>
+          <TabsTrigger value="lista" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Lista</TabsTrigger>
+          <TabsTrigger value="kanban" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Kanban</TabsTrigger>
+          <TabsTrigger value="pessoa" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Pessoa</TabsTrigger>
+          <TabsTrigger value="area" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Área</TabsTrigger>
+          <TabsTrigger value="calendario" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Calendário</TabsTrigger>
+          <TabsTrigger value="atividade" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Atividade</TabsTrigger>
         </TabsList>
 
         {/* TAB: Lista */}
@@ -324,11 +324,11 @@ function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, 
             </div>
           </div>
         </div>
-        <div className="flex gap-3 justify-around sm:justify-end">
+        <div className="flex gap-2 sm:gap-3 justify-around sm:justify-end flex-wrap">
           {([["pendente", STATUS_COLORS.pendente], ["em-andamento", STATUS_COLORS["em-andamento"]], ["atrasada", STATUS_COLORS.atrasada]] as const).map(([s, c]) => (
-            <div key={s} className="text-center">
+            <div key={s} className="text-center min-w-[40px]">
               <div className="text-sm font-bold font-mono" style={{ color: c }}>{myTasks.filter((t: Task) => t.status === s).length}</div>
-              <div className="text-[9px] text-muted-foreground">{STATUS_LABELS[s].split(" ")[0]}</div>
+              <div className="text-[9px] text-muted-foreground">{STATUS_LABELS[s]}</div>
             </div>
           ))}
         </div>
@@ -372,42 +372,44 @@ function ListTabContent({ tasks, filtered, search, setSearch, statusFilter, setS
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px]">
+      <div className="space-y-2">
+        <div className="relative w-full">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input id="task-search" value={search} onChange={(e: any) => setSearch(e.target.value)} placeholder="Buscar... ( / )" className="pl-8 h-8 text-sm bg-secondary/40" />
         </div>
-        <Select value={areaFilter} onValueChange={setAreaFilter}>
-          <SelectTrigger className="w-[140px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Área" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as áreas</SelectItem>
-            {AREAS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={responsibleFilter} onValueChange={setResponsibleFilter}>
-          <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Responsável" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {TEAM_MEMBERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {allTags.length > 0 && (
-          <Select value={tagFilter} onValueChange={setTagFilter}>
-            <SelectTrigger className="w-[110px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Tag" /></SelectTrigger>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={areaFilter} onValueChange={setAreaFilter}>
+            <SelectTrigger className="w-[110px] sm:w-[140px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Área" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas tags</SelectItem>
-              {allTags.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              <SelectItem value="all">Todas áreas</SelectItem>
+              {AREAS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
             </SelectContent>
           </Select>
-        )}
-        <button onClick={() => setMyTasks(!myTasks)} className={`px-2.5 py-1 rounded-md text-xs border transition-all ${myTasks ? "border-gold/50 text-gold bg-accent/40" : "border-border text-muted-foreground hover:text-foreground"}`}>
-          Minhas
-        </button>
-        {hasFilters && (
-          <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-            <X className="w-3 h-3" /> Limpar
+          <Select value={responsibleFilter} onValueChange={setResponsibleFilter}>
+            <SelectTrigger className="w-[100px] sm:w-[130px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Resp." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {TEAM_MEMBERS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {allTags.length > 0 && (
+            <Select value={tagFilter} onValueChange={setTagFilter}>
+              <SelectTrigger className="w-[90px] sm:w-[110px] h-8 text-xs bg-secondary/40"><SelectValue placeholder="Tag" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {allTags.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <button onClick={() => setMyTasks(!myTasks)} className={`px-2.5 py-1 rounded-md text-xs border transition-all ${myTasks ? "border-gold/50 text-gold bg-accent/40" : "border-border text-muted-foreground hover:text-foreground"}`}>
+            Minhas
           </button>
-        )}
+          {hasFilters && (
+            <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <X className="w-3 h-3" /> Limpar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Task list */}
@@ -486,9 +488,9 @@ function KanbanTabContent({ tasks, reload, userName, onCardClick }: { tasks: Tas
   };
 
   return (
-    <div className="mt-3">
+    <div className="mt-3 overflow-x-auto -mx-2 px-2 pb-2">
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 min-w-[500px] md:min-w-0">
           {COLUMNS.map(status => {
             const columnTasks = tasks.filter(t => t.status === status);
             return <KanbanColumn key={status} status={status} tasks={columnTasks} onCardClick={onCardClick} />;
@@ -505,7 +507,7 @@ function KanbanTabContent({ tasks, reload, userName, onCardClick }: { tasks: Tas
 function KanbanColumn({ status, tasks, onCardClick }: { status: TaskStatus; tasks: Task[]; onCardClick: (t: Task) => void }) {
   const { setNodeRef } = useSortable({ id: status });
   return (
-    <div ref={setNodeRef} className="bg-card/50 rounded-lg border border-border min-h-[300px] flex flex-col"
+    <div ref={setNodeRef} className="bg-card/50 rounded-lg border border-border min-h-[200px] md:min-h-[300px] flex flex-col"
       style={{ borderTopWidth: 3, borderTopColor: STATUS_COLORS[status] }}>
       <div className="px-3 py-2.5 flex items-center justify-between">
         <span className="text-sm font-semibold" style={{ color: STATUS_COLORS[status] }}>{STATUS_LABELS[status]}</span>
@@ -588,7 +590,7 @@ function PeopleTabContent({ tasks, reload, userName, onTaskClick, onCreateTask }
   return (
     <div className="mt-3">
       <Tabs defaultValue={TEAM_MEMBERS[0]}>
-        <TabsList className="bg-secondary/40 mb-4 flex-wrap h-auto gap-1">
+        <TabsList className="bg-secondary/40 mb-4 h-auto gap-1 w-full overflow-x-auto flex justify-start p-1">
           {TEAM_MEMBERS.map(m => (
             <TabsTrigger key={m} value={m} className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs">{m}</TabsTrigger>
           ))}
@@ -607,10 +609,10 @@ function PeopleTabContent({ tasks, reload, userName, onTaskClick, onCreateTask }
 
           return (
             <TabsContent key={member} value={member}>
-              <div className="bg-card rounded-lg border border-border p-4 flex flex-wrap items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full gradient-gold flex items-center justify-center text-xl font-bold text-primary-foreground">{member.charAt(0)}</div>
-                <div className="flex-1 min-w-[200px]">
-                  <h2 className="text-lg font-bold">{member}</h2>
+              <div className="bg-card rounded-lg border border-border p-3 sm:p-4 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4 mb-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full gradient-gold flex items-center justify-center text-lg sm:text-xl font-bold text-primary-foreground shrink-0">{member.charAt(0)}</div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold">{member}</h2>
                   <Input
                     placeholder="Cargo (ex: CEO, Marketing...)"
                     defaultValue={role}
@@ -624,7 +626,7 @@ function PeopleTabContent({ tasks, reload, userName, onTaskClick, onCreateTask }
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {(["pendente", "em-andamento", "concluida", "atrasada"] as TaskStatus[]).map(s => (
                     <div key={s} className="text-center">
                       <div className="text-sm font-bold font-mono" style={{ color: STATUS_COLORS[s] }}>
@@ -791,24 +793,26 @@ function CalendarTabContent({ tasks, reload, userName, onTaskClick, onCreateTask
         </div>
       </div>
 
-      <div className="flex gap-3 mb-3">
+      <div className="flex flex-wrap gap-2 sm:gap-3 mb-3">
         {(["pendente", "em-andamento", "concluida", "atrasada"] as const).map(s => (
-          <div key={s} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div key={s} className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] text-muted-foreground">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
-            {STATUS_LABELS[s]}
+            <span className="hidden sm:inline">{STATUS_LABELS[s]}</span>
+            <span className="sm:hidden">{STATUS_LABELS[s].split(" ")[0]}</span>
           </div>
         ))}
       </div>
 
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-x-auto">
+        <div className="min-w-[320px]">
         <div className="grid grid-cols-7">
           {weekDays.map(d => (
-            <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-2 border-b border-border">{d}</div>
+            <div key={d} className="text-center text-[9px] sm:text-[10px] font-medium text-muted-foreground py-1.5 sm:py-2 border-b border-border">{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7">
           {Array.from({ length: startPadding }).map((_, i) => (
-            <div key={`pad-${i}`} className="min-h-[80px] border-b border-r border-border bg-secondary/20" />
+            <div key={`pad-${i}`} className="min-h-[60px] sm:min-h-[80px] border-b border-r border-border bg-secondary/20" />
           ))}
           {days.map(day => {
             const dayTasks = getTasksForDay(day);
@@ -817,7 +821,7 @@ function CalendarTabContent({ tasks, reload, userName, onTaskClick, onCreateTask
             return (
               <div key={day.toISOString()}
                 onClick={() => handleDayClick(day)}
-                className={`min-h-[80px] border-b border-r border-border p-1.5 transition-colors ${today ? "bg-gold/5 border-gold/20" : ""} ${isEmpty ? "cursor-pointer hover:bg-secondary/30" : ""}`}
+                className={`min-h-[60px] sm:min-h-[80px] border-b border-r border-border p-1 sm:p-1.5 transition-colors ${today ? "bg-gold/5 border-gold/20" : ""} ${isEmpty ? "cursor-pointer hover:bg-secondary/30" : ""}`}
               >
                 <div className="flex items-center gap-1">
                   <span className={`text-xs font-mono ${today ? "text-gold font-bold" : "text-muted-foreground"}`}>
@@ -850,6 +854,7 @@ function CalendarTabContent({ tasks, reload, userName, onTaskClick, onCreateTask
               </div>
             );
           })}
+        </div>
         </div>
       </div>
       <TaskFormDialog open={dialogOpen} onOpenChange={setDialogOpen} onSave={handleSave} defaultDueDate={selectedDate} />
@@ -933,17 +938,19 @@ function ActivityTabContent() {
           const Icon = getActionIcon(a.action);
           const badge = getActionBadge(a.action);
           return (
-            <div key={a.id} className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-start gap-2.5 hover:border-gold/20 transition-all">
-              <div className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] font-bold text-gold shrink-0 mt-0.5">
-                {a.userName.charAt(0)}
+            <div key={a.id} className="bg-card rounded-lg border border-border px-3 py-2.5 flex flex-col sm:flex-row sm:items-start gap-2 hover:border-gold/20 transition-all">
+              <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] font-bold text-gold shrink-0 mt-0.5">
+                  {a.userName.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm">
+                    <span className="text-gold font-medium">{a.userName}</span>{" "}
+                    <span className="text-muted-foreground">{formatAction(a)}</span>
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm">
-                  <span className="text-gold font-medium">{a.userName}</span>{" "}
-                  <span className="text-muted-foreground">{formatAction(a)}</span>
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 ml-9 sm:ml-0">
                 <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${badge.color}40`, color: badge.color }}>
                   {badge.label}
                 </Badge>
@@ -981,7 +988,7 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
     <motion.div id={`task-${task.id}`} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
       className={`bg-card rounded-lg border transition-all ${highlighted ? "border-gold/50 ring-1 ring-gold/20" : "border-border hover:border-gold/20"}`}
     >
-      <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer" onClick={onToggleExpand}>
+      <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 cursor-pointer" onClick={onToggleExpand}>
         <button onClick={e => { e.stopPropagation(); onToggleComplete(); }}
           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${isDone ? "bg-emerald-500 border-emerald-500" : "border-muted-foreground/40 hover:border-gold/60"}`}>
           {isDone && <Check className="w-3 h-3 text-white" />}
@@ -1014,8 +1021,8 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
           ))}
         </div>
         <Select value={task.status} onValueChange={(v) => { onStatusChange(v as TaskStatus); }}>
-          <SelectTrigger className="w-[120px] h-7 text-[10px] bg-transparent border-none p-0 px-1.5" onClick={e => e.stopPropagation()}>
-            <span style={{ color: STATUS_COLORS[task.status] }}>{STATUS_LABELS[task.status]}</span>
+          <SelectTrigger className="w-[90px] sm:w-[120px] h-7 text-[10px] bg-transparent border-none p-0 px-1" onClick={e => e.stopPropagation()}>
+            <span style={{ color: STATUS_COLORS[task.status] }} className="truncate">{STATUS_LABELS[task.status]}</span>
           </SelectTrigger>
           <SelectContent>
             {(Object.keys(STATUS_LABELS) as TaskStatus[]).map(s => (
