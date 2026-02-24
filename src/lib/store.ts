@@ -1,4 +1,4 @@
-import { Task, Activity, Meeting, Revendedor, BusinessKPIs, APP_PASSWORD, ROLES_KEY, RevendedorCanal, ProximaAcao, Interacao, VolumeHistorico } from "./types";
+import { Task, Activity, Meeting, Revendedor, BusinessKPIs, APP_PASSWORD, ROLES_KEY, RevendedorCanal, RevendedorStatus, ProximaAcao, Interacao, VolumeHistorico } from "./types";
 
 const TASKS_KEY = "mrlion_tasks_v3";
 const ACTIVITY_KEY = "mrlion_activity_v3";
@@ -98,10 +98,91 @@ function calcScore(r: Partial<Revendedor>): number {
 
 export { calcScore };
 
-const SEED_REVENDEDORES: Revendedor[] = [];
+function mkLead(nome: string, whatsapp: string, status: RevendedorStatus, tag: string, obs: string, email = "", tags: string[] = []): Revendedor {
+  const id = `r_seed_${nome.replace(/\s+/g, '_').toLowerCase()}`;
+  const allTags = tag ? [tag, ...tags] : tags;
+  return { id, nome, responsavel: "Pedro", status, canal: "WhatsApp" as RevendedorCanal, cidade: "", volume: 0, ultima: "2026-02-20", obs, whatsapp, instagram: "", email, telefone: whatsapp, tags: allTags, score: 0, proximaAcao: null, volumeHistorico: [], historico: [] };
+}
+
+const SEED_REVENDEDORES: Revendedor[] = [
+  mkLead("La casa de bebidas011", "11940186098", "Novo Lead", "PJ", "Orçamento"),
+  mkLead("jonathanrafael1617", "13997906476", "Em Negociação", "PJ", "Orçamento"),
+  mkLead("E.j.v", "71993871410", "Em Negociação", "PJ", "Promessa de retornar"),
+  mkLead("GRodrigo", "51986056610", "Novo Lead", "PJ", "Ficou de montar o pedido"),
+  mkLead("Martin", "15991897429", "Em Negociação", "PF", "Duvidas esclarecidas"),
+  mkLead("Jose H", "95984270519", "Novo Lead", "PF", "Duvidas esclarecidas"),
+  mkLead("Fernando Souza", "97584760987", "Em Negociação", "PJ", "Ficou de montar o pedido"),
+  mkLead("Bruno", "75999459714", "Em Negociação", "PF", "Duvidas esclarecidas"),
+  mkLead("Copão do Japa", "14991887146", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Tardezinha tabacaria", "11968812271", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Gabriel Ml9", "35991430129", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Fruits Saborizado", "21971725245", "Novo Lead", "PJ", "Promessa de retornar"),
+  mkLead("Tropa da paz", "31991917021", "Novo Lead", "PF", "Duvidas esclarecidas"),
+  mkLead("Armando Pt de galinhas", "81995703909", "Em Negociação", "PJ", "Duvidas esclarecidas"),
+  mkLead("Carlos Henrique", "21990524280", "Ativo", "PJ", "Promessa de retornar"),
+  mkLead("Adega do Samba", "11954128191", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Tomaz", "61993138243", "Ativo", "PF", "Promessa de retornar"),
+  mkLead("Chapa imports", "74991426892", "Em Negociação", "PJ", "Ficou de montar o pedido"),
+  mkLead("Distribuidora Pierre", "31982551522", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Corujão do Wjisky", "31989777899", "Novo Lead", "PJ", "Promessa de retornar"),
+  mkLead("Destilados OG", "21965007139", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Sandro Marica Beer", "21970280180", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("JL Deposito de bebidas", "21966590638", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Cactus Adega", "83993532473", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Adega Pomperson", "31999727872", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Adega Prime", "31980566902", "Novo Lead", "PJ", "Promessa de retornar"),
+  mkLead("Primas Açai Disk", "51980415668", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Nicoly Freitas", "27988040292", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Jerman Lounge Bar", "41997116198", "Novo Lead", "PJ", "Orçamento"),
+  mkLead("Mercearia Almaeida", "16981095819", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Thiago Delanne", "64999066006", "Novo Lead", "PJ", "Negociação ativa"),
+  mkLead("Eduardo Benetti", "51985927052", "Novo Lead", "PJ", "Negociação ativa"),
+  mkLead("Adega do Chefe", "14997162909", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Feliphes Beer", "82999624127", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Adega Prime (SP)", "13996000452", "Novo Lead", "PJ", "Negociação ativa"),
+  mkLead("Christian RDC", "22998089706", "Novo Lead", "PJ", "Promessa de retornar"),
+  mkLead("Taina Lat", "2297764838", "Novo Lead", "PJ", "Promessa de retornar"),
+  mkLead("Sodre ML", "94984371244", "Ativo", "PJ", "Promessa de retornar"),
+  mkLead("Adega do Tio João", "19986017888", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Conveniencia do Borsoi", "43996447666", "Novo Lead", "PJ", "Ficou de montar o pedido"),
+  mkLead("Gabriel Lara", "66996773374", "Novo Lead", "PF", "Negociação ativa"),
+  mkLead("Adega irmãos Abdala", "21982535775", "Novo Lead", "PJ", "Negociação ativa"),
+  mkLead("Christiano Amaral", "91999190879", "Novo Lead", "PJ", "Negociação ativa"),
+  mkLead("Vieira", "91991820317", "Novo Lead", "PJ", "Orçamento"),
+  mkLead("Ramon 2R", "28999844424", "Novo Lead", "PJ", "Promessa de retornar"),
+  mkLead("Felipe Rosa", "44998648644", "Ativo", "PF", "Duvidas esclarecidas"),
+  mkLead("Renato Silva M", "31972512317", "Ativo", "PJ", "Promessa de retornar"),
+  mkLead("David Ortis", "48988246782", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Kleweson Alves", "62985009731", "Novo Lead", "PJ", "Dados coletados", "klewerson.comercial@gmail.com"),
+  mkLead("Lucas Araujo", "21995619620", "Novo Lead", "PJ", "Orçamento", "araujodeposito12@yahoo.com"),
+  mkLead("Felipe Pereira", "11986005423", "Novo Lead", "PJ", "Dados coletados", "felipe.atosproducoes@gmail.com"),
+  mkLead("Renan ml", "11944579935", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Detroit club", "41995145287", "Novo Lead", "PJ", "Dados coletados", "detroitclub0702@gmail.com"),
+  mkLead("Distribuidora de bebidas", "92985099044", "Novo Lead", "PJ", "Duvidas esclarecidas"),
+  mkLead("Italo Gustavo", "92994367494", "Novo Lead", "PJ", "Dados coletados", "gustavoitalo971@gmail.com"),
+  mkLead("Jorge Fernando Amaral", "21984648741", "Novo Lead", "PJ", "Tabela enviada", "brallcorretor@gmail.com"),
+  mkLead("Lucas Mesquita", "42999991480", "Novo Lead", "PJ", "Promessa de retornar", "lucas98mees@outlook.com"),
+  mkLead("Retsharley Miranda", "27997041879", "Novo Lead", "PJ", "Dados coletados", "imml.distri.2025@outlook.com"),
+  mkLead("Carita", "67991810724", "Novo Lead", "PJ", "Dados coletados", "limacarita0@gmail.com"),
+  mkLead("Ailton", "34997164552", "Novo Lead", "PF", "Duvidas esclarecidas"),
+  mkLead("Luiz Felipe Canteiro", "17991283506", "Novo Lead", "PF", "Dados coletados", "luizfelipe1p2c@gmail.com"),
+  mkLead("Laura Miranda Guerra", "21975549286", "Novo Lead", "PF", "Dados coletados", "emporioterrabrasilis021@gmail.com"),
+  mkLead("Adega do patrao", "19978124061", "Novo Lead", "PF", "Sem resposta"),
+  mkLead("Patricia Lima", "66992484922", "Novo Lead", "PF", "Dados coletados", "patricialimaa82@gmail.com"),
+  mkLead("Adega do Japa", "66999692637", "Novo Lead", "PF", "Sem resposta"),
+  mkLead("Victor", "38999680761", "Novo Lead", "PF", "Sem resposta", "vitorgabriel3567489@gmail.com"),
+  mkLead("MA", "34996863713", "Novo Lead", "PF", "Sem resposta", "jhonasgomes09@gmail.com"),
+  mkLead("BrunoPitbull", "49998072486", "Novo Lead", "PF", "Sem resposta", "pitbullbruno518@gmail.com"),
+  mkLead("Edelsio", "54984381108", "Novo Lead", "PF", "Sem resposta"),
+  mkLead("Ramon Lamin", "22999996466", "Novo Lead", "PF", "Duvidas esclarecidas"),
+  mkLead("Disk Bebidas", "61998432916", "Novo Lead", "PF", "Sem resposta"),
+  mkLead("Ivanildo ms com", "21964649723", "Novo Lead", "PF", "Fazer proposta"),
+];
+
+// Recalculate scores for seed revendedores
+SEED_REVENDEDORES.forEach(r => { r.score = calcScore(r); });
 
 const SEED_MEETINGS: Meeting[] = [
-  { id: 9001, title: "Daily Mr. Lion", meetingDate: "2026-02-24", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Alinhamento diário de tarefas e pendências da operação", createdAt: now(), hora: "09:30", tipo: "Recorrente", participantes: ["Luca", "João", "Luhan", "Pedro", "Guilherme"], local: "Google Meet", meetingStatus: "Agendada" },
   { id: 9002, title: "Review de Distribuição — Fevereiro", meetingDate: "2026-02-25", fileType: "resumo", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Análise de volume por revendedor, metas de março, ações de ativação", createdAt: now(), hora: "14:00", tipo: "Mensal", participantes: ["Luca", "João", "Pedro"], local: "Escritório SP", meetingStatus: "Agendada" },
   { id: 9003, title: "Briefing Campanha Março", meetingDate: "2026-02-26", fileType: "pauta", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Definição de criativo, peças e cronograma de conteúdo para março", createdAt: now(), hora: "11:00", tipo: "Pontual", participantes: ["Luca", "Luhan", "Guilherme"], local: "Google Meet", meetingStatus: "Agendada" },
   { id: 9004, title: "Reunião Estratégica Mr. Lion — 13/02", meetingDate: "2026-02-13", fileType: "resumo", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "Alinhamento estratégico completo. 10 decisões tomadas: Kit Carnaval R$299, migração Nuvemshop prioridade máxima, Nation antes do Orochi, press-kits entregues em mãos no Rio, RTD validar em BH e lançar em Dezembro, rebranding com garrafa nova. 75 min, 13 tópicos cobertos.", createdAt: now(), hora: "14:00", tipo: "Mensal", participantes: ["Luca", "João", "Luhan", "Pedro", "Guilherme"], local: "Google Meet", meetingStatus: "Realizada" },
@@ -114,9 +195,9 @@ function initIfNeeded() {
     localStorage.setItem(ACTIVITY_KEY, JSON.stringify([]));
     localStorage.setItem(NEXT_ID_KEY, "31000");
   }
-  if (!localStorage.getItem(MEETINGS_KEY) || localStorage.getItem("meetings_reset_v2") !== "1") {
+  if (!localStorage.getItem(MEETINGS_KEY) || localStorage.getItem("meetings_reset_v3") !== "1") {
     localStorage.setItem(MEETINGS_KEY, JSON.stringify(SEED_MEETINGS));
-    localStorage.setItem("meetings_reset_v2", "1");
+    localStorage.setItem("meetings_reset_v3", "1");
   } else {
     // Migrate meetings to add new fields
     try {
@@ -129,12 +210,14 @@ function initIfNeeded() {
         if (!("local" in m)) { m.local = ""; migrated = true; }
         if (!("meetingStatus" in m)) { m.meetingStatus = "Agendada"; migrated = true; }
       });
-      if (migrated) localStorage.setItem(MEETINGS_KEY, JSON.stringify(existing));
+      // Remove any Daily meetings
+      const filtered = existing.filter((m: any) => !m.title?.includes("Daily"));
+      if (filtered.length !== existing.length || migrated) localStorage.setItem(MEETINGS_KEY, JSON.stringify(filtered));
     } catch {}
   }
-  if (!localStorage.getItem(CRM_KEY) || localStorage.getItem("crm_reset_v2") !== "1") {
+  if (!localStorage.getItem(CRM_KEY) || localStorage.getItem("crm_reset_v3") !== "1") {
     localStorage.setItem(CRM_KEY, JSON.stringify(SEED_REVENDEDORES));
-    localStorage.setItem("crm_reset_v2", "1");
+    localStorage.setItem("crm_reset_v3", "1");
   } else {
     // Migrate existing revendedores to add new fields
     try {
