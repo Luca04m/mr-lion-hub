@@ -98,10 +98,17 @@ function calcScore(r: Partial<Revendedor>): number {
 
 export { calcScore };
 
+function scoreForStatus(status: RevendedorStatus): number {
+  if (status === "Novo Lead") return 30;
+  if (status === "Em Negociação") return 60;
+  if (status === "Ativo" || status === "Recorrente") return 90;
+  return 0;
+}
+
 function mkLead(nome: string, whatsapp: string, status: RevendedorStatus, tag: string, obs: string, email = "", tags: string[] = []): Revendedor {
   const id = `r_seed_${nome.replace(/\s+/g, '_').toLowerCase()}`;
   const allTags = tag ? [tag, ...tags] : tags;
-  return { id, nome, responsavel: "Pedro", status, canal: "WhatsApp" as RevendedorCanal, cidade: "", volume: 0, ultima: "2026-02-20", obs, whatsapp, instagram: "", email, telefone: whatsapp, tags: allTags, score: 0, proximaAcao: null, volumeHistorico: [], historico: [] };
+  return { id, nome, responsavel: "Pedro", status, canal: "WhatsApp" as RevendedorCanal, cidade: "", volume: 0, ultima: "2026-02-20", obs, whatsapp, instagram: "", email, telefone: whatsapp, tags: allTags, score: scoreForStatus(status), proximaAcao: null, volumeHistorico: [], historico: [] };
 }
 
 const SEED_REVENDEDORES: Revendedor[] = [
@@ -215,9 +222,9 @@ function initIfNeeded() {
       if (filtered.length !== existing.length || migrated) localStorage.setItem(MEETINGS_KEY, JSON.stringify(filtered));
     } catch {}
   }
-  if (!localStorage.getItem(CRM_KEY) || localStorage.getItem("crm_reset_v3") !== "1") {
+  if (!localStorage.getItem(CRM_KEY) || localStorage.getItem("crm_reset_v4") !== "1") {
     localStorage.setItem(CRM_KEY, JSON.stringify(SEED_REVENDEDORES));
-    localStorage.setItem("crm_reset_v3", "1");
+    localStorage.setItem("crm_reset_v4", "1");
   } else {
     // Migrate existing revendedores to add new fields
     try {
