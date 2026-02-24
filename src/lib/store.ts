@@ -84,16 +84,11 @@ function genVolHist(base: number): VolumeHistorico[] {
 }
 
 function calcScore(r: Partial<Revendedor>): number {
-  let s = 0;
-  if ((r.volume || 0) >= 300) s += 40;
-  else if ((r.volume || 0) >= 100) s += 25;
-  else s += 10;
-  if (r.status === "Ativo" || r.status === "Recorrente") s += 30;
-  const days = r.ultima ? Math.floor((Date.now() - new Date(r.ultima).getTime()) / 86400000) : 999;
-  if (days <= 7) s += 20;
-  else if (days <= 30) s += 10;
-  if (r.proximaAcao) s += 10;
-  return Math.min(s, 100);
+  // Base score by status
+  if (r.status === "Ativo" || r.status === "Recorrente") return 90;
+  if (r.status === "Em Negociação") return 60;
+  if (r.status === "Inativo") return 10;
+  return 30; // Novo Lead or unknown
 }
 
 export { calcScore };
@@ -222,9 +217,9 @@ function initIfNeeded() {
       if (filtered.length !== existing.length || migrated) localStorage.setItem(MEETINGS_KEY, JSON.stringify(filtered));
     } catch {}
   }
-  if (!localStorage.getItem(CRM_KEY) || localStorage.getItem("crm_reset_v5") !== "1") {
+  if (!localStorage.getItem(CRM_KEY) || localStorage.getItem("crm_reset_v6") !== "1") {
     localStorage.setItem(CRM_KEY, JSON.stringify(SEED_REVENDEDORES));
-    localStorage.setItem("crm_reset_v5", "1");
+    localStorage.setItem("crm_reset_v6", "1");
   } else {
     // Migrate existing revendedores to add new fields
     try {
