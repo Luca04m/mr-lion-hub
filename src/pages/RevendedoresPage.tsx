@@ -23,6 +23,7 @@ import {
   Download, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useRealtime } from "@/hooks/use-realtime";
 import { format, formatDistanceToNow, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -100,6 +101,7 @@ const RevendedoresPage = () => {
 
   const reload = useCallback(() => setRevs(getRevendedores()), []);
   useEffect(() => { reload(); }, [reload]);
+  useRealtime(reload);
 
   // Apply filters
   const filtered = useMemo(() => {

@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { TaskSidePanel } from "@/components/TaskSidePanel";
+import { useRealtime } from "@/hooks/use-realtime";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCorners, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -45,6 +46,7 @@ const TasksPage = () => {
 
   const reload = useCallback(() => setTasks(getTasks()), []);
   useEffect(() => { reload(); }, [reload]);
+  useRealtime(reload);
 
   // Handle URL params
   useEffect(() => {

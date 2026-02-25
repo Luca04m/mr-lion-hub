@@ -13,6 +13,7 @@ import { Plus, Trash2, Calendar, Pencil, MapPin, Video, Users } from "lucide-rea
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { useRealtime } from "@/hooks/use-realtime";
 
 const TIPOS: MeetingTipo[] = ["Recorrente", "Mensal", "Pontual"];
 const STATUSES: MeetingStatus[] = ["Agendada", "Realizada", "Cancelada"];
@@ -25,6 +26,7 @@ const MeetingsPage = () => {
 
   const reload = () => setMeetings(getMeetings());
   useEffect(() => { reload(); }, []);
+  useRealtime(reload);
 
   const handleCreate = (data: Omit<Meeting, "id" | "createdAt">) => {
     createMeeting(data);

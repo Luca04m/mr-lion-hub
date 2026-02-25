@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getTasks, updateTask, logActivity, getUser, createTask } from "@/lib/store";
 import { Task, TaskStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, AREA_COLORS } from "@/lib/types";
+import { useRealtime } from "@/hooks/use-realtime";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCorners, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -21,6 +22,7 @@ const KanbanPage = () => {
 
   const reload = useCallback(() => setTasks(getTasks()), []);
   useEffect(() => { reload(); }, [reload]);
+  useRealtime(reload);
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = tasks.find(t => t.id === Number(event.active.id));

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getTasks, getRole, setRole, getActivities, createTask, logActivity, getUser } from "@/lib/store";
 import { Task, TEAM_MEMBERS, STATUS_LABELS, STATUS_COLORS, TaskStatus } from "@/lib/types";
+import { useRealtime } from "@/hooks/use-realtime";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ const PeoplePage = () => {
     setLoading(false);
   }, []);
   useEffect(() => { reload(); }, [reload]);
+  useRealtime(reload);
 
   const handleSave = (data: any) => {
     const t = createTask({

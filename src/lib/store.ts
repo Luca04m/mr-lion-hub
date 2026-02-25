@@ -1,5 +1,7 @@
 import { Task, Activity, Meeting, Revendedor, BusinessKPIs, APP_PASSWORD, ROLES_KEY, RevendedorCanal, RevendedorStatus, ProximaAcao, Interacao, VolumeHistorico } from "./types";
+import { supabase, isSupabaseEnabled } from "./supabase";
 
+// ─── LocalStorage Keys (used as local cache) ───
 const TASKS_KEY = "mrlion_tasks_v3";
 const ACTIVITY_KEY = "mrlion_activity_v3";
 const MEETINGS_KEY = "mrlion_meetings_v3";
@@ -9,13 +11,196 @@ const USER_KEY = "mrlion_user";
 const NEXT_ID_KEY = "mrlion_next_id_v3";
 const PRESENCE_KEY = "mrlion_presence";
 
-function getNextId(): number {
+// ─── Listeners for realtime updates ───
+type Listener = () => void;
+const listeners: Set<Listener> = new Set();
+
+export function subscribe(fn: Listener): () => void {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
+function notifyListeners() {
+  listeners.forEach(fn => fn());
+}
+
+// ─── ID Generation ───
+async function getNextIdAsync(): Promise<number> {
+  if (isSupabaseEnabled && supabase) {
+    const { data, error } = await supabase.rpc('get_next_id');
+    if (!error && data) return data as number;
+  }
+  // Fallback to localStorage
+  const current = parseInt(localStorage.getItem(NEXT_ID_KEY) || "31000");
+  localStorage.setItem(NEXT_ID_KEY, String(current + 1));
+  return current;
+}
+
+function getNextIdSync(): number {
   const current = parseInt(localStorage.getItem(NEXT_ID_KEY) || "31000");
   localStorage.setItem(NEXT_ID_KEY, String(current + 1));
   return current;
 }
 
 function now() { return new Date().toISOString(); }
+
+// ─── Supabase Helpers ───
+
+function taskToDb(t: Task): Record<string, unknown> {
+  return {
+    id: t.id,
+    title: t.title,
+    detail: t.detail,
+    responsible: t.responsible,
+    priority: t.priority,
+    area: t.area,
+    status: t.status,
+    dependencies: t.dependencies,
+    decision: t.decision,
+    notes: t.notes,
+    due_date: t.dueDate,
+    created_by: t.createdBy,
+    is_original: t.isOriginal,
+    tags: t.tags || [],
+    attachments: t.attachments || [],
+    created_at: t.createdAt,
+    updated_at: t.updatedAt,
+  };
+}
+
+function dbToTask(row: Record<string, unknown>): Task {
+  return {
+    id: row.id as number,
+    title: row.title as string,
+    detail: row.detail as string,
+    responsible: row.responsible as string[],
+    priority: row.priority as string as Task['priority'],
+    area: row.area as string,
+    status: row.status as string as Task['status'],
+    dependencies: row.dependencies as number[],
+    decision: row.decision as string | null,
+    notes: row.notes as string,
+    dueDate: row.due_date as string | null,
+    createdBy: row.created_by as string,
+    isOriginal: row.is_original as boolean,
+    tags: row.tags as string[],
+    attachments: row.attachments as Task['attachments'],
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+function meetingToDb(m: Meeting): Record<string, unknown> {
+  return {
+    id: m.id,
+    title: m.title,
+    meeting_date: m.meetingDate,
+    file_type: m.fileType,
+    file_name: m.fileName,
+    file_url: m.fileUrl,
+    uploaded_by: m.uploadedBy,
+    notes: m.notes,
+    hora: m.hora || '',
+    tipo: m.tipo || 'Pontual',
+    participantes: m.participantes || [],
+    local: m.local || '',
+    meeting_status: m.meetingStatus || 'Agendada',
+    created_at: m.createdAt,
+  };
+}
+
+function dbToMeeting(row: Record<string, unknown>): Meeting {
+  return {
+    id: row.id as number,
+    title: row.title as string,
+    meetingDate: row.meeting_date as string,
+    fileType: row.file_type as string as Meeting['fileType'],
+    fileName: row.file_name as string,
+    fileUrl: row.file_url as string,
+    uploadedBy: row.uploaded_by as string,
+    notes: row.notes as string,
+    hora: row.hora as string,
+    tipo: row.tipo as string as Meeting['tipo'],
+    participantes: row.participantes as string[],
+    local: row.local as string,
+    meetingStatus: row.meeting_status as string as Meeting['meetingStatus'],
+    createdAt: row.created_at as string,
+  };
+}
+
+function revendedorToDb(r: Revendedor): Record<string, unknown> {
+  return {
+    id: r.id,
+    nome: r.nome,
+    responsavel: r.responsavel,
+    status: r.status,
+    canal: r.canal,
+    cidade: r.cidade,
+    volume: r.volume,
+    ultima: r.ultima,
+    obs: r.obs,
+    whatsapp: r.whatsapp,
+    instagram: r.instagram,
+    email: r.email,
+    telefone: r.telefone,
+    tags: r.tags,
+    score: r.score,
+    proxima_acao: r.proximaAcao,
+    volume_historico: r.volumeHistorico,
+    historico: r.historico,
+  };
+}
+
+function dbToRevendedor(row: Record<string, unknown>): Revendedor {
+  return {
+    id: row.id as string,
+    nome: row.nome as string,
+    responsavel: row.responsavel as string,
+    status: row.status as RevendedorStatus,
+    canal: row.canal as RevendedorCanal,
+    cidade: row.cidade as string,
+    volume: row.volume as number,
+    ultima: row.ultima as string,
+    obs: row.obs as string,
+    whatsapp: row.whatsapp as string,
+    instagram: row.instagram as string,
+    email: row.email as string,
+    telefone: row.telefone as string,
+    tags: row.tags as string[],
+    score: row.score as number,
+    proximaAcao: row.proxima_acao as ProximaAcao | null,
+    volumeHistorico: row.volume_historico as VolumeHistorico[],
+    historico: row.historico as Interacao[],
+  };
+}
+
+function activityToDb(a: Activity): Record<string, unknown> {
+  return {
+    id: a.id,
+    task_id: a.taskId,
+    task_title: a.taskTitle,
+    user_name: a.userName,
+    action: a.action,
+    old_value: a.oldValue,
+    new_value: a.newValue,
+    created_at: a.createdAt,
+  };
+}
+
+function dbToActivity(row: Record<string, unknown>): Activity {
+  return {
+    id: row.id as number,
+    taskId: row.task_id as number,
+    taskTitle: row.task_title as string,
+    userName: row.user_name as string,
+    action: row.action as string,
+    oldValue: row.old_value as string | null,
+    newValue: row.new_value as string | null,
+    createdAt: row.created_at as string,
+  };
+}
+
+// ─── Seed Data ───
 
 const SEED_TASKS: Task[] = [
   { id: 30005, title: "Configurar Delivery Direto (PDV, gestão de pedidos, estoque)", detail: "", responsible: ["Luca"], priority: "alta", area: "Operacional", status: "pendente", dependencies: [], decision: null, notes: "", dueDate: null, createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now() },
@@ -84,11 +269,10 @@ function genVolHist(base: number): VolumeHistorico[] {
 }
 
 function calcScore(r: Partial<Revendedor>): number {
-  // Base score by status
   if (r.status === "Ativo" || r.status === "Recorrente") return 90;
   if (r.status === "Em Negociação") return 60;
   if (r.status === "Inativo") return 10;
-  return 30; // Novo Lead or unknown
+  return 30;
 }
 
 export { calcScore };
@@ -181,7 +365,6 @@ const SEED_REVENDEDORES: Revendedor[] = [
   mkLead("Ivanildo ms com", "21964649723", "Novo Lead", "PF", "Fazer proposta"),
 ];
 
-// Recalculate scores for seed revendedores
 SEED_REVENDEDORES.forEach(r => { r.score = calcScore(r); });
 
 const SEED_MEETINGS: Meeting[] = [
@@ -191,7 +374,12 @@ const SEED_MEETINGS: Meeting[] = [
   { id: 9005, title: "Reunião Estratégica Mr. Lion — 19/02", meetingDate: "2026-02-19", fileType: "resumo", fileName: "", fileUrl: "", uploadedBy: "Luca", notes: "10 decisões: Nuvemshop go-live 25/02, Delivery lança antes do Nation (meta 27/02), Nation piloto primeiro com 1 pessoa, soft launch 50 vagas (final de Abril), ranking público em pontos, Marketplaces até 27/02, Dia do Consumidor semana de desconto, Reunião Vinícius sobre CRM, João faz amostras RTD, Kit PDV aprovado em 5 níveis.", createdAt: now(), hora: "15:34", tipo: "Mensal", participantes: ["Luca", "João", "Luhan", "Pedro", "Guilherme"], local: "Google Meet", meetingStatus: "Realizada" },
 ];
 
-function initIfNeeded() {
+// ─── Initialization & Sync ───
+
+let _initialized = false;
+let _syncInProgress = false;
+
+function initLocalStorage() {
   if (!localStorage.getItem(TASKS_KEY)) {
     localStorage.setItem(TASKS_KEY, JSON.stringify(SEED_TASKS));
     localStorage.setItem(ACTIVITY_KEY, JSON.stringify([]));
@@ -200,58 +388,144 @@ function initIfNeeded() {
   if (!localStorage.getItem(MEETINGS_KEY) || localStorage.getItem("meetings_reset_v3") !== "1") {
     localStorage.setItem(MEETINGS_KEY, JSON.stringify(SEED_MEETINGS));
     localStorage.setItem("meetings_reset_v3", "1");
-  } else {
-    // Migrate meetings to add new fields
-    try {
-      const existing: any[] = JSON.parse(localStorage.getItem(MEETINGS_KEY) || "[]");
-      let migrated = false;
-      existing.forEach((m: any) => {
-        if (!("hora" in m)) { m.hora = ""; migrated = true; }
-        if (!("tipo" in m)) { m.tipo = "Pontual"; migrated = true; }
-        if (!("participantes" in m)) { m.participantes = []; migrated = true; }
-        if (!("local" in m)) { m.local = ""; migrated = true; }
-        if (!("meetingStatus" in m)) { m.meetingStatus = "Agendada"; migrated = true; }
-      });
-      // Remove any Daily meetings
-      const filtered = existing.filter((m: any) => !m.title?.includes("Daily"));
-      if (filtered.length !== existing.length || migrated) localStorage.setItem(MEETINGS_KEY, JSON.stringify(filtered));
-    } catch {}
   }
   if (!localStorage.getItem(CRM_KEY) || localStorage.getItem("crm_reset_v6") !== "1") {
     localStorage.setItem(CRM_KEY, JSON.stringify(SEED_REVENDEDORES));
     localStorage.setItem("crm_reset_v6", "1");
-  } else {
-    // Migrate existing revendedores to add new fields
-    try {
-      const existing: any[] = JSON.parse(localStorage.getItem(CRM_KEY) || "[]");
-      let migrated = false;
-      existing.forEach((r: any) => {
-        if (!("whatsapp" in r)) { r.whatsapp = ""; migrated = true; }
-        if (!("instagram" in r)) { r.instagram = ""; migrated = true; }
-        if (!("email" in r)) { r.email = ""; migrated = true; }
-        if (!("telefone" in r)) { r.telefone = ""; migrated = true; }
-        if (!("tags" in r)) { r.tags = []; migrated = true; }
-        if (!("score" in r)) { r.score = calcScore(r); migrated = true; }
-        if (!("proximaAcao" in r)) { r.proximaAcao = null; migrated = true; }
-        if (!("volumeHistorico" in r)) { r.volumeHistorico = genVolHist(r.volume || 0); migrated = true; }
-        if (!("historico" in r)) { r.historico = []; migrated = true; }
-      });
-      if (migrated) localStorage.setItem(CRM_KEY, JSON.stringify(existing));
-    } catch {}
   }
 }
 
-// Password
+function initIfNeeded() {
+  if (!_initialized) {
+    initLocalStorage();
+    _initialized = true;
+    // Trigger async sync from Supabase in the background
+    if (isSupabaseEnabled) {
+      syncFromSupabase();
+    }
+  }
+}
+
+/** Fetch all data from Supabase and update localStorage cache */
+async function syncFromSupabase() {
+  if (!supabase || _syncInProgress) return;
+  _syncInProgress = true;
+  try {
+    const [tasksRes, activitiesRes, meetingsRes, revsRes, kpisRes] = await Promise.all([
+      supabase.from('tasks').select('*').order('id'),
+      supabase.from('activities').select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('meetings').select('*').order('created_at', { ascending: false }),
+      supabase.from('revendedores').select('*').order('nome'),
+      supabase.from('business_kpis').select('*').eq('id', 'default').single(),
+    ]);
+
+    if (tasksRes.data && tasksRes.data.length > 0) {
+      const tasks = tasksRes.data.map(dbToTask);
+      localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+    }
+    if (activitiesRes.data && activitiesRes.data.length > 0) {
+      const activities = activitiesRes.data.map(dbToActivity);
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities));
+    }
+    if (meetingsRes.data && meetingsRes.data.length > 0) {
+      const meetings = meetingsRes.data.map(dbToMeeting);
+      localStorage.setItem(MEETINGS_KEY, JSON.stringify(meetings));
+    }
+    if (revsRes.data && revsRes.data.length > 0) {
+      const revs = revsRes.data.map(dbToRevendedor);
+      localStorage.setItem(CRM_KEY, JSON.stringify(revs));
+    }
+    if (kpisRes.data) {
+      const kpis: BusinessKPIs = {
+        metaMensal: kpisRes.data.meta_mensal,
+        realizado: kpisRes.data.realizado,
+        receitaEstimada: kpisRes.data.receita_estimada,
+        ticketMedio: kpisRes.data.ticket_medio,
+        custoEntrega: kpisRes.data.custo_entrega,
+      };
+      localStorage.setItem(KPI_KEY, JSON.stringify(kpis));
+    }
+    notifyListeners();
+  } catch (err) {
+    console.error('[MR. LION HUB] Sync from Supabase failed:', err);
+  } finally {
+    _syncInProgress = false;
+  }
+}
+
+/** Seed Supabase with initial data if tables are empty */
+async function seedSupabase() {
+  if (!supabase) return;
+  try {
+    // Check if tasks table has data
+    const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
+    if (count === 0 || count === null) {
+      // Seed tasks
+      await supabase.from('tasks').upsert(SEED_TASKS.map(taskToDb));
+      // Seed meetings
+      await supabase.from('meetings').upsert(SEED_MEETINGS.map(meetingToDb));
+      // Seed revendedores
+      await supabase.from('revendedores').upsert(SEED_REVENDEDORES.map(revendedorToDb));
+      console.log('[MR. LION HUB] Seeded Supabase with initial data');
+    }
+  } catch (err) {
+    console.error('[MR. LION HUB] Seed failed:', err);
+  }
+}
+
+// ─── Realtime Subscriptions ───
+
+let _realtimeInitialized = false;
+
+export function initRealtime() {
+  if (_realtimeInitialized || !supabase) return;
+  _realtimeInitialized = true;
+
+  // Seed if needed, then subscribe
+  seedSupabase();
+
+  supabase
+    .channel('db-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+      syncFromSupabase();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, () => {
+      syncFromSupabase();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => {
+      syncFromSupabase();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'revendedores' }, () => {
+      syncFromSupabase();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'business_kpis' }, () => {
+      syncFromSupabase();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'presence' }, async () => {
+      // Update presence cache
+      if (!supabase) return;
+      const cutoff = new Date(Date.now() - 120000).toISOString();
+      const { data } = await supabase.from('presence').select('name').gte('last_seen', cutoff);
+      if (data) {
+        const entries = data.map((d: { name: string }) => ({ name: d.name, lastSeen: Date.now() }));
+        localStorage.setItem(PRESENCE_KEY, JSON.stringify(entries));
+        notifyListeners();
+      }
+    })
+    .subscribe();
+}
+
+// ─── Password ───
 export function validatePassword(password: string): boolean {
   return password === APP_PASSWORD;
 }
 
-// User
+// ─── User ───
 export function getUser(): string | null { return localStorage.getItem(USER_KEY); }
 export function setUser(name: string) { localStorage.setItem(USER_KEY, name); updatePresence(name); }
 export function clearUser() { const user = getUser(); if (user) removePresence(user); localStorage.removeItem(USER_KEY); }
 
-// Roles
+// ─── Roles ───
 export function getRole(name: string): string {
   const raw = localStorage.getItem(ROLES_KEY);
   const roles: Record<string, string> = raw ? JSON.parse(raw) : {};
@@ -264,8 +538,9 @@ export function setRole(name: string, role: string) {
   localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
 }
 
-// Presence
+// ─── Presence ───
 interface PresenceEntry { name: string; lastSeen: number; }
+
 export function getOnlineUsers(): string[] {
   const raw = localStorage.getItem(PRESENCE_KEY);
   if (!raw) return [];
@@ -273,126 +548,299 @@ export function getOnlineUsers(): string[] {
   const n = Date.now();
   return entries.filter(e => n - e.lastSeen < 120000).map(e => e.name);
 }
+
 export function updatePresence(name: string) {
+  // Update localStorage
   const raw = localStorage.getItem(PRESENCE_KEY);
   let entries: PresenceEntry[] = raw ? JSON.parse(raw) : [];
   entries = entries.filter(e => e.name !== name);
   entries.push({ name, lastSeen: Date.now() });
   localStorage.setItem(PRESENCE_KEY, JSON.stringify(entries));
+
+  // Sync to Supabase
+  if (supabase) {
+    supabase.from('presence').upsert({ name, last_seen: new Date().toISOString() }).then();
+  }
 }
+
 function removePresence(name: string) {
   const raw = localStorage.getItem(PRESENCE_KEY);
   if (!raw) return;
   let entries: PresenceEntry[] = JSON.parse(raw);
   entries = entries.filter(e => e.name !== name);
   localStorage.setItem(PRESENCE_KEY, JSON.stringify(entries));
+
+  if (supabase) {
+    supabase.from('presence').delete().eq('name', name).then();
+  }
 }
 
-// Tasks
+// ─── Tasks ───
+
 export function getTasks(): Task[] { initIfNeeded(); return JSON.parse(localStorage.getItem(TASKS_KEY) || "[]"); }
 export function getTaskById(id: number): Task | undefined { return getTasks().find(t => t.id === id); }
+
 export function createTask(data: Omit<Task, "id" | "createdAt" | "updatedAt">): Task {
   const tasks = getTasks();
-  const task: Task = { ...data, id: getNextId(), createdAt: now(), updatedAt: now() };
+  const task: Task = { ...data, id: getNextIdSync(), createdAt: now(), updatedAt: now() };
   tasks.push(task);
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+
+  // Async: sync to Supabase and get a proper ID
+  if (supabase) {
+    (async () => {
+      const id = await getNextIdAsync();
+      const dbTask = { ...task, id };
+      await supabase.from('tasks').upsert(taskToDb(dbTask));
+      // Update local cache with the server ID
+      const currentTasks = JSON.parse(localStorage.getItem(TASKS_KEY) || "[]") as Task[];
+      const idx = currentTasks.findIndex(t => t.id === task.id);
+      if (idx !== -1) {
+        currentTasks[idx].id = id;
+        localStorage.setItem(TASKS_KEY, JSON.stringify(currentTasks));
+      }
+    })();
+  }
+
   return task;
 }
+
 export function updateTask(id: number, updates: Partial<Task>): Task | undefined {
   const tasks = getTasks();
   const idx = tasks.findIndex(t => t.id === id);
   if (idx === -1) return undefined;
   tasks[idx] = { ...tasks[idx], ...updates, updatedAt: now() };
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+
+  if (supabase) {
+    const dbUpdates: Record<string, unknown> = { updated_at: now() };
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.detail !== undefined) dbUpdates.detail = updates.detail;
+    if (updates.responsible !== undefined) dbUpdates.responsible = updates.responsible;
+    if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+    if (updates.area !== undefined) dbUpdates.area = updates.area;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.dependencies !== undefined) dbUpdates.dependencies = updates.dependencies;
+    if (updates.decision !== undefined) dbUpdates.decision = updates.decision;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
+    if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+    if (updates.attachments !== undefined) dbUpdates.attachments = updates.attachments;
+    supabase.from('tasks').update(dbUpdates).eq('id', id).then();
+  }
+
   return tasks[idx];
 }
+
 export function deleteTask(id: number): boolean {
   const tasks = getTasks();
   const filtered = tasks.filter(t => t.id !== id);
   if (filtered.length === tasks.length) return false;
   localStorage.setItem(TASKS_KEY, JSON.stringify(filtered));
+
+  if (supabase) {
+    supabase.from('tasks').delete().eq('id', id).then();
+  }
+
   return true;
 }
 
-// Activity
+// ─── Activity ───
+
 export function getActivities(): Activity[] { initIfNeeded(); return JSON.parse(localStorage.getItem(ACTIVITY_KEY) || "[]"); }
+
 export function logActivity(data: Omit<Activity, "id" | "createdAt">) {
   const activities = getActivities();
-  const activity: Activity = { ...data, id: getNextId(), createdAt: now() };
+  const activity: Activity = { ...data, id: getNextIdSync(), createdAt: now() };
   activities.unshift(activity);
   if (activities.length > 200) activities.length = 200;
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities));
+
+  if (supabase) {
+    (async () => {
+      const id = await getNextIdAsync();
+      await supabase.from('activities').insert(activityToDb({ ...activity, id }));
+    })();
+  }
 }
 
-// Meetings
+// ─── Meetings ───
+
 export function getMeetings(): Meeting[] { initIfNeeded(); return JSON.parse(localStorage.getItem(MEETINGS_KEY) || "[]"); }
+
 export function createMeeting(data: Omit<Meeting, "id" | "createdAt">): Meeting {
   const meetings = getMeetings();
-  const meeting: Meeting = { ...data, id: getNextId(), createdAt: now() };
+  const meeting: Meeting = { ...data, id: getNextIdSync(), createdAt: now() };
   meetings.unshift(meeting);
   localStorage.setItem(MEETINGS_KEY, JSON.stringify(meetings));
+
+  if (supabase) {
+    (async () => {
+      const id = await getNextIdAsync();
+      await supabase.from('meetings').upsert(meetingToDb({ ...meeting, id }));
+    })();
+  }
+
   return meeting;
 }
+
 export function updateMeeting(id: number, updates: Partial<Meeting>): Meeting | undefined {
   const meetings = getMeetings();
   const idx = meetings.findIndex(m => m.id === id);
   if (idx === -1) return undefined;
   meetings[idx] = { ...meetings[idx], ...updates };
   localStorage.setItem(MEETINGS_KEY, JSON.stringify(meetings));
+
+  if (supabase) {
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.meetingDate !== undefined) dbUpdates.meeting_date = updates.meetingDate;
+    if (updates.fileType !== undefined) dbUpdates.file_type = updates.fileType;
+    if (updates.fileName !== undefined) dbUpdates.file_name = updates.fileName;
+    if (updates.fileUrl !== undefined) dbUpdates.file_url = updates.fileUrl;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.hora !== undefined) dbUpdates.hora = updates.hora;
+    if (updates.tipo !== undefined) dbUpdates.tipo = updates.tipo;
+    if (updates.participantes !== undefined) dbUpdates.participantes = updates.participantes;
+    if (updates.local !== undefined) dbUpdates.local = updates.local;
+    if (updates.meetingStatus !== undefined) dbUpdates.meeting_status = updates.meetingStatus;
+    supabase.from('meetings').update(dbUpdates).eq('id', id).then();
+  }
+
   return meetings[idx];
 }
+
 export function deleteMeeting(id: number): boolean {
   const meetings = getMeetings();
   const filtered = meetings.filter(m => m.id !== id);
   if (filtered.length === meetings.length) return false;
   localStorage.setItem(MEETINGS_KEY, JSON.stringify(filtered));
+
+  if (supabase) {
+    supabase.from('meetings').delete().eq('id', id).then();
+  }
+
   return true;
 }
 
-// CRM
+// ─── CRM ───
+
 export function getRevendedores(): Revendedor[] { initIfNeeded(); return JSON.parse(localStorage.getItem(CRM_KEY) || "[]"); }
+
 export function createRevendedor(data: Omit<Revendedor, "id">): Revendedor {
   const revs = getRevendedores();
   const rev: Revendedor = { ...data, id: `r${Date.now()}` };
   revs.push(rev);
   localStorage.setItem(CRM_KEY, JSON.stringify(revs));
+
+  if (supabase) {
+    supabase.from('revendedores').insert(revendedorToDb(rev)).then();
+  }
+
   return rev;
 }
+
 export function updateRevendedor(id: string, updates: Partial<Revendedor>): Revendedor | undefined {
   const revs = getRevendedores();
   const idx = revs.findIndex(r => r.id === id);
   if (idx === -1) return undefined;
   revs[idx] = { ...revs[idx], ...updates };
   localStorage.setItem(CRM_KEY, JSON.stringify(revs));
+
+  if (supabase) {
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.nome !== undefined) dbUpdates.nome = updates.nome;
+    if (updates.responsavel !== undefined) dbUpdates.responsavel = updates.responsavel;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.canal !== undefined) dbUpdates.canal = updates.canal;
+    if (updates.cidade !== undefined) dbUpdates.cidade = updates.cidade;
+    if (updates.volume !== undefined) dbUpdates.volume = updates.volume;
+    if (updates.ultima !== undefined) dbUpdates.ultima = updates.ultima;
+    if (updates.obs !== undefined) dbUpdates.obs = updates.obs;
+    if (updates.whatsapp !== undefined) dbUpdates.whatsapp = updates.whatsapp;
+    if (updates.instagram !== undefined) dbUpdates.instagram = updates.instagram;
+    if (updates.email !== undefined) dbUpdates.email = updates.email;
+    if (updates.telefone !== undefined) dbUpdates.telefone = updates.telefone;
+    if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+    if (updates.score !== undefined) dbUpdates.score = updates.score;
+    if (updates.proximaAcao !== undefined) dbUpdates.proxima_acao = updates.proximaAcao;
+    if (updates.volumeHistorico !== undefined) dbUpdates.volume_historico = updates.volumeHistorico;
+    if (updates.historico !== undefined) dbUpdates.historico = updates.historico;
+    supabase.from('revendedores').update(dbUpdates).eq('id', id).then();
+  }
+
   return revs[idx];
 }
+
 export function deleteRevendedor(id: string): boolean {
   const revs = getRevendedores();
   const filtered = revs.filter(r => r.id !== id);
   if (filtered.length === revs.length) return false;
   localStorage.setItem(CRM_KEY, JSON.stringify(filtered));
+
+  if (supabase) {
+    supabase.from('revendedores').delete().eq('id', id).then();
+  }
+
   return true;
 }
 
-// Business KPIs
+// ─── Business KPIs ───
 const DEFAULT_KPIS: BusinessKPIs = { metaMensal: 1600, realizado: 619, receitaEstimada: 95175, ticketMedio: 213, custoEntrega: 18.17 };
-const KPI_VERSION = "kpi_v2";
-function migrateKPIs() {
-  if (!localStorage.getItem(KPI_VERSION)) {
-    localStorage.setItem(KPI_KEY, JSON.stringify(DEFAULT_KPIS));
-    localStorage.setItem(KPI_VERSION, "1");
-  }
-}
+
 export function getBusinessKPIs(): BusinessKPIs {
-  migrateKPIs();
+  initIfNeeded();
   const raw = localStorage.getItem(KPI_KEY);
   return raw ? JSON.parse(raw) : DEFAULT_KPIS;
 }
+
 export function setBusinessKPIs(kpis: BusinessKPIs) {
   localStorage.setItem(KPI_KEY, JSON.stringify(kpis));
+
+  if (supabase) {
+    supabase.from('business_kpis').upsert({
+      id: 'default',
+      meta_mensal: kpis.metaMensal,
+      realizado: kpis.realizado,
+      receita_estimada: kpis.receitaEstimada,
+      ticket_medio: kpis.ticketMedio,
+      custo_entrega: kpis.custoEntrega,
+    }).then();
+  }
 }
 
-// Export
+// ─── File Upload (Supabase Storage) ───
+
+export async function uploadFile(file: File, taskId: number): Promise<{ url: string; name: string } | null> {
+  if (!supabase) {
+    // Fallback: return base64 data URL
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ url: reader.result as string, name: file.name });
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const ext = file.name.split('.').pop();
+  const path = `tasks/${taskId}/${Date.now()}_${file.name}`;
+
+  const { error } = await supabase.storage.from('attachments').upload(path, file);
+  if (error) {
+    console.error('[MR. LION HUB] File upload failed:', error);
+    // Fallback to base64
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ url: reader.result as string, name: file.name });
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
+  return { url: urlData.publicUrl, name: file.name };
+}
+
+// ─── Export ───
+
 export function exportTasksMarkdown(): string {
   const tasks = getTasks();
   const statusEmoji: Record<string, string> = { pendente: "⏳", "em-andamento": "🔄", concluida: "✅", atrasada: "🚨" };

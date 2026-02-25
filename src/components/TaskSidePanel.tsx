@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Trash2, X as XIcon, Paperclip, FileText, Link2, ExternalLink, Plus } from "lucide-react";
 import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment } from "@/lib/types";
-import { updateTask, deleteTask, logActivity, getUser, getActivities } from "@/lib/store";
+import { updateTask, deleteTask, logActivity, getUser, getActivities, uploadFile } from "@/lib/store";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -61,15 +61,14 @@ export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
     save("tags", { tags });
   };
 
-  const handleFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const attachments = [...(task.attachments || []), { name: file.name, data: reader.result as string, type: file.type }];
+    const result = await uploadFile(file, task.id);
+    if (result) {
+      const attachments = [...(task.attachments || []), { name: result.name, data: result.url, type: file.type }];
       save("attachment", { attachments });
-    };
-    reader.readAsDataURL(file);
+    }
     e.target.value = "";
   };
 

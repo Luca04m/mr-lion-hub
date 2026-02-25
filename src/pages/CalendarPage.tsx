@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getTasks, createTask, logActivity, getUser } from "@/lib/store";
 import { Task, STATUS_COLORS, AREA_COLORS, PRIORITY_LABELS, TaskStatus, STATUS_LABELS } from "@/lib/types";
+import { useRealtime } from "@/hooks/use-realtime";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isToday } from "date-fns";
@@ -19,6 +20,7 @@ const CalendarPage = () => {
 
   const reload = useCallback(() => setTasks(getTasks()), []);
   useEffect(() => { reload(); }, [reload]);
+  useRealtime(reload);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);

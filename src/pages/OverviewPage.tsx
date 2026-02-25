@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { useRealtime } from "@/hooks/use-realtime";
 
 // ─── DRE Data (hardcoded Jan/26) ───
 const DRE_CARDS = [
@@ -47,12 +48,14 @@ const OverviewPage = () => {
   const userName = getUser();
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const reload = () => {
     setTasks(getTasks());
     setActivities(getActivities());
     setRevs(getRevendedores());
     setMeetings(getMeetings());
-  }, []);
+  };
+  useEffect(() => { reload(); }, []);
+  useRealtime(reload);
 
   const today = format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Bom dia"; if (h < 18) return "Boa tarde"; return "Boa noite"; })();

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, CheckSquare, FileText, Building2,
   LogOut, Menu, X, Search
 } from "lucide-react";
-import { getUser, clearUser, getOnlineUsers, updatePresence, getTasks } from "@/lib/store";
+import { getUser, clearUser, getOnlineUsers, updatePresence, getTasks, initRealtime, subscribe } from "@/lib/store";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -37,19 +37,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!userName) { navigate("/"); return; }
+    // Initialize Supabase realtime subscriptions
+    initRealtime();
     updatePresence(userName);
-    const interval = setInterval(() => {
-      updatePresence(userName);
+
+    const refreshCounts = () => {
       setOnlineUsers(getOnlineUsers());
       const tasks = getTasks();
       setPendingCount(tasks.filter(t => t.status === "pendente").length);
       setLateCount(tasks.filter(t => t.status === "atrasada").length);
+    };
+
+    const interval = setInterval(() => {
+      updatePresence(userName);
+      refreshCounts();
     }, 5000);
-    setOnlineUsers(getOnlineUsers());
-    const tasks = getTasks();
-    setPendingCount(tasks.filter(t => t.status === "pendente").length);
-    setLateCount(tasks.filter(t => t.status === "atrasada").length);
-    return () => clearInterval(interval);
+    refreshCounts();
+
+    // Subscribe to realtime data changes from other users
+    const unsub = subscribe(refreshCounts);
+
+    return () => { clearInterval(interval); unsub(); };
   }, [userName, navigate]);
 
   useEffect(() => {
