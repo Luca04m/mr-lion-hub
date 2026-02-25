@@ -37,6 +37,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
 
+const safeDiffDays = (dateStr: string) => { try { const d = parseISO(dateStr); return isNaN(d.getTime()) ? 999 : differenceInDays(new Date(), d); } catch { return 999; } };
+
 const CANAIS: RevendedorCanal[] = ["WhatsApp", "Instagram", "Indicação", "Outros"];
 const ALL_STATUSES: RevendedorStatus[] = ["Novo Lead", "Em Negociação", "Ativo", "Recorrente", "Inativo"];
 const PIPELINE_COLS: RevendedorStatus[] = ["Novo Lead", "Em Negociação", "Ativo", "Recorrente"];
@@ -296,7 +298,7 @@ const RevendedoresPage = () => {
   const totalVolume = revs.reduce((sum, r) => sum + r.volume, 0);
   const pipelineVolume = revs.filter(r => r.status === "Novo Lead" || r.status === "Em Negociação").reduce((s, r) => s + r.volume, 0);
   const avgScore = revs.length ? Math.round(revs.reduce((s, r) => s + r.score, 0) / revs.length) : 0;
-  const noContact30 = revs.filter(r => differenceInDays(new Date(), parseISO(r.ultima)) > 30).length;
+  const noContact30 = revs.filter(r => r.ultima && safeDiffDays(r.ultima) > 30).length;
 
   const stats = [
     { label: "Total", value: revs.length, icon: Building2, color: "hsl(var(--gold))", spark: null },
@@ -502,7 +504,7 @@ function ListaView({ revs, selectedIds, onToggleSelect, onSelectAll, onSort, sor
         </thead>
         <tbody>
           {revs.map(r => {
-            const proxVencida = r.proximaAcao && differenceInDays(new Date(), parseISO(r.proximaAcao.data)) > 0;
+            const proxVencida = r.proximaAcao?.data && safeDiffDays(r.proximaAcao.data) > 0;
             return (
               <tr key={r.id} className="border-b border-border/50 hover:bg-secondary/20 cursor-pointer transition-colors" onClick={() => onSelect(r)}>
                 <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
@@ -560,14 +562,14 @@ function ListaView({ revs, selectedIds, onToggleSelect, onSelectAll, onSort, sor
                 <td className="px-3 py-2.5 hidden lg:table-cell">
                   {r.proximaAcao ? (
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-mono">{format(parseISO(r.proximaAcao.data), "dd/MM")}</span>
+                      <span className="text-[10px] font-mono">{r.proximaAcao.data ? format(parseISO(r.proximaAcao.data), "dd/MM") : "—"}</span>
                       {proxVencida && <Badge variant="destructive" className="text-[8px] px-1 py-0">vencida</Badge>}
                     </div>
                   ) : <span className="text-muted-foreground text-xs">—</span>}
                 </td>
                 <td className="px-3 py-2.5 text-right hidden lg:table-cell">
                   <span className="text-[10px] font-mono text-muted-foreground">
-                    {formatDistanceToNow(parseISO(r.ultima), { locale: ptBR, addSuffix: true })}
+                    {r.ultima ? formatDistanceToNow(parseISO(r.ultima), { locale: ptBR, addSuffix: true }) : "—"}
                   </span>
                 </td>
                 <td className="px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
@@ -684,7 +686,7 @@ function PipelineCard({ rev, onSelect }: { rev: Revendedor; onSelect: (r: Revend
       {rev.proximaAcao && (
         <div className="flex items-center gap-1 mt-1.5 text-[9px] text-muted-foreground">
           <Calendar className="w-2.5 h-2.5" />
-          {format(parseISO(rev.proximaAcao.data), "dd/MM")}
+          {rev.proximaAcao.data ? format(parseISO(rev.proximaAcao.data), "dd/MM") : "—"}
         </div>
       )}
       <Button
@@ -723,7 +725,7 @@ function AnalyticsView({ revs }: { revs: Revendedor[] }) {
 
   // Performance cards
   const topPerformer = byVolume[0];
-  const noContact = revs.filter(r => differenceInDays(new Date(), parseISO(r.ultima)) > 30);
+  const noContact = revs.filter(r => r.ultima && safeDiffDays(r.ultima) > 30);
 
   return (
     <div className="space-y-4">
@@ -967,8 +969,8 @@ function OverviewTab({ rev, onUpdate, reload, userName }: { rev: Revendedor; onU
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Calendar className="w-3 h-3 text-gold" />
-              <span className="text-xs font-mono">{format(parseISO(rev.proximaAcao.data), "dd/MM/yyyy")}</span>
-              {differenceInDays(new Date(), parseISO(rev.proximaAcao.data)) > 0 && (
+              <span className="text-xs font-mono">{rev.proximaAcao.data ? format(parseISO(rev.proximaAcao.data), "dd/MM/yyyy") : "—"}</span>
+              {rev.proximaAcao.data && safeDiffDays(rev.proximaAcao.data) > 0 && (
                 <Badge variant="destructive" className="text-[8px]">vencida</Badge>
               )}
             </div>
@@ -1092,7 +1094,7 @@ function HistoricoTab({ rev, onUpdate, reload, userName }: { rev: Revendedor; on
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[10px] font-mono text-muted-foreground">{format(parseISO(h.data), "dd/MM/yyyy")}</span>
+                <span className="text-[10px] font-mono text-muted-foreground">{h.data ? format(parseISO(h.data), "dd/MM/yyyy") : "—"}</span>
                 <Badge variant="secondary" className="text-[9px]">{h.autor}</Badge>
               </div>
               <p className="text-sm text-foreground">{h.descricao}</p>
