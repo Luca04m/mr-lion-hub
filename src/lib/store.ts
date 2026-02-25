@@ -151,26 +151,32 @@ function revendedorToDb(r: Revendedor): Record<string, unknown> {
   };
 }
 
+function safeArray<T>(val: unknown): T[] {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') { try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; } }
+  return [];
+}
+
 function dbToRevendedor(row: Record<string, unknown>): Revendedor {
   return {
     id: row.id as string,
-    nome: row.nome as string,
-    responsavel: row.responsavel as string,
-    status: row.status as RevendedorStatus,
-    canal: row.canal as RevendedorCanal,
-    cidade: row.cidade as string,
-    volume: row.volume as number,
-    ultima: row.ultima as string,
-    obs: row.obs as string,
-    whatsapp: row.whatsapp as string,
-    instagram: row.instagram as string,
-    email: row.email as string,
-    telefone: row.telefone as string,
-    tags: row.tags as string[],
-    score: row.score as number,
+    nome: (row.nome || '') as string,
+    responsavel: (row.responsavel || '') as string,
+    status: (row.status || 'Novo Lead') as RevendedorStatus,
+    canal: (row.canal || 'WhatsApp') as RevendedorCanal,
+    cidade: (row.cidade || '') as string,
+    volume: (row.volume || 0) as number,
+    ultima: (row.ultima || '') as string,
+    obs: (row.obs || '') as string,
+    whatsapp: (row.whatsapp || '') as string,
+    instagram: (row.instagram || '') as string,
+    email: (row.email || '') as string,
+    telefone: (row.telefone || '') as string,
+    tags: safeArray<string>(row.tags),
+    score: (row.score || 0) as number,
     proximaAcao: row.proxima_acao as ProximaAcao | null,
-    volumeHistorico: row.volume_historico as VolumeHistorico[],
-    historico: row.historico as Interacao[],
+    volumeHistorico: safeArray<VolumeHistorico>(row.volume_historico),
+    historico: safeArray<Interacao>(row.historico),
   };
 }
 
@@ -725,7 +731,16 @@ export function deleteMeeting(id: number): boolean {
 
 // ─── CRM ───
 
-export function getRevendedores(): Revendedor[] { initIfNeeded(); return JSON.parse(localStorage.getItem(CRM_KEY) || "[]"); }
+export function getRevendedores(): Revendedor[] {
+  initIfNeeded();
+  const raw = JSON.parse(localStorage.getItem(CRM_KEY) || "[]");
+  return raw.map((r: Record<string, unknown>) => ({
+    ...r,
+    tags: safeArray<string>(r.tags),
+    volumeHistorico: safeArray<VolumeHistorico>(r.volumeHistorico ?? r.volume_historico),
+    historico: safeArray<Interacao>(r.historico),
+  })) as Revendedor[];
+}
 
 export function createRevendedor(data: Omit<Revendedor, "id">): Revendedor {
   const revs = getRevendedores();

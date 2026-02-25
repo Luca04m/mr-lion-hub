@@ -300,7 +300,7 @@ const RevendedoresPage = () => {
 
   const stats = [
     { label: "Total", value: revs.length, icon: Building2, color: "hsl(var(--gold))", spark: null },
-    { label: "Ativos", value: byStatus("Ativo") + byStatus("Recorrente"), icon: Users, color: "#22C55E", spark: revs.filter(r => r.status === "Ativo").flatMap(r => r.volumeHistorico?.map(v => v.volume) || []).slice(-6) },
+    { label: "Ativos", value: byStatus("Ativo") + byStatus("Recorrente"), icon: Users, color: "#22C55E", spark: revs.filter(r => r.status === "Ativo").flatMap(r => (Array.isArray(r.volumeHistorico) ? r.volumeHistorico : []).map(v => v.volume)).slice(-6) },
     { label: "Em Negociação", value: byStatus("Em Negociação"), icon: TrendingUp, color: "#F59E0B", spark: null },
     { label: "Novos Leads", value: byStatus("Novo Lead"), icon: Plus, color: "#3B82F6", spark: null },
     { label: "Vol. Total/Mês", value: totalVolume.toLocaleString("pt-BR"), icon: Package, color: "#22C55E", spark: null },
@@ -513,7 +513,7 @@ function ListaView({ revs, selectedIds, onToggleSelect, onSelectAll, onSort, sor
                     <Avatar name={r.nome} size={28} />
                     <div>
                       <span className="font-medium text-sm">{r.nome}</span>
-                      {r.tags?.length > 0 && (
+                      {Array.isArray(r.tags) && r.tags.length > 0 && (
                         <div className="flex gap-1 mt-0.5 flex-wrap">
                           {r.tags.slice(0, 3).map(t => (
                             <span key={t} className="text-[9px] px-1.5 py-0 rounded-full bg-secondary text-muted-foreground">{t}</span>
@@ -552,7 +552,7 @@ function ListaView({ revs, selectedIds, onToggleSelect, onSelectAll, onSort, sor
                 <td className="px-3 py-2.5 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <span className="font-mono text-xs font-medium">{r.volume}</span>
-                    {r.volumeHistorico?.length > 1 && (
+                    {Array.isArray(r.volumeHistorico) && r.volumeHistorico.length > 1 && (
                       <Sparkline data={r.volumeHistorico.map(v => v.volume)} w={40} h={14} />
                     )}
                   </div>
@@ -712,7 +712,7 @@ function AnalyticsView({ revs }: { revs: Revendedor[] }) {
   const months = ["2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02"];
   const volEvolution = months.map(m => ({
     mes: m.slice(5),
-    volume: revs.reduce((s, r) => s + (r.volumeHistorico?.find(v => v.mes === m)?.volume || 0), 0),
+    volume: revs.reduce((s, r) => s + ((Array.isArray(r.volumeHistorico) ? r.volumeHistorico : []).find(v => v.mes === m)?.volume || 0), 0),
   }));
 
   // Chart 4: Volume by responsável
