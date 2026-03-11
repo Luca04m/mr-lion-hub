@@ -300,22 +300,36 @@ const RevendedoresPage = () => {
   const avgScore = revs.length ? Math.round(revs.reduce((s, r) => s + r.score, 0) / revs.length) : 0;
   const noContact30 = revs.filter(r => r.ultima && safeDiffDays(r.ultima) > 30).length;
 
-  const stats = [
-    { label: "Total", value: revs.length, icon: Building2, color: "hsl(var(--gold))", spark: null },
-    { label: "Ativos", value: byStatus("Ativo") + byStatus("Recorrente"), icon: Users, color: "#22C55E", spark: revs.filter(r => r.status === "Ativo").flatMap(r => (Array.isArray(r.volumeHistorico) ? r.volumeHistorico : []).map(v => v.volume)).slice(-6) },
-    { label: "Em Negociação", value: byStatus("Em Negociação"), icon: TrendingUp, color: "#F59E0B", spark: null },
-    { label: "Novos Leads", value: byStatus("Novo Lead"), icon: Plus, color: "#3B82F6", spark: null },
-    { label: "Vol. Total/Mês", value: totalVolume.toLocaleString("pt-BR"), icon: Package, color: "#22C55E", spark: null },
-    { label: "Vol. Pipeline", value: pipelineVolume.toLocaleString("pt-BR"), icon: TrendingUp, color: "#F59E0B", spark: null },
-    { label: "Score Médio", value: avgScore, icon: BarChart3, color: scoreColor(avgScore), spark: null },
-    { label: "Sem Contato +30d", value: noContact30, icon: AlertTriangle, color: noContact30 > 0 ? "#EF4444" : "#6B7280", spark: null },
+  const heroStats = [
+    {
+      label: "Revendedores", value: revs.length, icon: Building2, color: "hsl(var(--gold))",
+      sub: `${byStatus("Inativo")} inativos`,
+    },
+    {
+      label: "Ativos & Recorrentes", value: byStatus("Ativo") + byStatus("Recorrente"), icon: Users, color: "#22C55E",
+      sub: `${byStatus("Em Negociação")} em negociação`,
+    },
+    {
+      label: "Volume Mensal", value: `${totalVolume.toLocaleString("pt-BR")} un`, icon: Package, color: "#D4A843",
+      sub: `Pipeline: ${pipelineVolume.toLocaleString("pt-BR")} un`,
+    },
+    {
+      label: "Score Médio", value: avgScore, icon: BarChart3, color: scoreColor(avgScore),
+      sub: noContact30 > 0 ? `${noContact30} sem contato +30d ⚠` : "Todos monitorados ✓",
+    },
   ];
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h1 className="text-xl font-bold">CRM — Revendedores</h1>
+        <div>
+          <h1 className="text-xl font-bold">CRM</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {revs.length} revendedores · <span className="text-gold font-mono font-semibold">{totalVolume.toLocaleString("pt-BR")}</span> un/mês
+            {noContact30 > 0 && <span className="text-red-400 ml-2">· {noContact30} sem contato +30d</span>}
+          </p>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={handleExportXLSX} className="text-xs">
             <Download className="w-3.5 h-3.5 mr-1" /> Exportar
@@ -332,21 +346,18 @@ const RevendedoresPage = () => {
         </div>
       </div>
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {stats.map(s => (
-          <div key={s.label} className="bg-card rounded-lg border border-border p-3 hover:-translate-y-0.5 hover:border-gold/30 transition-all" style={{ borderLeftWidth: 3, borderLeftColor: s.color }}>
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <s.icon className="w-3.5 h-3.5 shrink-0" style={{ color: s.color }} />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">{s.label}</span>
+      {/* Hero KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {heroStats.map(s => (
+          <div key={s.label} className="bg-card rounded-xl border border-border p-4 hover:border-gold/20 transition-all group">
+            <div className="flex items-start justify-between mb-3">
+              <span className="text-xs text-muted-foreground leading-tight">{s.label}</span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${s.color}15` }}>
+                <s.icon className="w-3.5 h-3.5" style={{ color: s.color }} />
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="text-lg font-bold font-mono" style={{ color: s.color }}>{s.value}</span>
-              {s.spark && s.spark.length > 1 && <Sparkline data={s.spark} color={s.color} />}
-              {s.label === "Sem Contato +30d" && noContact30 > 0 && (
-                <Badge variant="destructive" className="text-[9px] ml-1 px-1 py-0">⚠</Badge>
-              )}
-            </div>
+            <div className="text-2xl font-bold font-mono mb-1" style={{ color: s.color }}>{s.value}</div>
+            <div className="text-[10px] text-muted-foreground">{s.sub}</div>
           </div>
         ))}
       </div>
@@ -511,17 +522,11 @@ function ListaView({ revs, selectedIds, onToggleSelect, onSelectAll, onSort, sor
                   <Checkbox checked={selectedIds.has(r.id)} onCheckedChange={() => onToggleSelect(r.id)} />
                 </td>
                 <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <Avatar name={r.nome} size={28} />
-                    <div>
-                      <span className="font-medium text-sm">{r.nome}</span>
-                      {Array.isArray(r.tags) && r.tags.length > 0 && (
-                        <div className="flex gap-1 mt-0.5 flex-wrap">
-                          {r.tags.slice(0, 3).map(t => (
-                            <span key={t} className="text-[9px] px-1.5 py-0 rounded-full bg-secondary text-muted-foreground">{t}</span>
-                          ))}
-                        </div>
-                      )}
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={r.nome} size={30} />
+                    <div className="min-w-0">
+                      <span className="font-medium text-sm block truncate">{r.nome}</span>
+                      <span className="text-[10px] text-muted-foreground block truncate">{r.cidade || "—"}</span>
                     </div>
                   </div>
                 </td>
@@ -532,9 +537,10 @@ function ListaView({ revs, selectedIds, onToggleSelect, onSelectAll, onSort, sor
                   </div>
                 </td>
                 <td className="px-3 py-2.5">
-                  <Badge variant="outline" className="text-[10px]" style={{ borderColor: `${REVENDEDOR_STATUS_COLORS[r.status]}40`, color: REVENDEDOR_STATUS_COLORS[r.status] }}>
-                    {r.status}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: REVENDEDOR_STATUS_COLORS[r.status] }} />
+                    <span className="text-xs whitespace-nowrap" style={{ color: REVENDEDOR_STATUS_COLORS[r.status] }}>{r.status}</span>
+                  </div>
                 </td>
                 <td className="px-3 py-2.5 hidden md:table-cell">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -627,13 +633,15 @@ function PipelineView({ revs, onDragEnd, onSelect, onAddToCol }: {
           const colRevs = revs.filter(r => r.status === status);
           const colVol = colRevs.reduce((s, r) => s + r.volume, 0);
           return (
-            <div key={status} className="bg-secondary/30 rounded-lg border border-border p-2">
-              <div className="flex items-center justify-between mb-2 px-1">
-                <div>
-                  <span className="text-xs font-semibold" style={{ color: REVENDEDOR_STATUS_COLORS[status] }}>{status}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1.5">({colRevs.length})</span>
+            <div key={status} className="bg-card rounded-xl border border-border p-2.5" style={{ borderTopWidth: 3, borderTopColor: REVENDEDOR_STATUS_COLORS[status] }}>
+              <div className="mb-3 px-1">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold" style={{ color: REVENDEDOR_STATUS_COLORS[status] }}>{status}</span>
+                    <span className="text-[10px] font-mono bg-secondary/60 px-1 py-0.5 rounded text-muted-foreground">{colRevs.length}</span>
+                  </div>
+                  {colVol > 0 && <span className="text-[10px] font-mono text-gold">{colVol.toLocaleString("pt-BR")} un</span>}
                 </div>
-                <span className="text-[10px] font-mono text-muted-foreground">{colVol > 0 ? `${colVol}/mês` : ""}</span>
               </div>
               <SortableContext items={colRevs.map(r => r.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2 min-h-[60px]" id={status}>
@@ -663,39 +671,53 @@ function PipelineCard({ rev, onSelect }: { rev: Revendedor; onSelect: (r: Revend
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-card rounded-lg border border-border p-2.5 cursor-grab hover:border-gold/30 transition-colors group"
+      className="bg-background rounded-lg border border-border p-3 cursor-grab hover:border-gold/30 hover:shadow-sm transition-all group"
       onClick={() => onSelect(rev)}
     >
-      <div className="flex items-start justify-between mb-1.5">
-        <span className="font-medium text-xs leading-tight">{rev.nome}</span>
-        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold border shrink-0" style={{ borderColor: scoreColor(rev.score), color: scoreColor(rev.score) }}>
-          {rev.score}
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Avatar name={rev.nome} size={24} />
+          <div className="min-w-0">
+            <span className="font-medium text-xs block truncate">{rev.nome}</span>
+            {rev.cidade && <span className="text-[9px] text-muted-foreground">{rev.cidade}</span>}
+          </div>
+        </div>
+        {rev.whatsapp && (
+          <button
+            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${rev.whatsapp}`, "_blank"); }}
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-green-500" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between text-[10px] mb-2">
+        <div className="flex items-center gap-1.5">
+          <Avatar name={rev.responsavel} size={14} />
+          <span className="text-muted-foreground">{rev.responsavel}</span>
+        </div>
+        <span className="font-mono text-gold font-semibold">{rev.volume} un</span>
+      </div>
+
+      {/* Score bar */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+          <span>Score</span>
+          <span style={{ color: scoreColor(rev.score) }}>{rev.score}</span>
+        </div>
+        <div className="h-1 rounded-full bg-secondary overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${rev.score}%`, backgroundColor: scoreColor(rev.score) }} />
         </div>
       </div>
-      <div className="flex items-center gap-1.5 mb-1">
-        <Avatar name={rev.responsavel} size={16} />
-        <span className="text-[10px] text-muted-foreground">{rev.responsavel}</span>
-      </div>
-      <div className="flex items-center justify-between text-[10px]">
-        <span className="font-mono text-gold">{rev.volume}/mês</span>
-        <div className="flex items-center gap-1">
-          {rev.canal === "WhatsApp" && <MessageCircle className="w-2.5 h-2.5 text-muted-foreground" />}
-          {rev.canal === "Instagram" && <Instagram className="w-2.5 h-2.5 text-muted-foreground" />}
-        </div>
-      </div>
+
       {rev.proximaAcao && (
-        <div className="flex items-center gap-1 mt-1.5 text-[9px] text-muted-foreground">
-          <Calendar className="w-2.5 h-2.5" />
-          {rev.proximaAcao.data ? format(parseISO(rev.proximaAcao.data), "dd/MM") : "—"}
+        <div className="flex items-center gap-1 mt-2 text-[9px] text-muted-foreground border-t border-border pt-2">
+          <Calendar className="w-2.5 h-2.5 text-gold" />
+          <span>{rev.proximaAcao.data ? format(parseISO(rev.proximaAcao.data), "dd/MM") : "—"}</span>
+          <span className="truncate opacity-75">· {rev.proximaAcao.descricao}</span>
         </div>
       )}
-      <Button
-        variant="ghost" size="sm"
-        className="h-5 w-5 p-0 absolute top-2 right-8 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={(e) => { e.stopPropagation(); if (rev.whatsapp) window.open(`https://wa.me/${rev.whatsapp}`, "_blank"); }}
-      >
-        <MessageCircle className="w-3 h-3 text-green-500" />
-      </Button>
     </div>
   );
 }
@@ -850,33 +872,53 @@ function DetailPanel({ rev, onUpdate, onClose, onDelete, userName, reload }: {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-5 pt-5 pb-4 border-b border-border">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-bold truncate">{rev.nome}</h2>
-              <Badge variant="outline" className="text-[10px] shrink-0" style={{ borderColor: `${REVENDEDOR_STATUS_COLORS[rev.status]}40`, color: REVENDEDOR_STATUS_COLORS[rev.status] }}>
-                {rev.status}
-              </Badge>
+      <div className="relative overflow-hidden border-b border-border">
+        <div className="absolute inset-0 opacity-[0.06]" style={{ background: `linear-gradient(135deg, ${REVENDEDOR_STATUS_COLORS[rev.status]}, transparent 60%)` }} />
+        <div className="relative px-5 pt-5 pb-4">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl gradient-gold flex items-center justify-center text-xl font-bold text-primary-foreground shrink-0">
+              {rev.nome.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold truncate">{rev.nome}</h2>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: REVENDEDOR_STATUS_COLORS[rev.status] }} />
+                  <span className="text-xs" style={{ color: REVENDEDOR_STATUS_COLORS[rev.status] }}>{rev.status}</span>
+                </div>
+                {rev.cidade && <span className="text-xs text-muted-foreground">· {rev.cidade}</span>}
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-2xl font-bold font-mono leading-none" style={{ color: scoreColor(rev.score) }}>{rev.score}</div>
+              <div className="text-[9px] text-muted-foreground mb-1.5">score</div>
+              <div className="w-12 h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${rev.score}%`, backgroundColor: scoreColor(rev.score) }} />
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0 ml-2">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2" style={{ borderColor: scoreColor(rev.score), color: scoreColor(rev.score) }}>
-              {rev.score}
-            </div>
+
+          {/* Contact CTAs */}
+          <div className="flex gap-2">
+            {rev.whatsapp && (
+              <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 bg-green-500/10 border border-green-500/25 text-green-500 hover:bg-green-500/20"
+                onClick={() => window.open(`https://wa.me/${rev.whatsapp}`, "_blank")}>
+                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+              </Button>
+            )}
+            {rev.instagram && (
+              <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 bg-purple-500/10 border border-purple-500/25 text-purple-400 hover:bg-purple-500/20"
+                onClick={() => window.open(`https://instagram.com/${rev.instagram.replace("@", "")}`, "_blank")}>
+                <Instagram className="w-3.5 h-3.5" /> Instagram
+              </Button>
+            )}
+            {rev.email && (
+              <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20"
+                onClick={() => window.open(`mailto:${rev.email}`)}>
+                <Mail className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </div>
-        </div>
-        <div className="flex gap-2 mt-2">
-          {rev.whatsapp && (
-            <Button variant="outline" size="sm" className="h-7 text-[11px] border-green-800 text-green-500" onClick={() => window.open(`https://wa.me/${rev.whatsapp}`, "_blank")}>
-              <MessageCircle className="w-3 h-3 mr-1" /> WhatsApp
-            </Button>
-          )}
-          {rev.instagram && (
-            <Button variant="outline" size="sm" className="h-7 text-[11px] border-purple-800 text-purple-400" onClick={() => window.open(`https://instagram.com/${rev.instagram.replace("@", "")}`, "_blank")}>
-              <Instagram className="w-3 h-3 mr-1" /> Instagram
-            </Button>
-          )}
         </div>
       </div>
 
@@ -937,13 +979,18 @@ function OverviewTab({ rev, onUpdate, reload, userName }: { rev: Revendedor; onU
   return (
     <>
       {/* Info grid */}
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div><span className="text-[10px] uppercase text-muted-foreground block">Responsável</span>
-          <div className="flex items-center gap-1.5 mt-0.5"><Avatar name={rev.responsavel} size={20} />{rev.responsavel}</div>
-        </div>
-        <div><span className="text-[10px] uppercase text-muted-foreground block">Canal</span>{rev.canal}</div>
-        <div><span className="text-[10px] uppercase text-muted-foreground block">Cidade</span>{rev.cidade}</div>
-        <div><span className="text-[10px] uppercase text-muted-foreground block">Volume/mês</span><span className="font-mono text-gold text-lg">{rev.volume}</span></div>
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { label: "Responsável", content: <div className="flex items-center gap-1.5"><Avatar name={rev.responsavel} size={18} /><span className="text-sm font-medium">{rev.responsavel}</span></div> },
+          { label: "Canal", content: <span className="text-sm font-medium">{rev.canal}</span> },
+          { label: "Cidade", content: <span className="text-sm font-medium">{rev.cidade || "—"}</span> },
+          { label: "Volume/mês", content: <span className="text-xl font-bold font-mono text-gold">{rev.volume} <span className="text-xs text-muted-foreground font-normal">un</span></span> },
+        ].map(item => (
+          <div key={item.label} className="bg-secondary/30 rounded-lg p-2.5">
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground block mb-1">{item.label}</span>
+            {item.content}
+          </div>
+        ))}
       </div>
 
       {/* Tags */}

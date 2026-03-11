@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, CheckSquare, FileText, Building2, Megaphone,
+  LayoutDashboard, CheckSquare, Building2, CalendarDays, Zap,
   LogOut, Menu, X, Search
 } from "lucide-react";
 import { getUser, clearUser, getOnlineUsers, updatePresence, getTasks, initRealtime, subscribe } from "@/lib/store";
@@ -14,16 +14,16 @@ import { CommandPalette } from "@/components/CommandPalette";
 const NAV_ITEMS = [
   { to: "/overview", icon: LayoutDashboard, label: "Visão Geral" },
   { to: "/tasks", icon: CheckSquare, label: "Tarefas", badge: true },
-  { to: "/meetings", icon: FileText, label: "Reuniões" },
-  { to: "/content", icon: Megaphone, label: "Conteúdo" },
+  { to: "/calendar", icon: CalendarDays, label: "Calendário" },
+  { to: "/campaigns", icon: Zap, label: "Campanhas" },
   { to: "/revendedores", icon: Building2, label: "CRM" },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
   "/overview": "Visão Geral",
   "/tasks": "Tarefas",
-  "/meetings": "Reuniões",
-  "/content": "Cronograma de Conteúdo",
+  "/calendar": "Calendário",
+  "/campaigns": "Campanhas",
   "/revendedores": "CRM",
 };
 

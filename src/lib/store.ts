@@ -1,4 +1,4 @@
-import { Task, Activity, Meeting, Revendedor, BusinessKPIs, APP_PASSWORD, ROLES_KEY, RevendedorCanal, RevendedorStatus, ProximaAcao, Interacao, VolumeHistorico, ContentPost } from "./types";
+import { Task, Activity, Meeting, Revendedor, BusinessKPIs, APP_PASSWORD, ROLES_KEY, RevendedorCanal, RevendedorStatus, ProximaAcao, Interacao, VolumeHistorico, ContentPost, Campaign, CampaignAd, CampaignVideo, CampaignCopy, ScriptTake } from "./types";
 import { supabase, isSupabaseEnabled } from "./supabase";
 
 // ─── LocalStorage Keys (used as local cache) ───
@@ -65,11 +65,12 @@ function taskToDb(t: Task): Record<string, unknown> {
     attachments: t.attachments || [],
     created_at: t.createdAt,
     updated_at: t.updatedAt,
+    campanha_id: t.campanha_id ?? null,
   };
 }
 
 function dbToTask(row: Record<string, unknown>): Task {
-  return {
+  const t: Task = {
     id: row.id as number,
     title: row.title as string,
     detail: row.detail as string,
@@ -88,6 +89,8 @@ function dbToTask(row: Record<string, unknown>): Task {
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
+  if (row.campanha_id != null) t.campanha_id = row.campanha_id as number;
+  return t;
 }
 
 function meetingToDb(m: Meeting): Record<string, unknown> {
@@ -267,6 +270,22 @@ const SEED_TASKS: Task[] = [
   { id: 30029, title: "Reunião individual com Luca", detail: "", responsible: ["Pedro"], priority: "alta", area: "Comercial", status: "concluida", dependencies: [], decision: null, notes: "", dueDate: null, createdBy: "Pedro", isOriginal: true, createdAt: now(), updatedAt: now() },
   { id: 30030, title: "Mandar ideias de sabores RTD para João por escrito", detail: "", responsible: ["Pedro"], priority: "media", area: "Produto", status: "pendente", dependencies: [], decision: null, notes: "", dueDate: null, createdBy: "Pedro", isOriginal: true, createdAt: now(), updatedAt: now() },
   { id: 30060, title: "Mensagem padrão de pré-cadastro PJ", detail: "", responsible: ["Pedro"], priority: "alta", area: "Comercial", status: "concluida", dependencies: [], decision: null, notes: "", dueDate: null, createdBy: "Pedro", isOriginal: true, createdAt: now(), updatedAt: now() },
+  // ─── Campanha: Dia do Consumidor — Mr. Lion Honey (id: 60001) ───
+  { id: 60101, title: "Revisão Final de Copies — Todos os Canais", detail: "Revisar e aprovar todas as copies da campanha: email, Instagram, Tráfego Pago. Garantir que o enquadramento seja 'celebração/recompensa' e nunca 'desconto'.", responsible: ["Luca"], priority: "alta", area: "Marketing", status: "pendente", dependencies: [], decision: null, notes: "T-48h · Copies devem estar prontas antes de qualquer criativo ou roteiro.", dueDate: "2026-03-11", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60102, title: "Criação dos Roteiros para Gravação — 3 Reels MD Chefe", detail: "Criar os 3 roteiros de Reels para gravação com MD Chefe com base nos roteiros já definidos (Vídeo 1: 13/03, Vídeo 2: 14/03, Vídeo 3: 15/03). Adaptar para formato de gravação presencial.", responsible: ["Guilherme"], priority: "alta", area: "Conteúdo", status: "pendente", dependencies: [60101], decision: null, notes: "T-48h · Depende das copies aprovadas.", dueDate: "2026-03-11", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60103, title: "Revisão dos Roteiros — MD Chefe", detail: "Revisar os 3 roteiros criados por Guilherme antes de apresentar para aprovação. Garantir que o tom está alinhado com a campanha e que o MD consegue executar sem dificuldades.", responsible: ["Luca"], priority: "alta", area: "Conteúdo", status: "pendente", dependencies: [60102], decision: null, notes: "T-48h · Após revisão vai para aprovação.", dueDate: "2026-03-11", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60104, title: "Aprovação dos Roteiros — MD Chefe", detail: "Aprovação formal dos 3 roteiros de Reels por Luhan, João e MD Chefe. Qualquer ajuste deve ser resolvido neste momento antes da gravação.", responsible: ["Luhan", "João", "MD Chefe"], priority: "alta", area: "Conteúdo", status: "pendente", dependencies: [60103], decision: null, notes: "T-48h · GATE — sem aprovação aqui não há gravação.", dueDate: "2026-03-11", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60105, title: "Criação de 7 Criativos Estáticos + 1 Banner de Site", detail: "Criar 7 criativos estáticos para Instagram Feed e Tráfego Pago + 1 banner para o site/landing page. Todos os materiais devem usar as copies aprovadas e estar alinhados com o branding Mr. Lion.", responsible: ["Guilherme"], priority: "alta", area: "Marketing", status: "pendente", dependencies: [60101], decision: null, notes: "T-48h · Criar em paralelo com os roteiros.", dueDate: "2026-03-11", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60106, title: "Revisão dos Criativos Estáticos + Banner", detail: "Revisar todos os 8 materiais gráficos (7 criativos + 1 banner): alinhamento visual, branding, texto sem erros, hierarquia visual, CTA claro e preço R$99,90 correto.", responsible: ["Luca"], priority: "alta", area: "Marketing", status: "pendente", dependencies: [60105], decision: null, notes: "T-48h · Após revisão vai para aprovação final.", dueDate: "2026-03-11", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60107, title: "[CRÍTICO] Aprovação Final dos Criativos Estáticos + Banner", detail: "Aprovação final de todos os criativos estáticos e banner por Luhan, João e MD. Este é um gate crítico — nenhum material vai ao ar sem aprovação formal aqui.", responsible: ["Luhan", "João", "MD Chefe"], priority: "alta", area: "Marketing", status: "pendente", dependencies: [60106], decision: null, notes: "T-24h · CRÍTICO — gate de aprovação de todos os materiais gráficos.", dueDate: "2026-03-12", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60108, title: "[CRÍTICO] Gravação dos 3 Reels com MD Chefe", detail: "Gravar os 3 Reels com MD Chefe seguindo os roteiros aprovados. Reels dos dias 13, 14 e 15/03. Garantir iluminação, enquadramento e qualidade adequados. MD deve segurar a garrafa conforme indicado em cada roteiro.", responsible: ["Luhan", "MD Chefe"], priority: "alta", area: "Conteúdo", status: "pendente", dependencies: [60104], decision: null, notes: "T-24h · CRÍTICO — necessário para toda a campanha de Reels.", dueDate: "2026-03-12", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60109, title: "[CRÍTICO] Edição dos 3 Reels — Áudio, Legendas, Trilha, Branding", detail: "Editar os 3 Reels gravados: corte dinâmico, adicionar legendas, trilha sonora alinhada ao tom, logo/branding Mr. Lion, insert dos textos na tela conforme roteiros (ex: 'SEMANA DO CONSUMIDOR · R$99,90 · GARANTA O SEU').", responsible: ["Guilherme", "Luca"], priority: "alta", area: "Conteúdo", status: "pendente", dependencies: [60108], decision: null, notes: "T-24h · CRÍTICO — cada Reel deve estar pronto para publicação no dia.", dueDate: "2026-03-12", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60110, title: "[CRÍTICO] Aprovação Final dos Reels", detail: "Aprovação final dos 3 Reels editados por Luhan, João e MD Chefe. Verificar: tom correto, branding, texto na tela, áudio sincronizado, ausência de erros. Gate final antes do agendamento.", responsible: ["Luhan", "João", "MD Chefe"], priority: "alta", area: "Conteúdo", status: "pendente", dependencies: [60109], decision: null, notes: "T-24h · CRÍTICO — nenhum Reel vai ao ar sem aprovação.", dueDate: "2026-03-12", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60111, title: "[CRÍTICO] Configuração da Landing Page — Oferta R$99,90", detail: "Configurar a landing page com: preço R$99,90 visível e correto, banner aprovado, copies aprovadas, botão de compra funcionando, checkout correto, página carregando sem erros. URL deve ser testada do início ao fim.", responsible: ["Luca"], priority: "alta", area: "Operacional", status: "pendente", dependencies: [60107], decision: null, notes: "T-24h · CRÍTICO — toda campanha aponta para esta página.", dueDate: "2026-03-12", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60112, title: "[CRÍTICO] Configuração de UTMs de Rastreamento", detail: "Configurar todos os parâmetros UTM para rastreamento das fontes: utm_source (instagram, google, email), utm_medium (social, cpc, email), utm_campaign (dia-consumidor-honey-2026), utm_content (por criativo).", responsible: ["Guilherme"], priority: "alta", area: "Operacional", status: "pendente", dependencies: [60111], decision: null, notes: "T-24h · CRÍTICO — sem UTMs não há análise de resultado.", dueDate: "2026-03-12", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60113, title: "[CRÍTICO] Setup de Campanhas de Tráfego Pago — Meta Ads + Google Ads", detail: "Configurar e subir as campanhas de tráfego pago: Meta Ads (públicos validados, criativos aprovados, orçamento definido, pixel ativo) + Google Ads (palavras-chave, remarketing configurado). Todas apontando para landing page com UTMs.", responsible: ["Guilherme"], priority: "alta", area: "Marketing", status: "pendente", dependencies: [60107, 60112], decision: null, notes: "T-24h · CRÍTICO — principal canal de aquisição da campanha.", dueDate: "2026-03-12", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60114, title: "Agendamento de Posts no Instagram (Feed + Reels Orgânicos)", detail: "Agendar todos os posts orgânicos no Instagram: 3 Reels (13, 14 e 15/03) + posts de Feed com os criativos estáticos. Usar as copies aprovadas como legendas. Confirmar horários de publicação alinhados com o cronograma.", responsible: ["Guilherme"], priority: "alta", area: "Conteúdo", status: "pendente", dependencies: [60107, 60110], decision: null, notes: "T-24h · Fechar agendamento antes do dia 13/03.", dueDate: "2026-03-12", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
+  { id: 60115, title: "[CRÍTICO] Teste Final de Ponta a Ponta — Go Live Check", detail: "Teste completo do fluxo: clique no anúncio → landing page carrega → preço R$99,90 correto → botão de compra funciona → checkout abre → UTMs registrando → pixel disparando. Validar em mobile e desktop. Confirmar checklist de go live completo.", responsible: ["Guilherme", "Luca"], priority: "alta", area: "Operacional", status: "pendente", dependencies: [60113, 60114, 60111], decision: null, notes: "T-0h · CRÍTICO — go/no-go final. Sem aprovação aqui a campanha não vai ao ar.", dueDate: "2026-03-13", createdBy: "Luca", isOriginal: true, createdAt: now(), updatedAt: now(), campanha_id: 60001 },
 ];
 
 function genVolHist(base: number): VolumeHistorico[] {
@@ -386,10 +405,22 @@ let _initialized = false;
 let _syncInProgress = false;
 
 function initLocalStorage() {
-  if (!localStorage.getItem(TASKS_KEY)) {
+  if (!localStorage.getItem(TASKS_KEY) || localStorage.getItem("tasks_reset_v3") !== "1") {
     localStorage.setItem(TASKS_KEY, JSON.stringify(SEED_TASKS));
     localStorage.setItem(ACTIVITY_KEY, JSON.stringify([]));
-    localStorage.setItem(NEXT_ID_KEY, "31000");
+    localStorage.setItem(NEXT_ID_KEY, "61000");
+    localStorage.setItem("tasks_reset_v3", "1");
+  } else {
+    // Migration: inject campaign tasks if missing (handles stale localStorage from earlier seeds)
+    const existing: Task[] = JSON.parse(localStorage.getItem(TASKS_KEY) || "[]");
+    const hasCampaignTasks = existing.some(t => t.campanha_id === 60001);
+    if (!hasCampaignTasks) {
+      const campaignTasks = SEED_TASKS.filter(t => t.campanha_id === 60001);
+      localStorage.setItem(TASKS_KEY, JSON.stringify([...existing, ...campaignTasks]));
+      if (parseInt(localStorage.getItem(NEXT_ID_KEY) || "0") < 61000) {
+        localStorage.setItem(NEXT_ID_KEY, "61000");
+      }
+    }
   }
   if (!localStorage.getItem(MEETINGS_KEY) || localStorage.getItem("meetings_reset_v3") !== "1") {
     localStorage.setItem(MEETINGS_KEY, JSON.stringify(SEED_MEETINGS));
@@ -426,8 +457,29 @@ async function syncFromSupabase() {
     ]);
 
     if (tasksRes.data && tasksRes.data.length > 0) {
-      const tasks = tasksRes.data.map(dbToTask);
-      localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+      const remoteTasks = tasksRes.data.map(dbToTask);
+      // Preserve local campaign tasks whose campanha_id didn't survive the DB round-trip
+      // (tasks that exist in remote but lost their campanha_id, or purely local campaign tasks)
+      const currentLocal: Task[] = JSON.parse(localStorage.getItem(TASKS_KEY) || "[]");
+      const mergedMap = new Map<number, Task>();
+      remoteTasks.forEach(t => mergedMap.set(t.id, t));
+      // Re-apply campanha_id from current local state (survives even if DB column is missing)
+      currentLocal.forEach(t => {
+        if (t.campanha_id != null) {
+          const existing = mergedMap.get(t.id);
+          if (existing) {
+            mergedMap.set(t.id, { ...existing, campanha_id: t.campanha_id });
+          } else {
+            // Local-only campaign task not in Supabase yet — keep it
+            mergedMap.set(t.id, t);
+          }
+        }
+      });
+      // Also ensure all SEED campaign tasks are present (for fresh localStorage)
+      SEED_TASKS.filter(s => s.campanha_id != null).forEach(s => {
+        if (!mergedMap.has(s.id)) mergedMap.set(s.id, s);
+      });
+      localStorage.setItem(TASKS_KEY, JSON.stringify(Array.from(mergedMap.values())));
     }
     if (activitiesRes.data && activitiesRes.data.length > 0) {
       const activities = activitiesRes.data.map(dbToActivity);
@@ -466,7 +518,7 @@ async function seedSupabase() {
     // Check if tasks table has data
     const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
     if (count === 0 || count === null) {
-      // Seed tasks
+      // Seed tasks (includes campaign tasks with campanha_id)
       await supabase.from('tasks').upsert(SEED_TASKS.map(taskToDb));
       // Seed meetings
       await supabase.from('meetings').upsert(SEED_MEETINGS.map(meetingToDb));
@@ -852,6 +904,213 @@ export async function uploadFile(file: File, taskId: number): Promise<{ url: str
 
   const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
   return { url: urlData.publicUrl, name: file.name };
+}
+
+// ─── Campaigns ───
+
+const CAMPAIGNS_KEY = "mrlion_campaigns";
+
+// Key to pass cross-tab campaign filter navigation
+export const CAMPAIGN_CONTENT_FILTER_KEY = "mrlion_nav_campaign_filter";
+
+const SEED_CAMPAIGNS: Campaign[] = [
+  {
+    id: 60001,
+    title: "Dia do Consumidor — Mr. Lion Honey",
+    concept: "Recompensa Real",
+    tagline: "O Paladar da Realeza ao Seu Alcance",
+    product: "Mr. Lion Honey",
+    status: "ativa",
+    startDate: "2026-03-13",
+    endDate: "2026-03-15",
+    channels: ["Email", "Instagram Feed", "Reels", "Tráfego Pago"],
+    briefing: "Mr. Lion Honey por R$99,90 representa redução de ~35% do preço regular R$152,00. Enquadramento obrigatório: celebração e exclusividade — NUNCA desconto. A oferta é um gesto de reconhecimento ao consumidor, não liquidação. Tom: Elegante, Afirmativo e Inspirador. Narrativa central: 'Recompensa Real' — o ato de compra como coroação pessoal. Risco principal: banalização da marca e ancoragem de preço baixo. Mitigação: limitação temporal rígida (3 dias), narrativa de raridade, foco no valor não no preço.",
+    phases: [
+      { name: "Aquecimento", dateStart: "2026-03-13", dateEnd: "2026-03-13", description: "Awareness & Desejo — Posicionamento da oferta como recompensa real. Lançamento do primeiro Reels com MD Chefe e ativação de tráfego para público de interesse." },
+      { name: "Reforço", dateStart: "2026-03-14", dateEnd: "2026-03-14", description: "Prova Social & Valor — Foco em reduzir objeções e mostrar exclusividade do produto. Ativação de criativos estáticos focados em detalhes e lifestyle." },
+      { name: "Urgência", dateStart: "2026-03-15", dateEnd: "2026-03-15", description: "Escassez & Fechamento — Intensificação de remarketing e e-mail marketing. Mensagem de 'última chamada para sua recompensa'. Foco total em conversão imediata." },
+    ],
+    angles: [
+      { id: 1, title: "Sua Recompensa Anual", concept: "No Dia do Consumidor, você não ganha um desconto, você recebe sua recompensa real.", trigger: "Recompensa, Exclusividade", audience: "Consumidores que buscam validação e status", bestChannel: "Email, Instagram Feed", risk: "Baixo" },
+      { id: 2, title: "O Preço do Acesso", concept: "R$99,90 não é o preço do produto, é o preço do seu acesso ao universo de luxo Mr. Lion.", trigger: "Exclusividade, Oportunidade", audience: "Aspirantes à marca, novos consumidores", bestChannel: "Tráfego Pago, Reels", risk: "Médio" },
+      { id: 3, title: "A Decisão Inteligente do Rei", concept: "Reis e rainhas tomam decisões inteligentes. Aproveitar esta condição é uma delas.", trigger: "Racionalização, Status", audience: "Público analítico que gosta de justificar compras de luxo", bestChannel: "Email, Feed estático", risk: "Baixo" },
+      { id: 4, title: "Seu Trono por R$99,90", concept: "Uma forma poética de dizer que o poder e a realeza estão ao seu alcance por um valor especial.", trigger: "Aspiração, Status", audience: "Público jovem, sonhador, influenciado por narrativas de sucesso", bestChannel: "Reels (MD Chefe)", risk: "Médio" },
+      { id: 5, title: "Condição Exclusiva de Celebração", concept: "Não é promoção, é uma condição de celebração. Válida apenas durante o evento de 3 dias.", trigger: "Urgência, Exclusividade", audience: "Todos os públicos, especialmente sensíveis à escassez", bestChannel: "Instagram, Tráfego Pago, Email", risk: "Baixo" },
+      { id: 6, title: "O Sabor que Você Merece", concept: "Você trabalhou, conquistou. Agora celebre com o sabor à sua altura.", trigger: "Merecimento, Recompensa", audience: "Profissionais, empreendedores, pessoas que celebram conquistas", bestChannel: "Instagram Feed, Email", risk: "Baixo" },
+      { id: 7, title: "A Oportunidade que Não se Repete", concept: "Condição rara, específica para a data, não voltará em breve.", trigger: "Escassez, Urgência", audience: "Caçadores de oportunidade, consumidores indecisos", bestChannel: "Reels, Tráfego Pago (remarketing)", risk: "Médio" },
+    ],
+    ads: [
+      {
+        id: 1,
+        title: "Anúncio 1 — Awareness",
+        duration: "até 15s",
+        spoken: "Na semana do consumidor, o Mr. Lion Honey entrou em condição especial.\nPor tempo limitado, você garante o seu por noventa e nove e noventa.\nClique e aproveite.",
+        screenText: "Mr. Lion Honey\nR$99,90\nCondição especial\nCompre agora",
+        captacao: "MD em pé + garrafa na mão.",
+      },
+      {
+        id: 2,
+        title: "Anúncio 2 — Apelo Emocional",
+        duration: "até 15s",
+        objective: "Conversão com apelo emocional",
+        spoken: "Nem todo dia pede qualquer garrafa.\nHoje pede Mr. Lion Honey.\nSua recompensa real, por noventa e nove e noventa.\nGaranta agora.",
+        screenText: "SUA RECOMPENSA REAL\nR$99,90",
+        captacao: "Começa com close na garrafa, corta pro MD olhando pra câmera.",
+      },
+      {
+        id: 3,
+        title: "Anúncio 3 — Remarketing / Fechamento",
+        duration: "até 15s",
+        objective: "Remarketing / fechamento",
+        spoken: "Mr. Lion Honey por noventa e nove e noventa, só na Semana do Consumidor.\nSe você queria o seu, a hora é agora.",
+        screenText: "SEMANA DO CONSUMIDOR CASA MR. LION\nR$99,90\nGARANTA O SEU",
+        captacao: "MD segurando a garrafa, fala rápida, direta, sem pausas longas.",
+      },
+    ],
+    videos: [
+      {
+        id: 1,
+        title: "Vídeo 1 — Dia 13/03 · Aquecimento",
+        date: "2026-03-13",
+        takes: [
+          { take: 1, description: "MD com a garrafa na mão, olhando pra câmera", spoken: "Tem dia que não é sobre comprar qualquer coisa. É sobre se dar o que faz sentido." },
+          { take: 2, description: "Close da garrafa / MD girando a garrafa na mão", spoken: "Hoje começa a campanha de Dia do Consumidor da Mr. Lion." },
+          { take: 3, description: "MD serve no copo", spoken: "E o Honey entrou numa condição especial." },
+          { take: 4, description: "Close no rótulo / garrafa e copo", spoken: "Mr. Lion Honey por noventa e nove e noventa, por tempo limitado." },
+          { take: 5, description: "MD encara a câmera", spoken: "Se era pra escolher o momento, ele começou agora. Garanta sua recompensa." },
+        ],
+      },
+      {
+        id: 2,
+        title: "Vídeo 2 — Dia 14/03 · Reforço",
+        date: "2026-03-14",
+        takes: [
+          { take: 1, description: "MD em quadro, segurando a garrafa", spoken: "Se você viu a campanha ontem e ficou pensando, vou acabar com sua dúvida." },
+          { take: 2, description: "Close da garrafa / MD aponta pro rótulo", spoken: "O Mr. Lion Honey não chama atenção só pela garrafa. Ele entrega experiência." },
+          { take: 3, description: "MD serve no copo", spoken: "É um sabor marcante, fácil de apreciar e com identidade. É o tipo de bebida que realmente faz o momento subir de nível." },
+          { take: 4, description: "MD olha pra câmera", spoken: "E é por isso que essa condição especial faz sentido." },
+          { take: 5, description: "Close no produto", spoken: "Só até amanhã você pode garantir o Mr. Lion Honey por noventa e nove e noventa." },
+          { take: 6, description: "Fechamento", spoken: "Beba Mr. Lion." },
+        ],
+      },
+      {
+        id: 3,
+        title: "Vídeo 3 — Dia 15/03 · Urgência",
+        date: "2026-03-15",
+        takes: [
+          { take: 1, description: "MD entra falando já com energia", spoken: "Hoje é o último dia pra garantir o Mr. Lion Honey nessa condição especial." },
+          { take: 2, description: "Close rápido na garrafa", spoken: "Você consegue garantir o seu por noventa e nove e noventa." },
+          { take: 3, description: "MD aponta levemente pra câmera", spoken: "Se você acompanhou a campanha e deixou pra depois, agora é a hora." },
+          { take: 4, description: "Close no rótulo / copo servido", spoken: "Só até as vinte e três e cinquenta e nove." },
+          { take: 5, description: "Fechamento seco", spoken: "Então garante o seu agora e não deixa sua recompensa escapar." },
+        ],
+      },
+    ],
+    copy: {
+      headlines: [
+        "Mr. Lion Honey: Sua Recompensa Real no Dia do Consumidor.",
+        "Dia do Consumidor: Celebre-se com Mr. Lion Honey.",
+        "O Paladar da Realeza ao seu alcance: Mr. Lion Honey por R$99,90.",
+        "Sua Conquista Merece Mr. Lion Honey. Condição Especial.",
+        "Exclusividade Mr. Lion: Uma Recompensa que Você Merece.",
+        "Mr. Lion Honey: O Sabor da Sua Realeza. Oferta Limitada.",
+        "Não é Desconto, é Reconhecimento: Mr. Lion Honey para Você.",
+        "Eleve Seus Momentos: Mr. Lion Honey em Condição Única.",
+        "Mr. Lion Honey: Seu Acesso ao Extraordinário por R$99,90.",
+        "Celebre a Vida com Mr. Lion Honey. Sua Recompensa Espera.",
+        "O Brinde Perfeito para Suas Conquistas: Mr. Lion Honey.",
+        "Seu Momento de Luxo Acessível: Mr. Lion Honey.",
+        "Dia do Consumidor Mr. Lion: Uma Oportunidade para os Eleitos.",
+        "Desperte o Rei em Você com Mr. Lion Honey. Condição Especial.",
+        "Mr. Lion Honey: A Experiência Premium que Você Merece.",
+      ],
+      impactPhrases: [
+        "Seu trono te espera.",
+        "Realeza acessível.",
+        "Celebre-se.",
+        "Sabor de conquista.",
+        "O seu merecimento.",
+        "Exclusividade em cada gole.",
+        "Oportunidade rara.",
+        "Não é desconto, é recompensa.",
+        "Seu momento Mr. Lion.",
+        "Eleve seu paladar.",
+        "Para poucos. Para você.",
+        "A experiência que te define.",
+        "Mais que uma bebida, uma declaração.",
+        "Faça valer seu Dia do Consumidor.",
+        "Mr. Lion Honey: a escolha dos reis.",
+      ],
+      ctas: [
+        "GARANTA SUA RECOMPENSA AGORA.",
+        "ELEVE SEU PALADAR.",
+        "COMPRE AGORA: Mr. Lion HONEY.",
+        "DESBLOQUEIE SUA EXPERIÊNCIA PREMIUM.",
+        "APROVEITE A CONDIÇÃO ESPECIAL.",
+        "SEU MOMENTO DE REALEZA TE ESPERA.",
+        "CLIQUE E CELEBRE.",
+        "NÃO PERCA ESTA OPORTUNIDADE ÚNICA.",
+        "QUERO MINHA RECOMPENSA.",
+        "ÚLTIMA CHANCE: COMPRE JÁ.",
+        "VIVA A EXPERIÊNCIA Mr. Lion.",
+        "FAÇA SEU PEDIDO AGORA.",
+        "CELEBRE COM Mr. Lion.",
+      ],
+      urgencyPhrases: [
+        "Condição válida apenas enquanto durarem os estoques.",
+        "Seu momento de realeza tem prazo. Não perca.",
+        "Última chance para garantir sua recompensa.",
+        "Esta oportunidade não se repetirá tão cedo.",
+        "A contagem regressiva para a sua experiência premium começou.",
+        "Só até 15/03 às 23:59.",
+      ],
+    },
+    notes: "Campanha 3 dias. Preço especial R$99,90 vs regular R$152,00 (35% off). Enquadrar como celebração, nunca como desconto. Canais prioritários: Instagram (Feed, Reels), Tráfego Pago (Meta Ads), E-mail Marketing.",
+    checklist: `## 🟠 T-48h (11/03)\n- [ ] Revisão Final de Copies — Todos os Canais _(Luca)_\n- [ ] Criação dos Roteiros para gravação — 3 Reels MD Chefe _(Guilherme)_\n- [ ] Revisão dos Roteiros — MD Chefe _(Luca)_\n- [ ] Aprovação dos Roteiros _(Luhan, João, MD)_\n- [ ] Criação de 7 Criativos Estáticos + 1 Banner de Site _(Guilherme)_\n- [ ] Revisão dos Criativos Estáticos + Banner _(Luca)_\n\n## 🟡 T-24h (12/03) — CRÍTICO\n- [ ] **Aprovação Final dos Criativos + Banner** _(Luhan, João, MD)_\n- [ ] **Gravação dos 3 Reels com MD Chefe** _(Luhan, MD)_\n- [ ] **Edição dos 3 Reels — áudio, legendas, trilha, branding** _(Guilherme, Luca)_\n- [ ] **Aprovação Final dos Reels** _(Luhan, João, MD)_\n- [ ] **Configuração da Landing Page com oferta R$99,90** _(Luca)_\n- [ ] **Configuração de UTMs de rastreamento** _(Guilherme)_\n- [ ] **Setup Meta Ads + Google Ads** _(Guilherme)_\n- [ ] Agendamento de Posts Instagram (Feed + Reels orgânicos) _(Guilherme)_\n\n## 🔴 T-0h (13/03) — Go Live\n- [ ] **Teste Final de Ponta a Ponta — clique → landing → compra** _(Guilherme, Luca)_\n\n## ✅ Checklist Final de Go Live\n- [ ] Preço R$99,90 confere na Landing Page\n- [ ] Landing Page no ar e carregando corretamente\n- [ ] Botão de compra funcionando e direcionando ao checkout\n- [ ] Links de anúncios e posts conferem com a Landing Page\n- [ ] Campanhas de Tráfego Pago ativas e veiculando\n- [ ] Posts de Social Media publicados / agendados\n- [ ] Públicos de tráfego pago validados\n- [ ] Equipe de atendimento ciente e pronta\n- [ ] Estoque de Mr. Lion Honey confirmado\n- [ ] Remarketing configurado e ativo\n- [ ] Criativos corretos e sem erros visuais\n- [ ] Textos (copies) sem erros de português\n- [ ] Cronograma de veiculação alinhado com todas as áreas`,
+    createdAt: now(),
+    updatedAt: now(),
+  },
+];
+
+function initCampaigns() {
+  if (!localStorage.getItem(CAMPAIGNS_KEY) || localStorage.getItem("campaigns_reset_v3") !== "1") {
+    localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(SEED_CAMPAIGNS));
+    localStorage.setItem("campaigns_reset_v3", "1");
+  }
+}
+
+export function getCampaigns(): Campaign[] {
+  initIfNeeded();
+  initCampaigns();
+  return JSON.parse(localStorage.getItem(CAMPAIGNS_KEY) || "[]");
+}
+
+export function createCampaign(data: Omit<Campaign, "id" | "createdAt" | "updatedAt">): Campaign {
+  const campaigns = getCampaigns();
+  const campaign: Campaign = { ...data, id: getNextIdSync(), createdAt: now(), updatedAt: now() };
+  campaigns.push(campaign);
+  localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(campaigns));
+  notifyListeners();
+  return campaign;
+}
+
+export function updateCampaign(id: number, updates: Partial<Campaign>): Campaign | undefined {
+  const campaigns = getCampaigns();
+  const idx = campaigns.findIndex(c => c.id === id);
+  if (idx === -1) return undefined;
+  campaigns[idx] = { ...campaigns[idx], ...updates, updatedAt: now() };
+  localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(campaigns));
+  notifyListeners();
+  return campaigns[idx];
+}
+
+export function deleteCampaign(id: number): boolean {
+  const campaigns = getCampaigns();
+  const filtered = campaigns.filter(c => c.id !== id);
+  if (filtered.length === campaigns.length) return false;
+  localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(filtered));
+  notifyListeners();
+  return true;
 }
 
 // ─── Content Posts ───

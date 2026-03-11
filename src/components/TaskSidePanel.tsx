@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, X as XIcon, Paperclip, FileText, Link2, ExternalLink, Plus } from "lucide-react";
+import { Trash2, X as XIcon, Paperclip, FileText, Link2, ExternalLink, Plus, Zap } from "lucide-react";
 import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment } from "@/lib/types";
-import { updateTask, deleteTask, logActivity, getUser, getActivities, uploadFile } from "@/lib/store";
+import { updateTask, deleteTask, logActivity, getUser, getActivities, uploadFile, getCampaigns } from "@/lib/store";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -99,6 +99,16 @@ export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
             <span className="font-mono text-sm text-gold">#{task.id}</span>
             <SheetTitle className="text-foreground flex-1">{task.title}</SheetTitle>
           </div>
+          {task.campanha_id && (() => {
+            const c = getCampaigns().find(x => x.id === task.campanha_id);
+            return c ? (
+              <div className="flex items-center gap-1.5 mt-1">
+                <Zap className="w-3 h-3 text-gold" />
+                <span className="text-xs text-gold font-medium">{c.title}</span>
+                <Badge variant="outline" className="text-[9px] border-gold/30 text-gold">{c.status === "ativa" ? "Ativa" : c.status}</Badge>
+              </div>
+            ) : null;
+          })()}
         </SheetHeader>
 
         <div className="px-6 py-4 space-y-5">

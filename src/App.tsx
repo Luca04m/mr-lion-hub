@@ -6,9 +6,10 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import OverviewPage from "./pages/OverviewPage";
 import TasksPage from "./pages/TasksPage";
-import MeetingsPage from "./pages/MeetingsPage";
 import RevendedoresPage from "./pages/RevendedoresPage";
 import ContentPage from "./pages/ContentPage";
+import CalendarPage from "./pages/CalendarPage";
+import CampaignsPage from "./pages/CampaignsPage";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "./components/layout/AppLayout";
 
@@ -28,12 +29,13 @@ const App = () => (
           <Route path="/" element={<LoginPage />} />
           <Route path="/overview" element={<ProtectedPage><OverviewPage /></ProtectedPage>} />
           <Route path="/tasks" element={<ProtectedPage><TasksPage /></ProtectedPage>} />
-          <Route path="/meetings" element={<ProtectedPage><MeetingsPage /></ProtectedPage>} />
+          <Route path="/meetings" element={<Navigate to="/calendar" replace />} />
           <Route path="/revendedores" element={<ProtectedPage><RevendedoresPage /></ProtectedPage>} />
           <Route path="/content" element={<ProtectedPage><ContentPage /></ProtectedPage>} />
+          <Route path="/campaigns" element={<ProtectedPage><CampaignsPage /></ProtectedPage>} />
           <Route path="/dashboard" element={<Navigate to="/overview" replace />} />
           <Route path="/kanban" element={<Navigate to="/tasks" replace />} />
-          <Route path="/calendar" element={<Navigate to="/tasks" replace />} />
+          <Route path="/calendar" element={<ProtectedPage><CalendarPage /></ProtectedPage>} />
           <Route path="/people" element={<Navigate to="/tasks" replace />} />
           <Route path="/areas" element={<Navigate to="/tasks" replace />} />
           <Route path="/activity" element={<Navigate to="/tasks" replace />} />

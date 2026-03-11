@@ -49,6 +49,7 @@ export interface Task {
   updatedAt: string;
   tags?: string[];
   attachments?: TaskAttachment[];
+  campanha_id?: number;
 }
 
 export interface Activity {
@@ -220,6 +221,7 @@ export interface ContentPost {
   caption: string;
   hashtags: string[];
   linkedTaskId: number | null;
+  campanha_id?: number;
   notes: string;
   createdBy: string;
   createdAt: string;
@@ -255,6 +257,98 @@ export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
   agendado: "Agendado",
   publicado: "Publicado",
 };
+
+// ─── Campaigns ───
+
+export interface Phase {
+  name: string;
+  dateStart: string;
+  dateEnd: string;
+  description: string;
+}
+
+export interface Angle {
+  id: number;
+  title: string;
+  concept: string;
+  trigger: string;
+  audience: string;
+  bestChannel: string;
+  risk: string;
+}
+
+export interface ScriptTake {
+  take: number;
+  description: string;
+  spoken: string;
+}
+
+export interface CampaignAd {
+  id: number;
+  title: string;
+  duration: string;
+  objective?: string;
+  spoken: string;
+  screenText: string;
+  captacao: string;
+}
+
+export interface CampaignVideo {
+  id: number;
+  title: string;
+  date: string;
+  takes: ScriptTake[];
+}
+
+export interface CampaignCopy {
+  headlines: string[];
+  impactPhrases: string[];
+  ctas: string[];
+  urgencyPhrases: string[];
+}
+
+export type CampaignStatus = "rascunho" | "ativa" | "pausada" | "encerrada";
+
+export interface Campaign {
+  id: number;
+  title: string;
+  concept: string;
+  tagline: string;
+  product: string;
+  status: CampaignStatus;
+  startDate: string;
+  endDate: string;
+  channels: string[];
+  phases: Phase[];
+  angles: Angle[];
+  notes: string;
+  briefing?: string;
+  checklist?: string;
+  ads?: CampaignAd[];
+  videos?: CampaignVideo[];
+  copy?: CampaignCopy;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const CAMPAIGN_STATUS_COLORS: Record<CampaignStatus, string> = {
+  rascunho: "#6B7280",
+  ativa: "#22C55E",
+  pausada: "#F59E0B",
+  encerrada: "#94A3B8",
+};
+
+export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
+  rascunho: "Rascunho",
+  ativa: "Ativa",
+  pausada: "Pausada",
+  encerrada: "Encerrada",
+};
+
+export const CAMPAIGN_CHANNELS = [
+  "Email", "Instagram Feed", "Reels", "Stories",
+  "TikTok", "YouTube", "Tráfego Pago", "WhatsApp", "SMS",
+];
 
 export const APP_PASSWORD = "Mrlion@2026";
 export const ROLES_KEY = "mrlion_roles";

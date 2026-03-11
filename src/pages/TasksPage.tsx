@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getTasks, getUser, updateTask, deleteTask, createTask, logActivity, exportTasksMarkdown, getActivities, getRole, setRole } from "@/lib/store";
+import { getTasks, getUser, updateTask, deleteTask, createTask, logActivity, exportTasksMarkdown, getActivities, getRole, setRole, getCampaigns } from "@/lib/store";
 import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment, Activity } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, X, ChevronDown, ChevronRight, Trash2, Check, Download, Pencil, Paperclip, FileText, Link2, GripVertical, ChevronLeft, Activity as ActivityIcon, ArrowRight } from "lucide-react";
+import { Plus, Search, X, ChevronDown, ChevronRight, Trash2, Check, Download, Pencil, Paperclip, FileText, Link2, GripVertical, ChevronLeft, Activity as ActivityIcon, ArrowRight, AlertCircle, Clock, CheckCircle2, User, Users, ListTodo, LayoutGrid, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -22,7 +22,7 @@ import { useRealtime } from "@/hooks/use-realtime";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCorners, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isToday, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const COLUMNS: TaskStatus[] = ["pendente", "em-andamento", "concluida", "atrasada"];
@@ -81,12 +81,19 @@ const TasksPage = () => {
   const progress = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
 
   const handleToggleComplete = (task: Task) => {
-    const newStatus: TaskStatus = task.status === "concluida" ? "pendente" : "concluida";
+    const prevStatus = task.status;
+    const newStatus: TaskStatus = prevStatus === "concluida" ? "pendente" : "concluida";
     updateTask(task.id, { status: newStatus });
-    logActivity({ taskId: task.id, taskTitle: task.title, userName, action: "status_change", oldValue: task.status, newValue: newStatus });
+    logActivity({ taskId: task.id, taskTitle: task.title, userName, action: "status_change", oldValue: prevStatus, newValue: newStatus });
     if (newStatus === "concluida") {
       confetti({ particleCount: 80, spread: 60, colors: ["#D4A843", "#F5D77A", "#22C55E", "#6366F1"], origin: { y: 0.7 } });
-      toast.success(`"${task.title}" concluída! 🎉`);
+      toast.success(`"${task.title}" concluída! 🎉`, {
+        duration: 5000,
+        action: {
+          label: "Desfazer",
+          onClick: () => { updateTask(task.id, { status: prevStatus }); reload(); },
+        },
+      });
     }
     reload();
   };
@@ -94,11 +101,18 @@ const TasksPage = () => {
   const handleStatusChange = (id: number, status: TaskStatus) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
+    const prevStatus = task.status;
     updateTask(id, { status });
-    logActivity({ taskId: id, taskTitle: task.title, userName, action: "status_change", oldValue: task.status, newValue: status });
+    logActivity({ taskId: id, taskTitle: task.title, userName, action: "status_change", oldValue: prevStatus, newValue: status });
     if (status === "concluida") {
       confetti({ particleCount: 80, spread: 60, colors: ["#D4A843", "#F5D77A", "#22C55E", "#6366F1"], origin: { y: 0.7 } });
-      toast.success(`"${task.title}" concluída! 🎉`);
+      toast.success(`"${task.title}" concluída! 🎉`, {
+        duration: 5000,
+        action: {
+          label: "Desfazer",
+          onClick: () => { updateTask(id, { status: prevStatus }); reload(); },
+        },
+      });
     } else {
       toast.info(`Status atualizado para ${STATUS_LABELS[status]}`);
     }
@@ -162,6 +176,10 @@ const TasksPage = () => {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  const lateCount = tasks.filter(t => t.status === "atrasada").length;
+  const inProgressCount = tasks.filter(t => t.status === "em-andamento").length;
+  const pendingCount = tasks.filter(t => t.status === "pendente").length;
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -170,10 +188,10 @@ const TasksPage = () => {
           <h1 className="text-xl font-bold">Tarefas</h1>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-xs text-muted-foreground">{doneCount}/{tasks.length} concluídas</span>
-            <div className="w-24 h-1.5 rounded-full bg-surface-elevated overflow-hidden">
-              <div className="h-full rounded-full gradient-gold transition-all" style={{ width: `${progress}%` }} />
+            <div className="w-28 h-2 rounded-full bg-surface-elevated overflow-hidden">
+              <div className="h-full rounded-full gradient-gold transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
-            <span className="text-xs font-mono text-gold">{progress}%</span>
+            <span className="text-xs font-mono text-gold font-semibold">{progress}%</span>
           </div>
         </div>
         <div className="flex gap-2 self-start">
@@ -191,16 +209,45 @@ const TasksPage = () => {
         </div>
       </div>
 
+      {/* Quick Stats Strip */}
+      <div className="flex gap-2 overflow-x-auto pb-0.5 -mt-1">
+        {[
+          { label: "Atrasadas", count: lateCount, color: "#EF4444", icon: AlertCircle },
+          { label: "Andamento", count: inProgressCount, color: "#3B82F6", icon: Clock },
+          { label: "Pendentes", count: pendingCount, color: "#F59E0B", icon: Clock },
+          { label: "Concluídas", count: doneCount, color: "#22C55E", icon: CheckCircle2 },
+        ].map(s => (
+          <div key={s.label} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs shrink-0 transition-all"
+            style={{ borderColor: `${s.color}30`, backgroundColor: `${s.color}08`, color: s.color }}>
+            <s.icon className="w-3 h-3" />
+            <span className="font-bold font-mono">{s.count}</span>
+            <span className="opacity-75">{s.label}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-secondary/40 h-auto gap-1 w-full overflow-x-auto flex justify-start p-1">
-          <TabsTrigger value="minhas" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Minhas</TabsTrigger>
-          <TabsTrigger value="lista" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Lista</TabsTrigger>
-          <TabsTrigger value="kanban" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Kanban</TabsTrigger>
-          <TabsTrigger value="pessoa" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Pessoa</TabsTrigger>
-          <TabsTrigger value="area" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Área</TabsTrigger>
-          <TabsTrigger value="calendario" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Calendário</TabsTrigger>
-          <TabsTrigger value="atividade" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap">Atividade</TabsTrigger>
+        <TabsList className="bg-secondary/40 h-auto gap-0.5 w-full overflow-x-auto flex justify-start p-1">
+          <TabsTrigger value="minhas" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
+            <User className="w-3 h-3 shrink-0" />Minhas
+            {lateCount > 0 && <span className="ml-0.5 text-[9px] font-mono font-bold bg-red-500/20 text-red-400 px-1 py-0.5 rounded-full">{lateCount}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="lista" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
+            <ListTodo className="w-3 h-3 shrink-0" />Lista
+          </TabsTrigger>
+          <TabsTrigger value="kanban" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
+            <LayoutGrid className="w-3 h-3 shrink-0" />Kanban
+          </TabsTrigger>
+          <TabsTrigger value="pessoa" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
+            <Users className="w-3 h-3 shrink-0" />Pessoa
+          </TabsTrigger>
+          <TabsTrigger value="area" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
+            <Tag className="w-3 h-3 shrink-0" />Área
+          </TabsTrigger>
+          <TabsTrigger value="atividade" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
+            <ActivityIcon className="w-3 h-3 shrink-0" />Atividade
+          </TabsTrigger>
         </TabsList>
 
         {/* TAB: Lista */}
@@ -246,10 +293,6 @@ const TasksPage = () => {
           <AreasTabContent tasks={tasks} onTaskClick={t => setSidePanelTask(t)} />
         </TabsContent>
 
-        {/* TAB: Calendário */}
-        <TabsContent value="calendario">
-          <CalendarTabContent tasks={tasks} reload={reload} userName={userName} onTaskClick={t => setSidePanelTask(t)} onCreateTask={handleSave} />
-        </TabsContent>
 
         {/* TAB: Atividade */}
         <TabsContent value="atividade">
@@ -278,31 +321,33 @@ function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, 
   const renderGroup = (label: string, items: Task[], color: string) => (
     items.length > 0 ? (
       <div className="mb-4">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <div className="w-1 h-4 rounded-full shrink-0" style={{ backgroundColor: color }} />
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>{label}</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-secondary/60" style={{ color }}>{items.length}</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${color}15`, color }}>{items.length}</span>
         </div>
         <div className="space-y-1">
-          {items.map((task: Task) => (
-            <div key={task.id} className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-center gap-2 hover:border-gold/20 transition-all cursor-pointer group">
-              <button onClick={() => onToggleComplete(task)} className="shrink-0">
-                {task.status === "concluida" ? (
-                  <Check className="w-4 h-4 text-emerald-500" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border border-muted-foreground/30 group-hover:border-gold/50 transition-colors" />
-                )}
-              </button>
-              <span className="font-mono text-xs text-gold">#{task.id}</span>
-              <span className="text-sm flex-1 truncate cursor-pointer hover:text-gold transition-colors" onClick={() => onTitleClick(task)}>{task.title}</span>
-              <Badge variant="outline" className="text-[10px]" style={{ borderColor: `${STATUS_COLORS[task.status]}40`, color: STATUS_COLORS[task.status] }}>
-                {STATUS_LABELS[task.status]}
-              </Badge>
-              <Badge variant="outline" className="text-[9px] hidden sm:inline-flex" style={{ borderColor: `${AREA_COLORS[task.area] || "#888"}40`, color: AREA_COLORS[task.area] || "#888" }}>
-                {task.area}
-              </Badge>
-              {task.dueDate && <span className="text-[10px] font-mono text-muted-foreground hidden md:inline">{task.dueDate}</span>}
-            </div>
-          ))}
+          {items.map((task: Task) => {
+            const due = formatDue(task.dueDate);
+            return (
+              <div key={task.id} className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-center gap-2 hover:border-gold/20 transition-all cursor-pointer group">
+                <button onClick={() => onToggleComplete(task)} className="shrink-0">
+                  {task.status === "concluida" ? (
+                    <Check className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border border-muted-foreground/30 group-hover:border-gold/50 transition-colors" />
+                  )}
+                </button>
+                <span className="font-mono text-xs text-gold shrink-0">#{task.id}</span>
+                <span className="text-sm flex-1 truncate cursor-pointer hover:text-gold transition-colors" onClick={() => onTitleClick(task)}>{task.title}</span>
+                <Badge variant="outline" className="text-[9px] hidden sm:inline-flex" style={{ borderColor: `${AREA_COLORS[task.area] || "#888"}40`, color: AREA_COLORS[task.area] || "#888" }}>
+                  {task.area}
+                </Badge>
+                {task.campanha_id && (() => { const c = getCampaigns().find(x => x.id === task.campanha_id); return c ? <Badge variant="outline" className="text-[9px] hidden lg:inline-flex border-gold/30 text-gold gap-0.5"><span>⚡</span>{c.title.split(" ")[0]}</Badge> : null; })()}
+                {due && <span className="text-[10px] font-mono shrink-0 hidden md:inline" style={{ color: due.color }}>{due.label}</span>}
+              </div>
+            );
+          })}
         </div>
       </div>
     ) : null
@@ -435,11 +480,17 @@ function ListTabContent({ tasks, filtered, search, setSearch, statusFilter, setS
           ))}
         </AnimatePresence>
         {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <Search className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Nenhuma tarefa encontrada</p>
-            {hasFilters && (
-              <button onClick={clearFilters} className="text-xs text-gold hover:underline mt-2">Limpar filtros</button>
+          <div className="text-center py-14 bg-card/40 rounded-xl border border-border/50">
+            <div className="w-12 h-12 rounded-full bg-secondary/60 flex items-center justify-center mx-auto mb-3">
+              <Search className="w-5 h-5 text-muted-foreground/50" />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">Nenhuma tarefa encontrada</p>
+            {hasFilters ? (
+              <button onClick={clearFilters} className="text-xs text-gold hover:underline mt-2 flex items-center gap-1 mx-auto">
+                <X className="w-3 h-3" /> Limpar filtros
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground/60 mt-1">Clique em "Nova Tarefa" ou pressione <kbd className="text-[9px] bg-secondary px-1 py-0.5 rounded font-mono">N</kbd> para começar</p>
             )}
           </div>
         )}
@@ -477,11 +528,18 @@ function KanbanTabContent({ tasks, reload, userName, onCardClick }: { tasks: Tas
     }
 
     if (targetStatus && targetStatus !== task.status) {
+      const prevStatus = task.status;
       updateTask(taskId, { status: targetStatus });
-      logActivity({ taskId, taskTitle: task.title, userName, action: "status_change", oldValue: task.status, newValue: targetStatus });
+      logActivity({ taskId, taskTitle: task.title, userName, action: "status_change", oldValue: prevStatus, newValue: targetStatus });
       if (targetStatus === "concluida") {
         confetti({ particleCount: 80, spread: 60, colors: ["#D4A843", "#F5D77A", "#22C55E", "#6366F1"], origin: { y: 0.6 } });
-        toast.success(`"${task.title}" concluída! 🎉`);
+        toast.success(`"${task.title}" concluída! 🎉`, {
+          duration: 5000,
+          action: {
+            label: "Desfazer",
+            onClick: () => { updateTask(taskId, { status: prevStatus }); reload(); },
+          },
+        });
       } else {
         toast.info(`Movido para ${STATUS_LABELS[targetStatus]}`);
       }
@@ -540,13 +598,15 @@ function SortableKanbanCard({ task, onCardClick }: { task: Task; onCardClick: (t
 }
 
 function KanbanCard({ task, isDragging, onClick }: { task: Task; isDragging?: boolean; onClick?: () => void }) {
-  const isLate = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "concluida";
+  const due = formatDue(task.dueDate);
+  const campaign = task.campanha_id ? getCampaigns().find(x => x.id === task.campanha_id) : null;
   return (
     <div onClick={onClick} className={`bg-card rounded-md border border-border p-2.5 cursor-grab active:cursor-grabbing hover:border-gold/20 transition-all ${isDragging ? "shadow-lg shadow-gold/10 border-gold/30" : ""}`}>
       <div className="flex items-start gap-1.5">
         <GripVertical className="w-3 h-3 text-muted-foreground/40 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{task.title}</p>
+          {campaign && <p className="text-[9px] text-gold flex items-center gap-0.5 mt-0.5 truncate"><span>⚡</span>{campaign.title}</p>}
           <div className="flex flex-wrap gap-1 mt-1.5">
             <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${PRIORITY_COLORS[task.priority]}40`, color: PRIORITY_COLORS[task.priority] }}>
               {PRIORITY_LABELS[task.priority]}
@@ -566,8 +626,8 @@ function KanbanCard({ task, isDragging, onClick }: { task: Task; isDragging?: bo
                 <span className="text-[9px] text-gold">🔗</span>
               )}
             </div>
-            {task.dueDate && (
-              <span className={`text-[9px] font-mono ${isLate ? "text-red-400" : "text-muted-foreground"}`}>{task.dueDate}</span>
+            {due && (
+              <span className="text-[9px] font-mono" style={{ color: due.color }}>{due.label}</span>
             )}
           </div>
         </div>
@@ -742,127 +802,6 @@ function AreasTabContent({ tasks, onTaskClick }: { tasks: Task[]; onTaskClick: (
   );
 }
 
-// ═══════════════════════════════════════════════════
-// TAB: Calendário
-// ═══════════════════════════════════════════════════
-function CalendarTabContent({ tasks, reload, userName, onTaskClick, onCreateTask }: { tasks: Task[]; reload: () => void; userName: string; onTaskClick: (t: Task) => void; onCreateTask: (d: Partial<Task>) => void }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("");
-
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const startPadding = getDay(monthStart);
-  const tasksWithDue = tasks.filter(t => t.dueDate);
-
-  const getTasksForDay = (day: Date) => {
-    const dateStr = format(day, "yyyy-MM-dd");
-    return tasksWithDue.filter(t => t.dueDate === dateStr);
-  };
-
-  const handleDayClick = (day: Date) => {
-    const dayTasks = getTasksForDay(day);
-    if (dayTasks.length === 0) {
-      setSelectedDate(format(day, "yyyy-MM-dd"));
-      setDialogOpen(true);
-    }
-  };
-
-  const handleSave = (data: Partial<Task>) => {
-    onCreateTask(data);
-    setDialogOpen(false);
-  };
-
-  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-  return (
-    <div className="mt-3">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="h-8 w-8">
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm font-medium capitalize min-w-[140px] text-center">
-            {format(currentDate, "MMMM yyyy", { locale: ptBR })}
-          </span>
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="h-8 w-8">
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())} className="text-xs text-gold border-gold/30 h-7">
-            Hoje
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 sm:gap-3 mb-3">
-        {(["pendente", "em-andamento", "concluida", "atrasada"] as const).map(s => (
-          <div key={s} className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] text-muted-foreground">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
-            <span className="hidden sm:inline">{STATUS_LABELS[s]}</span>
-            <span className="sm:hidden">{STATUS_LABELS[s].split(" ")[0]}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-card rounded-lg border border-border overflow-x-auto">
-        <div className="min-w-[320px]">
-        <div className="grid grid-cols-7">
-          {weekDays.map(d => (
-            <div key={d} className="text-center text-[9px] sm:text-[10px] font-medium text-muted-foreground py-1.5 sm:py-2 border-b border-border">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {Array.from({ length: startPadding }).map((_, i) => (
-            <div key={`pad-${i}`} className="min-h-[60px] sm:min-h-[80px] border-b border-r border-border bg-secondary/20" />
-          ))}
-          {days.map(day => {
-            const dayTasks = getTasksForDay(day);
-            const today = isToday(day);
-            const isEmpty = dayTasks.length === 0;
-            return (
-              <div key={day.toISOString()}
-                onClick={() => handleDayClick(day)}
-                className={`min-h-[60px] sm:min-h-[80px] border-b border-r border-border p-1 sm:p-1.5 transition-colors ${today ? "bg-gold/5 border-gold/20" : ""} ${isEmpty ? "cursor-pointer hover:bg-secondary/30" : ""}`}
-              >
-                <div className="flex items-center gap-1">
-                  <span className={`text-xs font-mono ${today ? "text-gold font-bold" : "text-muted-foreground"}`}>
-                    {format(day, "d")}
-                  </span>
-                  {today && <span className="text-[8px] font-mono text-gold uppercase">hoje</span>}
-                </div>
-                <div className="mt-1 space-y-0.5">
-                  {dayTasks.slice(0, 3).map(t => (
-                    <Tooltip key={t.id}>
-                      <TooltipTrigger asChild>
-                        <div
-                          onClick={(e) => { e.stopPropagation(); onTaskClick(t); }}
-                          className="flex items-center gap-1 px-1 py-0.5 rounded text-[9px] truncate cursor-pointer hover:bg-secondary/50"
-                          style={{ backgroundColor: `${STATUS_COLORS[t.status]}10`, color: STATUS_COLORS[t.status] }}>
-                          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLORS[t.status] }} />
-                          <span className="truncate">{t.title}</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="bg-popover border-border text-xs">
-                        <p className="font-medium">{t.title}</p>
-                        <p className="text-muted-foreground">{t.responsible.join(", ")} · {PRIORITY_LABELS[t.priority]}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                  {dayTasks.length > 3 && (
-                    <span className="text-[9px] text-muted-foreground px-1">+{dayTasks.length - 3}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        </div>
-      </div>
-      <TaskFormDialog open={dialogOpen} onOpenChange={setDialogOpen} onSave={handleSave} defaultDueDate={selectedDate} />
-    </div>
-  );
-}
 
 // ═══════════════════════════════════════════════════
 // TAB: Atividade
@@ -977,6 +916,19 @@ function ActivityTabContent() {
 }
 
 // ═══════════════════════════════════════════════════
+// Due Date Helper
+// ═══════════════════════════════════════════════════
+function formatDue(dueDate: string | null | undefined): { label: string; color: string } | null {
+  if (!dueDate) return null;
+  const d = differenceInDays(new Date(dueDate + "T12:00:00"), new Date());
+  if (d < 0) return { label: "Atrasada", color: "#EF4444" };
+  if (d === 0) return { label: "Hoje", color: "#F59E0B" };
+  if (d === 1) return { label: "Amanhã", color: "#F59E0B" };
+  if (d <= 7) return { label: `${d}d`, color: "#6B7280" };
+  return { label: format(new Date(dueDate + "T12:00:00"), "dd/MM"), color: "#4B5563" };
+}
+
+// ═══════════════════════════════════════════════════
 // Task Row Component
 // ═══════════════════════════════════════════════════
 function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete, onStatusChange, onDelete, onEdit, onNotesChange, onDecisionChange, onTitleClick }: {
@@ -986,6 +938,7 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
   onNotesChange: (n: string) => void; onDecisionChange: (d: string) => void; onTitleClick: () => void;
 }) {
   const isDone = task.status === "concluida";
+  const due = formatDue(task.dueDate);
   return (
     <motion.div id={`task-${task.id}`} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
       className={`bg-card rounded-lg border transition-all ${highlighted ? "border-gold/50 ring-1 ring-gold/20" : "border-border hover:border-gold/20"}`}
@@ -1007,6 +960,7 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
         {(task.tags || []).slice(0, 1).map(tag => (
           <Badge key={tag} variant="secondary" className="text-[9px] shrink-0 hidden lg:inline-flex">{tag}</Badge>
         ))}
+        {task.campanha_id && (() => { const c = getCampaigns().find(x => x.id === task.campanha_id); return c ? <Badge variant="outline" className="text-[9px] shrink-0 hidden xl:inline-flex border-gold/30 text-gold gap-0.5"><span>⚡</span>{c.title.split("—")[0].trim()}</Badge> : null; })()}
         {(() => {
           const linkCount = (task.attachments || []).filter(a => a.type === "link" || a.url).length;
           const fileCount = (task.attachments || []).filter(a => a.type !== "link" && !a.url && a.data).length;
@@ -1055,7 +1009,7 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
                 </div>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                {task.dueDate && <span>Vencimento: <span className="font-mono text-foreground">{task.dueDate}</span></span>}
+                {task.dueDate && <span>Vencimento: <span className="font-mono" style={due ? { color: due.color } : {}}>{task.dueDate}{due && due.label !== task.dueDate ? ` (${due.label})` : ""}</span></span>}
                 {task.dependencies.length > 0 && <span>Deps: {task.dependencies.map(d => <span key={d} className="font-mono text-gold">#{d} </span>)}</span>}
               </div>
               <div className="flex gap-2">

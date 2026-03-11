@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getPosts, createPost, updatePost, getUser } from "@/lib/store";
+import { getPosts, createPost, updatePost, getUser, getCampaigns, CAMPAIGN_CONTENT_FILTER_KEY } from "@/lib/store";
 import {
   ContentPost, ContentPlatform, ContentType, ContentStatus,
   PLATFORM_COLORS, CONTENT_TYPE_BY_PLATFORM, CONTENT_STATUS_COLORS, CONTENT_STATUS_LABELS,
@@ -228,6 +228,18 @@ const ContentPage = () => {
   const [filterCreator, setFilterCreator] = useState<string>("all");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterCampaign, setFilterCampaign] = useState<string>("all");
+
+  const campaigns = getCampaigns();
+
+  // Cross-tab navigation: when coming from Campanhas → "Ver no Conteúdo"
+  useEffect(() => {
+    const savedFilter = localStorage.getItem(CAMPAIGN_CONTENT_FILTER_KEY);
+    if (savedFilter) {
+      setFilterCampaign(savedFilter);
+      localStorage.removeItem(CAMPAIGN_CONTENT_FILTER_KEY);
+    }
+  }, []);
 
   const reload = useCallback(() => setPosts(getPosts()), []);
   useEffect(() => { reload(); }, [reload]);
@@ -245,6 +257,7 @@ const ContentPage = () => {
     if (filterCreator !== "all" && p.creator !== filterCreator) return false;
     if (filterPlatform !== "all" && p.platform !== filterPlatform) return false;
     if (filterStatus !== "all" && p.status !== filterStatus) return false;
+    if (filterCampaign !== "all" && p.campanha_id !== Number(filterCampaign)) return false;
     return true;
   });
 
@@ -345,6 +358,18 @@ const ContentPage = () => {
             ))}
           </SelectContent>
         </Select>
+
+        {campaigns.length > 0 && (
+          <Select value={filterCampaign} onValueChange={setFilterCampaign}>
+            <SelectTrigger className="bg-secondary/40 h-7 text-xs w-40"><SelectValue placeholder="Campanha" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas campanhas</SelectItem>
+              {campaigns.map(c => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Legend */}
