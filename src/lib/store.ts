@@ -541,6 +541,7 @@ export function initRealtime() {
 
   // Seed if needed, then subscribe
   seedSupabase();
+  initGoLiveBroadcast();
 
   supabase
     .channel('db-changes')
@@ -569,6 +570,43 @@ export function initRealtime() {
         localStorage.setItem(PRESENCE_KEY, JSON.stringify(entries));
         notifyListeners();
       }
+    })
+    .subscribe();
+}
+
+// ─── GoLive Checklist Broadcast Sync ───
+
+type GoLiveListener = (campaignId: number, checks: Record<number, boolean>) => void;
+const goLiveListeners: Set<GoLiveListener> = new Set();
+
+export function subscribeGoLive(fn: GoLiveListener): () => void {
+  goLiveListeners.add(fn);
+  return () => { goLiveListeners.delete(fn); };
+}
+
+export function broadcastGoLiveChecks(campaignId: number, checks: Record<number, boolean>) {
+  const storageKey = `mrlion_golive_${campaignId}`;
+  localStorage.setItem(storageKey, JSON.stringify(checks));
+
+  if (supabase) {
+    supabase.channel('golive-sync').send({
+      type: 'broadcast',
+      event: 'golive-update',
+      payload: { campaignId, checks },
+    });
+  }
+}
+
+function initGoLiveBroadcast() {
+  if (!supabase) return;
+  supabase
+    .channel('golive-sync')
+    .on('broadcast', { event: 'golive-update' }, ({ payload }) => {
+      const { campaignId, checks } = payload as { campaignId: number; checks: Record<number, boolean> };
+      const storageKey = `mrlion_golive_${campaignId}`;
+      localStorage.setItem(storageKey, JSON.stringify(checks));
+      goLiveListeners.forEach(fn => fn(campaignId, checks));
+      notifyListeners();
     })
     .subscribe();
 }
@@ -643,6 +681,7 @@ export function createTask(data: Omit<Task, "id" | "createdAt" | "updatedAt">): 
   const task: Task = { ...data, id: getNextIdSync(), createdAt: now(), updatedAt: now() };
   tasks.push(task);
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  notifyListeners();
 
   // Async: sync to Supabase and get a proper ID
   if (supabase) {
@@ -669,6 +708,7 @@ export function updateTask(id: number, updates: Partial<Task>): Task | undefined
   if (idx === -1) return undefined;
   tasks[idx] = { ...tasks[idx], ...updates, updatedAt: now() };
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  notifyListeners();
 
   if (supabase) {
     const dbUpdates: Record<string, unknown> = { updated_at: now() };
@@ -695,6 +735,7 @@ export function deleteTask(id: number): boolean {
   const filtered = tasks.filter(t => t.id !== id);
   if (filtered.length === tasks.length) return false;
   localStorage.setItem(TASKS_KEY, JSON.stringify(filtered));
+  notifyListeners();
 
   if (supabase) {
     supabase.from('tasks').delete().eq('id', id).then();

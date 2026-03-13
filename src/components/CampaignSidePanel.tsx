@@ -6,7 +6,7 @@ import {
   CONTENT_STATUS_COLORS, CONTENT_STATUS_LABELS,
   STATUS_COLORS, STATUS_LABELS, PRIORITY_COLORS, PRIORITY_LABELS,
 } from "@/lib/types";
-import { updateTask, updateCampaign } from "@/lib/store";
+import { updateTask, updateCampaign, broadcastGoLiveChecks, subscribeGoLive } from "@/lib/store";
 import {
   CalendarDays, FileText, CheckSquare, Pencil, Trash2,
   Megaphone, Tag, Radio, AlertCircle, Zap, StickyNote,
@@ -148,12 +148,18 @@ function OverviewTab({
 }) {
   const today = new Date();
 
-  // GoLive checklist state (read from localStorage — same key as GoLiveChecklist component)
+  // GoLive checklist state (read from localStorage + subscribe to broadcast)
   const storageKey = `mrlion_golive_${campaign.id}`;
   const [glChecked, setGlChecked] = useState<Record<number, boolean>>({});
   useEffect(() => {
     try { setGlChecked(JSON.parse(localStorage.getItem(storageKey) || "{}")); } catch { /* */ }
   }, [storageKey]);
+  useEffect(() => {
+    const unsub = subscribeGoLive((campaignId, checks) => {
+      if (campaignId === campaign.id) setGlChecked(checks);
+    });
+    return unsub;
+  }, [campaign.id]);
 
   // Parse GoLive items from checklist markdown
   const glItems: string[] = [];
@@ -579,6 +585,16 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
     try { setChecked(JSON.parse(localStorage.getItem(storageKey) || "{}")); } catch { /* */ }
   }, [storageKey]);
 
+  // Subscribe to broadcast updates from other users
+  useEffect(() => {
+    const unsub = subscribeGoLive((campaignId, checks) => {
+      if (campaignId === campaign.id) {
+        setChecked(checks);
+      }
+    });
+    return unsub;
+  }, [campaign.id]);
+
   if (!campaign.checklist) return null;
 
   // Extrai só os itens da seção "Checklist Final de Go Live"
@@ -596,7 +612,7 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
   const toggle = (i: number) => {
     setChecked(prev => {
       const next = { ...prev, [i]: !prev[i] };
-      localStorage.setItem(storageKey, JSON.stringify(next));
+      broadcastGoLiveChecks(campaign.id, next);
       return next;
     });
   };
