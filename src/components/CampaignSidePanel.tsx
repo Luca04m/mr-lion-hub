@@ -151,8 +151,30 @@ function OverviewTab({
   // GoLive checklist state (read from localStorage + subscribe to broadcast)
   const storageKey = `mrlion_golive_${campaign.id}`;
   const [glChecked, setGlChecked] = useState<Record<number, boolean>>({});
+
+  // Parse GoLive items and their default checked state from markdown
+  const glParsed: { text: string; defaultChecked: boolean }[] = [];
+  if (campaign.checklist) {
+    const lines = campaign.checklist.split("\n");
+    const startIdx = lines.findIndex(l => l.includes("Checklist Final de Go Live"));
+    if (startIdx !== -1) {
+      for (let i = startIdx + 1; i < lines.length; i++) {
+        const m = lines[i].match(/^-\s+\[([ x])\]\s+(.*)/i);
+        if (m) glParsed.push({ text: m[2].trim(), defaultChecked: m[1].toLowerCase() === "x" });
+      }
+    }
+  }
+  const glItems = glParsed.map(p => p.text);
+
   useEffect(() => {
-    try { setGlChecked(JSON.parse(localStorage.getItem(storageKey) || "{}")); } catch { /* */ }
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try { setGlChecked(JSON.parse(stored)); } catch { /* */ }
+    } else {
+      const defaults: Record<number, boolean> = {};
+      glParsed.forEach((item, i) => { if (item.defaultChecked) defaults[i] = true; });
+      if (Object.keys(defaults).length > 0) setGlChecked(defaults);
+    }
   }, [storageKey]);
   useEffect(() => {
     const unsub = subscribeGoLive((campaignId, checks) => {
@@ -161,18 +183,6 @@ function OverviewTab({
     return unsub;
   }, [campaign.id]);
 
-  // Parse GoLive items from checklist markdown
-  const glItems: string[] = [];
-  if (campaign.checklist) {
-    const lines = campaign.checklist.split("\n");
-    const startIdx = lines.findIndex(l => l.includes("Checklist Final de Go Live"));
-    if (startIdx !== -1) {
-      for (let i = startIdx + 1; i < lines.length; i++) {
-        const m = lines[i].match(/^-\s+\[[ x]\]\s+(.*)/i);
-        if (m) glItems.push(m[1].trim());
-      }
-    }
-  }
   const glDone = glItems.filter((_, i) => glChecked[i]).length;
   const glTotal = glItems.length;
   const glPct = glTotal > 0 ? Math.round((glDone / glTotal) * 100) : 0;
@@ -581,8 +591,32 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
   const storageKey = `mrlion_golive_${campaign.id}`;
   const [checked, setChecked] = useState<Record<number, boolean>>({});
 
+  // Parse checklist items and their default checked state from markdown
+  const parsedItems: { text: string; defaultChecked: boolean }[] = [];
+  if (campaign.checklist) {
+    const lines = campaign.checklist.split("\n");
+    const startIdx = lines.findIndex(l => l.includes("Checklist Final de Go Live"));
+    if (startIdx !== -1) {
+      for (let i = startIdx + 1; i < lines.length; i++) {
+        const m = lines[i].match(/^-\s+\[([ x])\]\s+(.*)/i);
+        if (m) parsedItems.push({ text: m[2].trim(), defaultChecked: m[1].toLowerCase() === "x" });
+      }
+    }
+  }
+
   useEffect(() => {
-    try { setChecked(JSON.parse(localStorage.getItem(storageKey) || "{}")); } catch { /* */ }
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try { setChecked(JSON.parse(stored)); } catch { /* */ }
+    } else {
+      // Initialize from markdown [x] state
+      const defaults: Record<number, boolean> = {};
+      parsedItems.forEach((item, i) => { if (item.defaultChecked) defaults[i] = true; });
+      if (Object.keys(defaults).length > 0) {
+        setChecked(defaults);
+        localStorage.setItem(storageKey, JSON.stringify(defaults));
+      }
+    }
   }, [storageKey]);
 
   // Subscribe to broadcast updates from other users
@@ -595,19 +629,8 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
     return unsub;
   }, [campaign.id]);
 
-  if (!campaign.checklist) return null;
-
-  // Extrai só os itens da seção "Checklist Final de Go Live"
-  const lines = campaign.checklist.split("\n");
-  const startIdx = lines.findIndex(l => l.includes("Checklist Final de Go Live"));
-  if (startIdx === -1) return null;
-
-  const items: string[] = [];
-  for (let i = startIdx + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^-\s+\[[ x]\]\s+(.*)/i);
-    if (m) items.push(m[1].trim());
-  }
-  if (items.length === 0) return null;
+  if (parsedItems.length === 0) return null;
+  const items = parsedItems.map(p => p.text);
 
   const toggle = (i: number) => {
     setChecked(prev => {
