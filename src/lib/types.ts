@@ -124,7 +124,7 @@ export interface BusinessKPIs {
   custoEntrega: number;
 }
 
-export const TEAM_MEMBERS = ["Luca", "João", "Luhan", "Pedro", "Guilherme", "MD Chefe"];
+export const TEAM_MEMBERS = ["Luca", "João", "Luhan", "Pedro", "Guilherme", "Ronaldo", "MD Chefe"];
 
 export const AREAS = [
   "Operacional", "Comercial", "Marketing", "Produto", "Conteúdo",
