@@ -10,6 +10,7 @@ import { PRIVATE_USERS } from "@/lib/types";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/CommandPalette";
+import { LionMark } from "@/components/pro/LionMark";
 import { ThemeToggle } from "@/components/pro";
 
 const NAV_ITEMS = [
@@ -139,9 +140,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Wordmark */}
       <div className="px-5 pb-4 pt-5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-sub border border-border bg-secondary text-lg">
-            🦁
-          </div>
+          <LionMark className="h-9 w-9 rounded-sub border border-border" />
           <div className="leading-tight">
             <span className="font-display text-base text-gold">Mr. Lion</span>
             <span className="ml-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Hub</span>

@@ -380,7 +380,7 @@ function OverviewTab({
                   style={{ width: `${glPct}%`, backgroundColor: glDone === glTotal ? "hsl(var(--success))" : "hsl(var(--gold))" }} />
               </div>
               {glDone === glTotal && (
-                <p className="text-[10px] text-success font-semibold mt-1.5 text-center">🦁 Go Live liberado!</p>
+                <p className="text-[10px] text-success font-semibold mt-1.5 text-center">Go Live liberado!</p>
               )}
             </div>
           )}
@@ -686,7 +686,7 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
 
       {allDone && (
         <div className="mt-3 text-center py-2 px-4 rounded-sub bg-success/[0.12] border border-success/20">
-          <p className="text-xs text-success font-semibold">🦁 Tudo verificado — Go Live liberado!</p>
+          <p className="text-xs text-success font-semibold">Tudo verificado — Go Live liberado!</p>
         </div>
       )}
     </div>

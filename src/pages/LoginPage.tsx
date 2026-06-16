@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { LionMark } from "@/components/pro/LionMark";
 
 const LoginPage = () => {
   const [selectedName, setSelectedName] = useState("");
@@ -70,9 +71,7 @@ const LoginPage = () => {
       >
         <div className="bg-card border border-border rounded-card p-8 shadow-soft">
           <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-card bg-muted border border-border text-gold flex items-center justify-center mx-auto mb-4 text-2xl">
-              🦁
-            </div>
+            <LionMark className="w-14 h-14 rounded-card border border-border mx-auto mb-4" />
             <h1 className="text-2xl tracking-tight">
               <span className="font-display text-gold">MR. LION</span>
               <span className="text-muted-foreground ml-2 font-normal">HUB</span>
