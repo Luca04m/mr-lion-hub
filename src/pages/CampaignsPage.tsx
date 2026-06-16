@@ -90,7 +90,7 @@ const CampaignsPage = () => {
         <div className="px-4 pt-5 pb-3 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h1 className="font-bold text-foreground">Campanhas</h1>
-            <Button onClick={handleCreate} size="sm" className="h-7 text-xs gap-1 gradient-gold text-primary-foreground px-2.5">
+            <Button onClick={handleCreate} size="sm" className="h-7 text-xs gap-1 bg-gold text-primary-foreground px-2.5">
               <Plus className="w-3.5 h-3.5" /> Nova
             </Button>
           </div>
@@ -161,7 +161,7 @@ const CampaignsPage = () => {
       <div className={cn("flex-1 overflow-y-auto bg-background", !selected && "hidden md:block")}>
         <AnimatePresence mode="wait">
           {selected ? (
-            <motion.div key={selected.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+            <motion.div key={selected.id} initial={{ opacity: 0, x: 4 }} animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
               {/* Mobile back button */}
               <button
@@ -182,11 +182,11 @@ const CampaignsPage = () => {
           ) : (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center h-full min-h-[400px] text-center px-8">
-              <div className="w-14 h-14 rounded-2xl gradient-gold flex items-center justify-center mb-4 opacity-20">
-                <Zap className="w-7 h-7 text-white" />
+              <div className="w-14 h-14 rounded-card bg-muted border border-border flex items-center justify-center mb-4">
+                <Zap className="w-7 h-7 text-gold" />
               </div>
               <p className="text-sm font-medium text-muted-foreground mb-1">Selecione uma campanha</p>
-              <Button onClick={handleCreate} size="sm" className="mt-4 gap-1.5 gradient-gold text-primary-foreground text-xs">
+              <Button onClick={handleCreate} size="sm" className="mt-4 gap-1.5 bg-gold text-primary-foreground text-xs">
                 <Plus className="w-3.5 h-3.5" /> Nova campanha
               </Button>
             </motion.div>

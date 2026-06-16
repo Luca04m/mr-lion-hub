@@ -152,7 +152,7 @@ export function CampaignFormDialog({ open, onOpenChange, campaign, onSave }: Pro
                 <button key={ch} type="button" onClick={() => toggleChannel(ch)}
                   className={`text-xs px-3 py-1 rounded-full border transition-all font-medium ${
                     channels.includes(ch)
-                      ? "bg-gold/15 border-gold/50 text-gold shadow-[0_0_0_1px_rgba(212,175,55,0.2)]"
+                      ? "bg-gold/15 border-gold/50 text-gold shadow-soft"
                       : "bg-secondary/30 border-border text-muted-foreground hover:border-gold/30 hover:text-foreground"
                   }`}
                 >
@@ -299,7 +299,7 @@ export function CampaignFormDialog({ open, onOpenChange, campaign, onSave }: Pro
             Cancelar
           </Button>
           <Button type="button" onClick={handleSave} disabled={!title.trim() || !concept.trim()}
-            className="flex-1 text-xs gradient-gold text-primary-foreground font-semibold">
+            className="flex-1 text-xs bg-gold text-primary-foreground font-semibold">
             {campaign ? "Salvar alterações" : "Criar campanha"}
           </Button>
         </div>

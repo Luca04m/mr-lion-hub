@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { getRevendedores, createRevendedor, updateRevendedor, deleteRevendedor, logActivity, getUser, calcScore } from "@/lib/store";
 import {
   Revendedor, RevendedorStatus, RevendedorCanal, InteracaoTipo, Interacao,
-  REVENDEDOR_STATUS_COLORS, TEAM_MEMBERS, INTERACAO_ICONS,
+  TEAM_MEMBERS, INTERACAO_ICONS,
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ import { DndContext, closestCenter, DragEndEvent } from "@dnd-kit/core";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
+import { StatusPill, type StatusTone } from "@/components/pro";
 import * as XLSX from "xlsx";
 
 const safeDiffDays = (dateStr: string) => { try { const d = parseISO(dateStr); return isNaN(d.getTime()) ? 999 : differenceInDays(new Date(), d); } catch { return 999; } };
@@ -48,13 +49,29 @@ type ViewMode = "lista" | "pipeline" | "analytics";
 type SortField = "nome" | "volume" | "score" | "ultima";
 type SortDir = "asc" | "desc";
 
-const CHART_COLORS = ["#22C55E", "#3B82F6", "#F59E0B", "#8B5CF6", "#6B7280"];
+const CHART_COLORS = ["hsl(var(--success))", "hsl(var(--info))", "hsl(var(--warning))", "hsl(var(--gold))", "hsl(var(--muted-foreground))"];
+
+// ─── Status → token color (sóbrio) + StatusPill tone ───
+const STATUS_COLOR: Record<RevendedorStatus, string> = {
+  "Ativo": "hsl(var(--success))",
+  "Inativo": "hsl(var(--muted-foreground))",
+  "Novo Lead": "hsl(var(--info))",
+  "Em Negociação": "hsl(var(--warning))",
+  "Recorrente": "hsl(var(--gold))",
+};
+const STATUS_TONE: Record<RevendedorStatus, StatusTone> = {
+  "Ativo": "success",
+  "Inativo": "neutral",
+  "Novo Lead": "info",
+  "Em Negociação": "warning",
+  "Recorrente": "gold",
+};
 
 // ─── Score color helper ───
 function scoreColor(s: number) {
-  if (s >= 70) return "#22C55E";
-  if (s >= 40) return "#F59E0B";
-  return "#EF4444";
+  if (s >= 70) return "hsl(var(--success))";
+  if (s >= 40) return "hsl(var(--warning))";
+  return "hsl(var(--danger))";
 }
 
 // ─── Mini sparkline via SVG ───
@@ -75,7 +92,7 @@ function Sparkline({ data, color = "hsl(var(--gold))", w = 60, h = 20 }: { data:
 function Avatar({ name, size = 24 }: { name: string; size?: number }) {
   return (
     <div
-      className="rounded-full bg-secondary border border-border flex items-center justify-center font-bold text-gold shrink-0"
+      className="rounded-full bg-muted border border-border flex items-center justify-center font-bold text-gold shrink-0"
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {name.charAt(0)}
@@ -306,11 +323,11 @@ const RevendedoresPage = () => {
       sub: `${byStatus("Inativo")} inativos`,
     },
     {
-      label: "Ativos & Recorrentes", value: byStatus("Ativo") + byStatus("Recorrente"), icon: Users, color: "#22C55E",
+      label: "Ativos & Recorrentes", value: byStatus("Ativo") + byStatus("Recorrente"), icon: Users, color: "hsl(var(--success))",
       sub: `${byStatus("Em Negociação")} em negociação`,
     },
     {
-      label: "Volume Mensal", value: `${totalVolume.toLocaleString("pt-BR")} un`, icon: Package, color: "#D4A843",
+      label: "Volume Mensal", value: `${totalVolume.toLocaleString("pt-BR")} un`, icon: Package, color: "hsl(var(--gold))",
       sub: `Pipeline: ${pipelineVolume.toLocaleString("pt-BR")} un`,
     },
     {
@@ -327,7 +344,7 @@ const RevendedoresPage = () => {
           <h1 className="text-xl font-bold">CRM</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {revs.length} revendedores · <span className="text-gold font-mono font-semibold">{totalVolume.toLocaleString("pt-BR")}</span> un/mês
-            {noContact30 > 0 && <span className="text-red-400 ml-2">· {noContact30} sem contato +30d</span>}
+            {noContact30 > 0 && <span className="text-danger ml-2">· {noContact30} sem contato +30d</span>}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -340,7 +357,7 @@ const RevendedoresPage = () => {
               <span><Upload className="w-3.5 h-3.5 mr-1" /> Importar</span>
             </Button>
           </label>
-          <Button onClick={() => { setNewDialogPreStatus(undefined); setNewDialogOpen(true); }} className="gradient-gold text-primary-foreground font-semibold glow-pulse" size="sm">
+          <Button onClick={() => { setNewDialogPreStatus(undefined); setNewDialogOpen(true); }} className="bg-gold text-primary-foreground font-semibold rounded-btn" size="sm">
             <Plus className="w-4 h-4 mr-1" /> Novo Revendedor
           </Button>
         </div>
@@ -349,10 +366,10 @@ const RevendedoresPage = () => {
       {/* Hero KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {heroStats.map(s => (
-          <div key={s.label} className="bg-card rounded-xl border border-border p-4 hover:border-gold/20 transition-all group">
+          <div key={s.label} className="bg-card rounded-card border border-border shadow-soft p-4 hover:border-gold/20 transition-colors group">
             <div className="flex items-start justify-between mb-3">
               <span className="text-xs text-muted-foreground leading-tight">{s.label}</span>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${s.color}15` }}>
+              <div className="w-7 h-7 rounded-sub bg-muted border border-border flex items-center justify-center shrink-0">
                 <s.icon className="w-3.5 h-3.5" style={{ color: s.color }} />
               </div>
             </div>
@@ -537,10 +554,7 @@ function ListaView({ revs, selectedIds, onToggleSelect, onSelectAll, onSort, sor
                   </div>
                 </td>
                 <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: REVENDEDOR_STATUS_COLORS[r.status] }} />
-                    <span className="text-xs whitespace-nowrap" style={{ color: REVENDEDOR_STATUS_COLORS[r.status] }}>{r.status}</span>
-                  </div>
+                  <StatusPill label={r.status} tone={STATUS_TONE[r.status]} />
                 </td>
                 <td className="px-3 py-2.5 hidden md:table-cell">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -582,12 +596,12 @@ function ListaView({ revs, selectedIds, onToggleSelect, onSelectAll, onSort, sor
                   <div className="flex justify-end gap-0.5">
                     {r.whatsapp && (
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => window.open(`https://wa.me/${r.whatsapp}`, "_blank")}>
-                        <MessageCircle className="w-3 h-3 text-green-500" />
+                        <MessageCircle className="w-3 h-3 text-success" />
                       </Button>
                     )}
                     {r.instagram && (
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => window.open(`https://instagram.com/${r.instagram.replace("@", "")}`, "_blank")}>
-                        <Instagram className="w-3 h-3 text-purple-400" />
+                        <Instagram className="w-3 h-3 text-muted-foreground" />
                       </Button>
                     )}
                     <AlertDialog>
@@ -633,12 +647,12 @@ function PipelineView({ revs, onDragEnd, onSelect, onAddToCol }: {
           const colRevs = revs.filter(r => r.status === status);
           const colVol = colRevs.reduce((s, r) => s + r.volume, 0);
           return (
-            <div key={status} className="bg-card rounded-xl border border-border p-2.5" style={{ borderTopWidth: 3, borderTopColor: REVENDEDOR_STATUS_COLORS[status] }}>
+            <div key={status} className="bg-card rounded-card border border-border shadow-soft p-2.5" style={{ borderTopWidth: 3, borderTopColor: STATUS_COLOR[status] }}>
               <div className="mb-3 px-1">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold" style={{ color: REVENDEDOR_STATUS_COLORS[status] }}>{status}</span>
-                    <span className="text-[10px] font-mono bg-secondary/60 px-1 py-0.5 rounded text-muted-foreground">{colRevs.length}</span>
+                    <StatusPill label={status} tone={STATUS_TONE[status]} dot={false} />
+                    <span className="text-[10px] font-mono bg-muted px-1 py-0.5 rounded-sub text-muted-foreground">{colRevs.length}</span>
                   </div>
                   {colVol > 0 && <span className="text-[10px] font-mono text-gold">{colVol.toLocaleString("pt-BR")} un</span>}
                 </div>
@@ -671,7 +685,7 @@ function PipelineCard({ rev, onSelect }: { rev: Revendedor; onSelect: (r: Revend
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-background rounded-lg border border-border p-3 cursor-grab hover:border-gold/30 hover:shadow-sm transition-all group"
+      className="bg-background rounded-card border border-border shadow-soft p-3 cursor-grab hover:border-gold/30 transition-colors group"
       onClick={() => onSelect(rev)}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
@@ -687,7 +701,7 @@ function PipelineCard({ rev, onSelect }: { rev: Revendedor; onSelect: (r: Revend
             className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
             onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${rev.whatsapp}`, "_blank"); }}
           >
-            <MessageCircle className="w-3.5 h-3.5 text-green-500" />
+            <MessageCircle className="w-3.5 h-3.5 text-success" />
           </button>
         )}
       </div>
@@ -759,10 +773,10 @@ function AnalyticsView({ revs }: { revs: Revendedor[] }) {
             <BarChart data={byVolume} layout="vertical" margin={{ left: 80 }}>
               <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
               <YAxis dataKey="nome" type="category" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={75} />
-              <RTooltip contentStyle={{ backgroundColor: "hsl(240 20% 7%)", border: "1px solid hsl(240 18% 14%)", fontSize: 11 }} />
+              <RTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }} />
               <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
                 {byVolume.map((r, i) => (
-                  <Cell key={r.id} fill={REVENDEDOR_STATUS_COLORS[r.status] || "#6B7280"} />
+                  <Cell key={r.id} fill={STATUS_COLOR[r.status] || "hsl(var(--muted-foreground))"} />
                 ))}
               </Bar>
             </BarChart>
@@ -776,10 +790,10 @@ function AnalyticsView({ revs }: { revs: Revendedor[] }) {
             <PieChart>
               <Pie data={statusDist} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                 {statusDist.map((d, i) => (
-                  <Cell key={d.name} fill={REVENDEDOR_STATUS_COLORS[d.name as RevendedorStatus] || CHART_COLORS[i]} />
+                  <Cell key={d.name} fill={STATUS_COLOR[d.name as RevendedorStatus] || CHART_COLORS[i]} />
                 ))}
               </Pie>
-              <RTooltip contentStyle={{ backgroundColor: "hsl(240 20% 7%)", border: "1px solid hsl(240 18% 14%)", fontSize: 11 }} />
+              <RTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -789,10 +803,10 @@ function AnalyticsView({ revs }: { revs: Revendedor[] }) {
           <h3 className="text-xs font-semibold mb-3 uppercase text-muted-foreground">Evolução Volume Total (6 meses)</h3>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={volEvolution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 18% 14%)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
               <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-              <RTooltip contentStyle={{ backgroundColor: "hsl(240 20% 7%)", border: "1px solid hsl(240 18% 14%)", fontSize: 11 }} />
+              <RTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }} />
               <Area type="monotone" dataKey="volume" stroke="hsl(var(--gold))" fill="hsl(var(--gold) / 0.15)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
@@ -803,10 +817,10 @@ function AnalyticsView({ revs }: { revs: Revendedor[] }) {
           <h3 className="text-xs font-semibold mb-3 uppercase text-muted-foreground">Volume por Responsável</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={byResp}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 18% 14%)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
               <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-              <RTooltip contentStyle={{ backgroundColor: "hsl(240 20% 7%)", border: "1px solid hsl(240 18% 14%)", fontSize: 11 }} />
+              <RTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }} />
               <Bar dataKey="volume" fill="hsl(var(--gold))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -827,7 +841,7 @@ function AnalyticsView({ revs }: { revs: Revendedor[] }) {
         )}
         <div className="bg-card rounded-lg border border-border p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <TrendingUp className="w-3.5 h-3.5 text-green-500" />
+            <TrendingUp className="w-3.5 h-3.5 text-success" />
             <span className="text-[10px] uppercase text-muted-foreground">Maior Crescimento</span>
           </div>
           {(() => {
@@ -842,18 +856,18 @@ function AnalyticsView({ revs }: { revs: Revendedor[] }) {
             return top ? (
               <>
                 <span className="font-semibold text-sm">{top.nome}</span>
-                <span className="text-xs text-green-500 block">+{top.growth.toFixed(0)}% vs mês anterior</span>
+                <span className="text-xs text-success block">+{top.growth.toFixed(0)}% vs mês anterior</span>
               </>
             ) : <span className="text-xs text-muted-foreground">—</span>;
           })()}
         </div>
         <div className="bg-card rounded-lg border border-border p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+            <AlertTriangle className="w-3.5 h-3.5 text-danger" />
             <span className="text-[10px] uppercase text-muted-foreground">Sem Contato +30d</span>
           </div>
           {noContact.length > 0 ? noContact.map(r => (
-            <div key={r.id} className="text-xs text-red-400">{r.nome}</div>
+            <div key={r.id} className="text-xs text-danger">{r.nome}</div>
           )) : <span className="text-xs text-muted-foreground">Nenhum 🎉</span>}
         </div>
       </div>
@@ -873,19 +887,15 @@ function DetailPanel({ rev, onUpdate, onClose, onDelete, userName, reload }: {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="relative overflow-hidden border-b border-border">
-        <div className="absolute inset-0 opacity-[0.06]" style={{ background: `linear-gradient(135deg, ${REVENDEDOR_STATUS_COLORS[rev.status]}, transparent 60%)` }} />
         <div className="relative px-5 pt-5 pb-4">
           <div className="flex items-start gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl gradient-gold flex items-center justify-center text-xl font-bold text-primary-foreground shrink-0">
+            <div className="w-12 h-12 rounded-card bg-muted border border-border flex items-center justify-center text-xl font-bold text-gold shrink-0">
               {rev.nome.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-bold truncate">{rev.nome}</h2>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: REVENDEDOR_STATUS_COLORS[rev.status] }} />
-                  <span className="text-xs" style={{ color: REVENDEDOR_STATUS_COLORS[rev.status] }}>{rev.status}</span>
-                </div>
+                <StatusPill label={rev.status} tone={STATUS_TONE[rev.status]} />
                 {rev.cidade && <span className="text-xs text-muted-foreground">· {rev.cidade}</span>}
               </div>
             </div>
@@ -901,19 +911,19 @@ function DetailPanel({ rev, onUpdate, onClose, onDelete, userName, reload }: {
           {/* Contact CTAs */}
           <div className="flex gap-2">
             {rev.whatsapp && (
-              <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 bg-green-500/10 border border-green-500/25 text-green-500 hover:bg-green-500/20"
+              <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 rounded-btn bg-success/[0.12] border border-success/30 text-success hover:bg-success/20"
                 onClick={() => window.open(`https://wa.me/${rev.whatsapp}`, "_blank")}>
                 <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
               </Button>
             )}
             {rev.instagram && (
-              <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 bg-purple-500/10 border border-purple-500/25 text-purple-400 hover:bg-purple-500/20"
+              <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 rounded-btn bg-muted border border-border text-muted-foreground hover:bg-muted/70"
                 onClick={() => window.open(`https://instagram.com/${rev.instagram.replace("@", "")}`, "_blank")}>
                 <Instagram className="w-3.5 h-3.5" /> Instagram
               </Button>
             )}
             {rev.email && (
-              <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20"
+              <Button size="sm" className="h-8 text-xs gap-1.5 rounded-btn bg-info/[0.12] border border-info/30 text-info hover:bg-info/20"
                 onClick={() => window.open(`mailto:${rev.email}`)}>
                 <Mail className="w-3.5 h-3.5" />
               </Button>
@@ -1035,7 +1045,7 @@ function OverviewTab({ rev, onUpdate, reload, userName }: { rev: Revendedor; onU
           <span className="text-[10px] uppercase text-muted-foreground block mb-2">Volume — Últimos 6 Meses</span>
           <ResponsiveContainer width="100%" height={120}>
             <AreaChart data={rev.volumeHistorico}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 18% 14%)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="mes" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => v.slice(5)} />
               <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
               <Area type="monotone" dataKey="volume" stroke="hsl(var(--gold))" fill="hsl(var(--gold) / 0.15)" strokeWidth={2} />
@@ -1049,17 +1059,17 @@ function OverviewTab({ rev, onUpdate, reload, userName }: { rev: Revendedor; onU
         <span className="text-[10px] uppercase text-muted-foreground block mb-1.5">Contatos</span>
         <div className="space-y-1.5 text-sm">
           {rev.whatsapp && (
-            <a href={`https://wa.me/${rev.whatsapp}`} target="_blank" rel="noopener" className="flex items-center gap-2 text-green-500 hover:underline">
+            <a href={`https://wa.me/${rev.whatsapp}`} target="_blank" rel="noopener" className="flex items-center gap-2 text-success hover:underline">
               <MessageCircle className="w-3.5 h-3.5" /> {rev.whatsapp}
             </a>
           )}
           {rev.instagram && (
-            <a href={`https://instagram.com/${rev.instagram.replace("@", "")}`} target="_blank" rel="noopener" className="flex items-center gap-2 text-purple-400 hover:underline">
+            <a href={`https://instagram.com/${rev.instagram.replace("@", "")}`} target="_blank" rel="noopener" className="flex items-center gap-2 text-muted-foreground hover:underline">
               <Instagram className="w-3.5 h-3.5" /> {rev.instagram}
             </a>
           )}
           {rev.email && (
-            <a href={`mailto:${rev.email}`} className="flex items-center gap-2 text-blue-400 hover:underline">
+            <a href={`mailto:${rev.email}`} className="flex items-center gap-2 text-info hover:underline">
               <Mail className="w-3.5 h-3.5" /> {rev.email}
             </a>
           )}
@@ -1125,7 +1135,7 @@ function HistoricoTab({ rev, onUpdate, reload, userName }: { rev: Revendedor; on
             <Textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Descrição da interação..." className="min-h-[60px] text-sm bg-secondary/40" />
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowForm(false)}>Cancelar</Button>
-              <Button size="sm" className="h-7 text-xs gradient-gold text-primary-foreground" disabled={!desc.trim()} onClick={addInteracao}>Salvar</Button>
+              <Button size="sm" className="h-7 text-xs bg-gold text-primary-foreground rounded-btn" disabled={!desc.trim()} onClick={addInteracao}>Salvar</Button>
             </div>
           </motion.div>
         )}
@@ -1264,7 +1274,7 @@ function EditarTab({ rev, onUpdate, onDelete }: { rev: Revendedor; onUpdate: (u:
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button className="gradient-gold text-primary-foreground font-semibold h-8 text-xs" onClick={save}>Salvar Alterações</Button>
+        <Button className="bg-gold text-primary-foreground font-semibold h-8 text-xs rounded-btn" onClick={save}>Salvar Alterações</Button>
       </div>
     </>
   );
@@ -1412,7 +1422,7 @@ function NewRevendedorDialog({ open, onOpenChange, preStatus, onSave }: {
               Próximo <ChevronRight className="w-3 h-3 ml-1" />
             </Button>
           ) : (
-            <Button className="gradient-gold text-primary-foreground font-semibold text-xs" disabled={!nome.trim()} onClick={save}>Salvar</Button>
+            <Button className="bg-gold text-primary-foreground font-semibold text-xs rounded-btn" disabled={!nome.trim()} onClick={save}>Salvar</Button>
           )}
         </div>
       </DialogContent>

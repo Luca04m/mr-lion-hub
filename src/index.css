@@ -1,63 +1,188 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Mr. Lion Hub — Design System "Sóbrio Premium"
+   Tema LIGHT = default (:root). Tema DARK = .theme-dark override.
+   Neutro primeiro (preto/branco/cinza). UM acento = dourado de
+   marca profundo e discreto. Status colors dessaturados. Sem
+   glows, sem gradientes chamativos. Tipografia Montserrat.
+   Cores em "H S% L%" para casar com shadcn hsl(var(--x)).
+   HEX = fonte de verdade do cliente (ver mapeamento ao lado).
+   ============================================================ */
+
 @layer base {
   :root {
-    --background: 240 25% 4%;
-    --foreground: 240 20% 92%;
+    /* ---------- TEMA LIGHT (default) ---------- */
+    --background: 60 14% 98%;         /* #FAFAF9 */
+    --foreground: 45 8% 9%;           /* #1A1916 */
 
-    --card: 240 20% 7%;
-    --card-foreground: 240 20% 92%;
+    --card: 0 0% 100%;                /* #FFFFFF */
+    --card-foreground: 45 8% 9%;
 
-    --popover: 240 20% 9%;
-    --popover-foreground: 240 20% 92%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 45 8% 9%;
 
-    --primary: 42 60% 55%;
-    --primary-foreground: 240 25% 4%;
+    --primary: 41 64% 33%;            /* = --gold #8A6A1E (fio condutor discreto) */
+    --primary-foreground: 60 14% 98%;
 
-    --secondary: 240 18% 12%;
-    --secondary-foreground: 240 20% 85%;
+    --secondary: 40 11% 94%;          /* #F3F2EF neutro claro */
+    --secondary-foreground: 45 8% 9%;
 
-    --muted: 240 10% 14%;
-    --muted-foreground: 240 8% 55%;
+    --muted: 40 11% 94%;              /* #F3F2EF inset/muted */
+    --muted-foreground: 47 4% 40%;    /* #6B6962 */
 
-    --accent: 42 40% 18%;
-    --accent-foreground: 42 60% 70%;
+    --accent: 40 11% 94%;             /* neutro claro (sem tinta dourada) */
+    --accent-foreground: 45 8% 9%;
 
-    --destructive: 4 70% 46%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 4 56% 45%;         /* = --danger #B23A33 (tijolo) */
+    --destructive-foreground: 60 14% 98%;
 
-    --border: 240 18% 14%;
-    --input: 240 18% 12%;
-    --ring: 42 60% 55%;
+    --border: 43 12% 87%;             /* #E4E2DC */
+    --input: 43 14% 91%;              /* #ECEAE5 */
+    --ring: 41 64% 33%;               /* = --gold */
 
-    --radius: 0.5rem;
+    --radius: 6px;                    /* base */
 
-    --sidebar-background: 240 22% 5%;
-    --sidebar-foreground: 240 20% 85%;
-    --sidebar-primary: 42 60% 55%;
-    --sidebar-primary-foreground: 240 25% 4%;
-    --sidebar-accent: 240 18% 10%;
-    --sidebar-accent-foreground: 240 20% 85%;
-    --sidebar-border: 240 18% 14%;
-    --sidebar-ring: 42 60% 55%;
+    --sidebar-background: 0 0% 100%;  /* #FFFFFF */
+    --sidebar-foreground: 47 4% 40%;
+    --sidebar-primary: 41 64% 33%;
+    --sidebar-primary-foreground: 60 14% 98%;
+    --sidebar-accent: 40 11% 94%;
+    --sidebar-accent-foreground: 45 8% 9%;
+    --sidebar-border: 43 12% 87%;
+    --sidebar-ring: 41 64% 33%;
 
-    /* Custom tokens */
-    --gold: 42 60% 55%;
-    --gold-dim: 42 50% 42%;
-    --gold-light: 42 65% 68%;
-    --surface-elevated: 240 18% 10%;
-    --surface-overlay: 240 22% 5%;
-    --success: 142 72% 46%;
-    --warning: 38 92% 50%;
-    --info: 217 72% 55%;
-    --status-pending: 220 9% 46%;
-    --status-progress: 217 91% 60%;
-    --status-done: 142 72% 46%;
-    --status-late: 0 84% 60%;
+    /* ---------- Custom tokens (light) ---------- */
+    --gold: 41 64% 33%;               /* #8A6A1E — acento de marca */
+
+    --success: 147 45% 33%;           /* #2F7A52 verde musgo */
+    --danger: 4 56% 45%;              /* #B23A33 vermelho tijolo */
+    --warning: 41 70% 39%;            /* #A87A1E âmbar fosco */
+    --info: 215 37% 37%;              /* #3C5A82 azul-ardósia */
+
+    --muted-foreground-dim: 48 5% 59%; /* #9C9A92 */
+
+    /* ---------- Estoque/Produção (portado de manufatura) ---------- */
+    /* Status do estoque mapeados para a paleta sóbria do Hub. */
+    --ok: var(--success);             /* = #2F7A52 verde musgo */
+    --warn: var(--warning);           /* = #A87A1E âmbar fosco */
+    --crit: var(--danger);            /* = #B23A33 vermelho tijolo */
+    /* Ouro brilhante (acento de destaque do estoque) = mesmo gold sóbrio. */
+    --gold-bright: var(--gold);       /* = #8A6A1E */
+    --gold-dim: 47 4% 40%;            /* texto-gold-dim → muted (não dourado neon) */
+    /* Texto: muted/secondary/primary do estoque mapeados ao Hub. */
+    --text-muted: var(--muted-foreground);     /* = #6B6962 */
+    --text-secondary: 47 5% 30%;               /* #514F4A — entre foreground e muted */
+    --text-primary: var(--foreground);         /* = #1A1916 */
+    /* Neutro (badges planejada/ajuste/transferência) + chart-4 (ABC classe B). */
+    --neutral: var(--muted-foreground);        /* = #6B6962 */
+    --chart-4: var(--info);                    /* = #3C5A82 azul-ardósia sóbrio */
+    /* Superfícies do estoque → escala neutra do Hub (chapadas, sem gradiente). */
+    --sidebar: var(--sidebar-background);      /* = #FFFFFF */
+    --surface-base: var(--background);         /* = #FAFAF9 */
+    --surface-raised: var(--card);             /* = #FFFFFF */
+    --surface-overlay: var(--muted);           /* = #F3F2EF */
+    --surface-float: var(--card);              /* = #FFFFFF */
+
+    --cta: 45 8% 9%;                  /* #1A1916 quase-preto */
+    --cta-foreground: 60 14% 98%;     /* #FAFAF9 */
+
+    /* Status legados (tasks) — neutros/dessaturados */
+    --status-pending: 47 4% 40%;
+    --status-progress: 215 37% 37%;
+    --status-done: 147 45% 33%;
+    --status-late: 4 56% 45%;
+
+    /* Raios (mais retangular = mais elegante) */
+    --radius-card: 8px;
+    --radius-sub: 6px;
+    --radius-btn: 6px;
+
+    /* Sombras neutras sutis */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 16px -8px rgba(0, 0, 0, 0.10);
+  }
+
+  /* ---------- TEMA DARK (preto sóbrio) ---------- */
+  .theme-dark {
+    --background: 60 5% 4%;           /* #0B0B0A */
+    --foreground: 47 22% 91%;         /* #ECEAE3 */
+
+    --card: 40 8% 8%;                 /* #161513 */
+    --card-foreground: 47 22% 91%;
+
+    --popover: 40 8% 8%;
+    --popover-foreground: 47 22% 91%;
+
+    --primary: 41 49% 49%;            /* = --gold #B8943F */
+    --primary-foreground: 60 5% 4%;
+
+    --secondary: 45 8% 10%;           /* #1C1B18 */
+    --secondary-foreground: 47 22% 91%;
+
+    --muted: 45 8% 10%;               /* #1C1B18 inset/muted */
+    --muted-foreground: 42 6% 57%;    /* #9A968B */
+
+    --accent: 45 8% 10%;
+    --accent-foreground: 47 22% 91%;
+
+    --destructive: 5 47% 53%;         /* = --danger #C2554C */
+    --destructive-foreground: 47 22% 91%;
+
+    --border: 36 6% 15%;              /* #2A2825 */
+    --input: 36 8% 12%;               /* #211F1C */
+    --ring: 41 49% 49%;               /* = --gold */
+
+    --sidebar-background: 40 8% 8%;   /* #161513 */
+    --sidebar-foreground: 42 6% 57%;
+    --sidebar-primary: 41 49% 49%;
+    --sidebar-primary-foreground: 60 5% 4%;
+    --sidebar-accent: 45 8% 10%;
+    --sidebar-accent-foreground: 47 22% 91%;
+    --sidebar-border: 36 6% 15%;
+    --sidebar-ring: 41 49% 49%;
+
+    --gold: 41 49% 49%;               /* #B8943F dourado fosco */
+
+    --success: 146 32% 46%;           /* #4F9A70 */
+    --danger: 5 47% 53%;              /* #C2554C */
+    --warning: 42 49% 52%;            /* #C39A45 */
+    --info: 214 28% 51%;              /* #5E7CA6 */
+
+    --muted-foreground-dim: 42 6% 39%; /* #6A675E */
+
+    /* ---------- Estoque/Produção (portado de manufatura) ---------- */
+    --ok: var(--success);             /* = #4F9A70 */
+    --warn: var(--warning);           /* = #C39A45 */
+    --crit: var(--danger);            /* = #C2554C */
+    --gold-bright: var(--gold);       /* = #B8943F */
+    --gold-dim: 42 6% 57%;            /* texto-gold-dim → muted dark */
+    --text-muted: var(--muted-foreground);     /* = #9A968B */
+    --text-secondary: 44 10% 74%;              /* #C3BFB4 — entre foreground e muted (dark) */
+    --text-primary: var(--foreground);         /* = #ECEAE3 */
+    --neutral: var(--muted-foreground);        /* = #9A968B */
+    --chart-4: var(--info);                    /* = #5E7CA6 azul-ardósia (dark) */
+    --sidebar: var(--sidebar-background);      /* = #161513 */
+    --surface-base: var(--background);         /* = #0B0B0A */
+    --surface-raised: var(--card);             /* = #161513 */
+    --surface-overlay: var(--muted);           /* = #1C1B18 */
+    --surface-float: var(--card);              /* = #161513 */
+
+    --cta: 47 22% 91%;                /* #ECEAE3 off-white */
+    --cta-foreground: 60 5% 4%;       /* #0B0B0A */
+
+    --status-pending: 42 6% 57%;
+    --status-progress: 214 28% 51%;
+    --status-done: 146 32% 46%;
+    --status-late: 5 47% 53%;
+
+    /* Sombras pretas sutis */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -66,26 +191,42 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Space Grotesk', sans-serif;
+    @apply text-foreground antialiased;
+    font-family: 'Montserrat', sans-serif;
+    /* Fundo chapado — sem gradiente/glow. */
+    background-color: hsl(var(--background));
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
-  }
-
-  .font-mono {
-    font-family: 'JetBrains Mono', monospace !important;
+    font-family: 'Montserrat', sans-serif;
   }
 }
 
 @layer utilities {
+  /* Números tabulares — OBRIGATÓRIO em todo valor numérico */
+  .tnum {
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Wordmark "Mr. Lion" — Montserrat 700 uppercase, sério */
+  .font-display {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* Acento de marca */
   .text-gold {
     color: hsl(var(--gold));
-  }
-  .text-gold-dim {
-    color: hsl(var(--gold-dim));
   }
   .bg-gold {
     background-color: hsl(var(--gold));
@@ -93,96 +234,122 @@
   .border-gold {
     border-color: hsl(var(--gold));
   }
-  .bg-surface-elevated {
-    background-color: hsl(var(--surface-elevated));
+
+  /* CTA = botão sólido neutro invertido (sem cor/gradiente/glow) */
+  .bg-cta {
+    background-color: hsl(var(--cta));
+    color: hsl(var(--cta-foreground));
   }
-  .bg-surface-overlay {
-    background-color: hsl(var(--surface-overlay));
+  .text-cta-foreground {
+    color: hsl(var(--cta-foreground));
   }
 
-  .gradient-gold {
-    background: linear-gradient(135deg, hsl(42 60% 55%), hsl(38 70% 42%));
+  /* Sombras neutras sutis */
+  .shadow-soft {
+    box-shadow: var(--shadow-sm);
   }
-  .gradient-card {
-    background: linear-gradient(145deg, hsl(240 20% 9%), hsl(240 20% 6%));
-  }
-
-  .glow-gold {
-    box-shadow: 0 0 20px hsla(42, 60%, 55%, 0.15), 0 0 60px hsla(42, 60%, 55%, 0.05);
+  .shadow-elevated {
+    box-shadow: var(--shadow-md);
   }
 
-  .grid-pattern {
-    background-image:
-      linear-gradient(rgba(212,168,67,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(212,168,67,0.04) 1px, transparent 1px);
-    background-size: 60px 60px;
-  }
-
-  /* Status utilities */
+  /* Status utilities (tinta dessaturada = bg/10 + texto + borda/30) */
   .status-pendente {
-    @apply bg-gray-500/10 text-gray-400 border-gray-500/30;
+    @apply bg-muted-foreground/10 text-muted-foreground border-muted-foreground/30;
   }
   .status-em-andamento {
-    @apply bg-blue-500/10 text-blue-400 border-blue-500/30;
+    @apply bg-info/10 text-info border-info/30;
   }
   .status-concluida {
-    @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/30;
+    @apply bg-success/10 text-success border-success/30;
   }
   .status-atrasada {
-    @apply bg-red-500/10 text-red-400 border-red-500/30;
+    @apply bg-danger/10 text-danger border-danger/30;
   }
 
   .priority-alta {
-    @apply bg-red-500/10 text-red-400;
+    @apply bg-danger/10 text-danger;
   }
   .priority-media {
-    @apply bg-yellow-500/10 text-yellow-400;
+    @apply bg-warning/10 text-warning;
   }
   .priority-baixa {
-    @apply bg-gray-500/10 text-gray-400;
+    @apply bg-muted-foreground/10 text-muted-foreground;
+  }
+
+  /* ---------- Estoque/Produção (portado de manufatura) ----------
+     A UI portada referencia .gradient-card, .gold-glow e .text-text-muted.
+     No Hub sóbrio: card chapado, "glow" vira hairline dourado discreto. */
+  .gradient-card {
+    background-color: hsl(var(--card));
+  }
+  .gold-glow {
+    box-shadow: 0 0 0 1px hsl(var(--gold) / 0.16);
+  }
+  .text-text-muted {
+    color: hsl(var(--text-muted));
+  }
+  .text-text-secondary {
+    color: hsl(var(--text-secondary));
+  }
+  /* Acento dourado discreto p/ kickers (uppercase tracking) — sem neon. */
+  .text-gold-dim {
+    color: hsl(var(--gold-dim));
+  }
+
+  /* Superfícies do estoque (chapadas, neutras) usadas como classe direta. */
+  .surface-base {
+    background-color: hsl(var(--surface-base));
+  }
+  .surface-raised {
+    background-color: hsl(var(--surface-raised));
+  }
+  .surface-overlay {
+    background-color: hsl(var(--surface-overlay));
+  }
+  .surface-float {
+    background-color: hsl(var(--surface-float));
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* CTA sólido sóbrio (substitui o antigo "gradient-gold" dourado).
+     bg = quase-preto (light) / off-white (dark); texto = invertido.
+     Usado pelos botões de ação do estoque; com text-[hsl(...)] inline
+     o .bg-cta-foreground garante contraste correto sobre o CTA. */
+  .gradient-gold {
+    background-color: hsl(var(--cta));
+    color: hsl(var(--cta-foreground));
+  }
+
+  /* Fundo neutro chapado (origem usava grid dourado). */
+  .grid-pattern {
+    background-color: hsl(var(--sidebar));
   }
 }
 
-/* Glow pulse animation for CTA */
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 8px hsla(42, 60%, 55%, 0.3), 0 0 24px hsla(42, 60%, 55%, 0.1); }
-  50% { box-shadow: 0 0 16px hsla(42, 60%, 55%, 0.5), 0 0 40px hsla(42, 60%, 55%, 0.2); }
+/* Animações de entrada do estoque (sóbrias: fade curto, sem bounce). */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.glow-pulse {
-  animation: glow-pulse 2s ease-in-out infinite;
+.animate-fade-up {
+  animation: fade-up 0.25s ease-out;
 }
-
-/* Online pulse */
-@keyframes online-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.3); }
-}
-.online-pulse {
-  animation: online-pulse 2s ease-in-out infinite;
+.animate-slide-up {
+  animation: fade-up 0.2s ease-out;
 }
 
-/* Shake animation */
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-  20%, 40%, 60%, 80% { transform: translateX(4px); }
-}
-.animate-shake {
-  animation: shake 0.5s ease-in-out;
-}
-
-/* Scrollbar */
+/* Scrollbar neutra (cinza) */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(240 22% 5%);
+  background: hsl(var(--muted));
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(240 18% 18%);
-  border-radius: 3px;
+  background: hsl(var(--border));
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(240 18% 25%);
+  background: hsl(var(--muted-foreground-dim));
 }

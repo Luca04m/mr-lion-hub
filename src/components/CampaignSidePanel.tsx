@@ -38,9 +38,9 @@ function fmtDate(d: string, pattern = "dd 'de' MMM") {
 }
 
 const RISK_STYLE: Record<string, string> = {
-  "Baixo": "text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
-  "Médio": "text-amber-400 bg-amber-500/10 border-amber-500/25",
-  "Alto":  "text-red-400 bg-red-500/10 border-red-500/25",
+  "Baixo": "text-success bg-success/[0.12] border-success/30",
+  "Médio": "text-warning bg-warning/[0.12] border-warning/30",
+  "Alto":  "text-danger bg-danger/[0.12] border-danger/30",
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -62,7 +62,7 @@ function CopyButton({ text }: { text: string }) {
   };
   return (
     <button onClick={handle} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-gold ml-auto shrink-0">
-      {copied ? <span className="text-[9px] text-emerald-400">✓</span> : <Copy className="w-3 h-3" />}
+      {copied ? <span className="text-[9px] text-success">✓</span> : <Copy className="w-3 h-3" />}
     </button>
   );
 }
@@ -84,11 +84,11 @@ function TaskRow({
     <div className={cn(
       "flex items-start gap-2.5 px-3 py-2.5 rounded-lg border transition-all group",
       done
-        ? "bg-emerald-500/5 border-emerald-500/20 opacity-70"
+        ? "bg-success/[0.06] border-success/25 opacity-70"
         : critical
-          ? "bg-red-500/5 border-red-500/20 hover:border-red-500/35"
+          ? "bg-danger/[0.06] border-danger/25 hover:border-danger/40"
           : late
-            ? "bg-amber-500/5 border-amber-500/20 hover:border-amber-500/30"
+            ? "bg-warning/[0.06] border-warning/25 hover:border-warning/35"
             : "bg-secondary/20 border-border hover:border-gold/25"
     )}>
       {/* Checkbox */}
@@ -96,7 +96,7 @@ function TaskRow({
         onClick={() => onToggle(task)}
         className={cn(
           "w-4 h-4 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all",
-          done ? "bg-emerald-500 border-emerald-500" : critical ? "border-red-500/60" : "border-muted-foreground/30 hover:border-gold/60"
+          done ? "bg-success border-success" : critical ? "border-danger/60" : "border-muted-foreground/30 hover:border-gold/60"
         )}>
         {done && <Check className="w-2.5 h-2.5 text-white" />}
       </button>
@@ -110,7 +110,7 @@ function TaskRow({
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             <span className="text-[9px] text-muted-foreground">{task.responsible.join(", ")}</span>
             {task.dueDate && (
-              <span className={cn("text-[9px] font-mono", late ? "text-amber-400" : "text-muted-foreground")}>{task.dueDate}</span>
+              <span className={cn("text-[9px] font-mono", late ? "text-warning" : "text-muted-foreground")}>{task.dueDate}</span>
             )}
           </div>
         )}
@@ -119,7 +119,7 @@ function TaskRow({
       {/* Right badges */}
       <div className="flex items-center gap-1.5 shrink-0">
         {critical && !done && (
-          <span className="text-[8px] font-bold text-red-400 bg-red-500/10 px-1 py-0.5 rounded">CRÍTICO</span>
+          <span className="text-[8px] font-bold text-danger bg-danger/[0.12] px-1 py-0.5 rounded">CRÍTICO</span>
         )}
         <span className="text-[9px] font-medium" style={{ color: STATUS_COLORS[task.status] }}>
           {STATUS_LABELS[task.status]}
@@ -248,12 +248,12 @@ function OverviewTab({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
         {/* Dias restantes */}
-        <div className="bg-card border border-border rounded-xl px-4 py-3.5">
+        <div className="bg-card border border-border rounded-card shadow-soft px-4 py-3.5">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
             {isPast ? "Encerrada" : "Dias restantes"}
           </p>
           <p className="text-2xl font-bold font-mono" style={{
-            color: isPast ? "#94A3B8" : daysLeft <= 1 ? "#EF4444" : daysLeft <= 3 ? "#F59E0B" : "#D4A843",
+            color: isPast ? "hsl(var(--muted-foreground))" : daysLeft <= 1 ? "hsl(var(--danger))" : daysLeft <= 3 ? "hsl(var(--warning))" : "hsl(var(--gold))",
           }}>
             {isPast ? "—" : daysLeft}
           </p>
@@ -264,10 +264,10 @@ function OverviewTab({
 
         {/* Tarefas */}
         <button onClick={() => onSwitchTab("tarefas")}
-          className="bg-card border border-border rounded-xl px-4 py-3.5 text-left hover:border-gold/30 transition-colors">
+          className="bg-card border border-border rounded-card shadow-soft px-4 py-3.5 text-left hover:border-gold/30 transition-colors">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Tarefas</p>
           <p className="text-2xl font-bold font-mono" style={{
-            color: taskTotal > 0 && taskDone === taskTotal ? "#22C55E" : "#D4A843",
+            color: taskTotal > 0 && taskDone === taskTotal ? "hsl(var(--success))" : "hsl(var(--gold))",
           }}>
             {taskPct}<span className="text-sm">%</span>
           </p>
@@ -276,10 +276,10 @@ function OverviewTab({
 
         {/* Go Live */}
         <button onClick={() => onSwitchTab("tarefas")}
-          className="bg-card border border-border rounded-xl px-4 py-3.5 text-left hover:border-gold/30 transition-colors">
+          className="bg-card border border-border rounded-card shadow-soft px-4 py-3.5 text-left hover:border-gold/30 transition-colors">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Go Live</p>
           <p className="text-2xl font-bold font-mono" style={{
-            color: glTotal > 0 && glDone === glTotal ? "#22C55E" : "#D4A843",
+            color: glTotal > 0 && glDone === glTotal ? "hsl(var(--success))" : "hsl(var(--gold))",
           }}>
             {glPct}<span className="text-sm">%</span>
           </p>
@@ -288,7 +288,7 @@ function OverviewTab({
 
         {/* Posts */}
         <button onClick={onNavigateToContent}
-          className="bg-card border border-border rounded-xl px-4 py-3.5 text-left hover:border-gold/30 transition-colors">
+          className="bg-card border border-border rounded-card shadow-soft px-4 py-3.5 text-left hover:border-gold/30 transition-colors">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Posts</p>
           <p className="text-2xl font-bold font-mono text-foreground">{linkedPosts.length}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -300,11 +300,11 @@ function OverviewTab({
       {/* ── Fase ativa + Conceito ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className={cn(
-          "rounded-xl border px-4 py-3.5",
+          "rounded-card border px-4 py-3.5",
           activePhase ? "bg-gold/5 border-gold/25" : "bg-secondary/20 border-border"
         )}>
-          <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: activePhase ? "#D4A843" : undefined }}>
-            {activePhase ? "⚡ Fase ativa" : "Status"}
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: activePhase ? "hsl(var(--gold))" : undefined }}>
+            {activePhase ? "Fase ativa" : "Status"}
           </p>
           {activePhase ? (
             <>
@@ -318,7 +318,7 @@ function OverviewTab({
           )}
         </div>
 
-        <div className="bg-gold/5 border border-gold/15 rounded-xl px-4 py-3.5">
+        <div className="bg-gold/5 border border-gold/15 rounded-card px-4 py-3.5">
           <p className="text-[10px] font-bold text-gold/50 uppercase tracking-wider mb-1.5">Conceito central</p>
           <p className="text-sm font-bold text-gold line-clamp-1">{campaign.concept}</p>
           {campaign.tagline && <p className="text-xs text-muted-foreground italic mt-0.5 line-clamp-1">{campaign.tagline}</p>}
@@ -327,7 +327,7 @@ function OverviewTab({
 
       {/* ── Barras de progresso ── */}
       {(taskTotal > 0 || glTotal > 0) && (
-        <div className="bg-card border border-border rounded-xl px-5 py-4 space-y-4">
+        <div className="bg-card border border-border rounded-card shadow-soft px-5 py-4 space-y-4">
           {taskTotal > 0 && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -335,13 +335,13 @@ function OverviewTab({
                   <CheckSquare className="w-3.5 h-3.5 text-gold/50" />
                   <span className="text-xs font-semibold text-foreground">Progresso operacional</span>
                 </div>
-                <span className="text-xs font-bold font-mono" style={{ color: taskDone === taskTotal ? "#22C55E" : "#D4A843" }}>
+                <span className="text-xs font-bold font-mono" style={{ color: taskDone === taskTotal ? "hsl(var(--success))" : "hsl(var(--gold))" }}>
                   {taskDone}/{taskTotal} · {taskPct}%
                 </span>
               </div>
               <div className="h-2.5 bg-secondary rounded-full overflow-hidden mb-2">
                 <div className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${taskPct}%`, backgroundColor: taskDone === taskTotal ? "#22C55E" : "#D4A843" }} />
+                  style={{ width: `${taskPct}%`, backgroundColor: taskDone === taskTotal ? "hsl(var(--success))" : "hsl(var(--gold))" }} />
               </div>
               {/* Status pills — clicáveis para a aba Tarefas */}
               <div className="flex flex-wrap gap-3">
@@ -371,16 +371,16 @@ function OverviewTab({
                   <span className="text-sm leading-none">✅</span>
                   <span className="text-xs font-semibold text-foreground">Checklist Go Live</span>
                 </div>
-                <span className="text-xs font-bold font-mono" style={{ color: glDone === glTotal ? "#22C55E" : "#D4A843" }}>
+                <span className="text-xs font-bold font-mono" style={{ color: glDone === glTotal ? "hsl(var(--success))" : "hsl(var(--gold))" }}>
                   {glDone}/{glTotal} · {glPct}%
                 </span>
               </div>
               <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-300"
-                  style={{ width: `${glPct}%`, backgroundColor: glDone === glTotal ? "#22C55E" : "#D4A843" }} />
+                  style={{ width: `${glPct}%`, backgroundColor: glDone === glTotal ? "hsl(var(--success))" : "hsl(var(--gold))" }} />
               </div>
               {glDone === glTotal && (
-                <p className="text-[10px] text-emerald-400 font-semibold mt-1.5 text-center">🦁 Go Live liberado!</p>
+                <p className="text-[10px] text-success font-semibold mt-1.5 text-center">🦁 Go Live liberado!</p>
               )}
             </div>
           )}
@@ -389,14 +389,14 @@ function OverviewTab({
 
       {/* ── Tarefas atrasadas (alerta) ── */}
       {lateTasks.length > 0 && (
-        <div className="bg-red-500/5 border border-red-500/25 rounded-xl px-4 py-3.5">
+        <div className="bg-danger/[0.06] border border-danger/25 rounded-card px-4 py-3.5">
           <div className="flex items-center gap-2 mb-2.5">
-            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-            <span className="text-xs font-bold text-red-400">
+            <AlertCircle className="w-4 h-4 text-danger shrink-0" />
+            <span className="text-xs font-bold text-danger">
               {lateTasks.length} tarefa{lateTasks.length > 1 ? "s" : ""} atrasada{lateTasks.length > 1 ? "s" : ""}
             </span>
             <button onClick={() => onSwitchTab("tarefas")}
-              className="ml-auto text-[10px] text-red-400/70 hover:text-red-400 flex items-center gap-1 transition-colors">
+              className="ml-auto text-[10px] text-danger/70 hover:text-danger flex items-center gap-1 transition-colors">
               Ver todas <NavIcon className="w-3 h-3" />
             </button>
           </div>
@@ -456,7 +456,7 @@ function OverviewTab({
               });
               return (
                 <div key={day} className={cn(
-                  "flex flex-col items-center rounded-xl border py-3 px-1.5 gap-1.5 transition-colors",
+                  "flex flex-col items-center rounded-card border py-3 px-1.5 gap-1.5 transition-colors",
                   todayMark ? "bg-gold/10 border-gold/30" : "bg-secondary/20 border-border"
                 )}>
                   <span className={cn("text-[10px] font-bold font-mono", todayMark ? "text-gold" : "text-muted-foreground")}>
@@ -577,8 +577,8 @@ function OverviewTab({
 
       {/* Notes */}
       {campaign.notes && (
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3 flex gap-3">
-          <StickyNote className="w-4 h-4 text-amber-400/60 shrink-0 mt-0.5" />
+        <div className="bg-warning/[0.06] border border-warning/20 rounded-sub px-4 py-3 flex gap-3">
+          <StickyNote className="w-4 h-4 text-warning/60 shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground leading-relaxed">{campaign.notes}</p>
         </div>
       )}
@@ -650,7 +650,7 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
         <span className="text-base">✅</span>
         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Checklist Final de Go Live</span>
         <span className="flex-1 h-px bg-border" />
-        <span className={cn("text-[10px] font-mono font-bold", allDone ? "text-emerald-400" : "text-muted-foreground")}>
+        <span className={cn("text-[10px] font-mono font-bold", allDone ? "text-success" : "text-muted-foreground")}>
           {doneCount}/{items.length}
         </span>
       </div>
@@ -658,7 +658,7 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
       {/* Mini progress */}
       <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-3">
         <div className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%`, backgroundColor: allDone ? "#22C55E" : "#D4A843" }} />
+          style={{ width: `${pct}%`, backgroundColor: allDone ? "hsl(var(--success))" : "hsl(var(--gold))" }} />
       </div>
 
       <div className="space-y-1">
@@ -668,11 +668,11 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
             <button key={i} onClick={() => toggle(i)}
               className={cn(
                 "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-left transition-all",
-                done ? "bg-emerald-500/5 border-emerald-500/20" : "bg-secondary/20 border-border hover:border-gold/25"
+                done ? "bg-success/[0.06] border-success/20" : "bg-secondary/20 border-border hover:border-gold/25"
               )}>
               <div className={cn(
                 "w-3.5 h-3.5 rounded border-2 shrink-0 flex items-center justify-center transition-all",
-                done ? "bg-emerald-500 border-emerald-500" : "border-muted-foreground/40 hover:border-gold/60"
+                done ? "bg-success border-success" : "border-muted-foreground/40 hover:border-gold/60"
               )}>
                 {done && <Check className="w-2 h-2 text-white" />}
               </div>
@@ -685,8 +685,8 @@ function GoLiveChecklist({ campaign }: { campaign: Campaign }) {
       </div>
 
       {allDone && (
-        <div className="mt-3 text-center py-2 px-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-          <p className="text-xs text-emerald-400 font-semibold">🦁 Tudo verificado — Go Live liberado!</p>
+        <div className="mt-3 text-center py-2 px-4 rounded-sub bg-success/[0.12] border border-success/20">
+          <p className="text-xs text-success font-semibold">🦁 Tudo verificado — Go Live liberado!</p>
         </div>
       )}
     </div>
@@ -744,18 +744,18 @@ function TasksTab({
   return (
     <div className="space-y-5">
       {/* Progress */}
-      <div className="bg-card border border-border rounded-xl px-5 py-4">
+      <div className="bg-card border border-border rounded-card shadow-soft px-5 py-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-foreground">Progresso das tarefas</span>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold font-mono" style={{ color: done === total ? "#22C55E" : "#D4A843" }}>
+            <span className="text-sm font-bold font-mono" style={{ color: done === total ? "hsl(var(--success))" : "hsl(var(--gold))" }}>
               {done}/{total} · {pct}%
             </span>
           </div>
         </div>
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, backgroundColor: done === total ? "#22C55E" : "#D4A843" }} />
+            style={{ width: `${pct}%`, backgroundColor: done === total ? "hsl(var(--success))" : "hsl(var(--gold))" }} />
         </div>
         <div className="flex gap-4 mt-2.5">
           {(["pendente", "em-andamento", "concluida", "atrasada"] as const).map(s => {
@@ -1079,7 +1079,7 @@ export function CampaignDetail({ campaign, linkedPosts, linkedTasks, onEdit, onD
                   const isEditingAd = editingAdId === ad.id;
                   const draft = isEditingAd ? editAdDraft! : ad;
                   return (
-                    <div key={ad.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div key={ad.id} className="bg-card border border-border rounded-card shadow-soft overflow-hidden">
                       <div className="px-5 py-3 bg-secondary/30 border-b border-border flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           {isEditingAd ? (
@@ -1115,7 +1115,7 @@ export function CampaignDetail({ campaign, linkedPosts, linkedTasks, onEdit, onD
                         <div className="flex items-center gap-1.5 ml-3 shrink-0">
                           {isEditingAd ? (
                             <>
-                              <Button onClick={handleSaveAd} size="sm" variant="ghost" className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+                              <Button onClick={handleSaveAd} size="sm" variant="ghost" className="h-7 px-2 text-success hover:text-success hover:bg-success/[0.12]">
                                 <Save className="w-3.5 h-3.5" />
                               </Button>
                               <Button onClick={handleCancelAd} size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground">
@@ -1200,7 +1200,7 @@ export function CampaignDetail({ campaign, linkedPosts, linkedTasks, onEdit, onD
                   const isEditingVideo = editingVideoId === video.id;
                   const vDraft = isEditingVideo ? editVideoDraft! : video;
                   return (
-                    <div key={video.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div key={video.id} className="bg-card border border-border rounded-card shadow-soft overflow-hidden">
                       <div className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-secondary/20 transition-colors">
                         <button onClick={() => setExpandedVideo(isOpen ? null : video.id)} className="flex items-center gap-3 flex-1 text-left">
                           <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
@@ -1214,7 +1214,7 @@ export function CampaignDetail({ campaign, linkedPosts, linkedTasks, onEdit, onD
                         <div className="flex items-center gap-1 shrink-0">
                           {isEditingVideo ? (
                             <>
-                              <Button onClick={handleSaveVideo} size="sm" variant="ghost" className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+                              <Button onClick={handleSaveVideo} size="sm" variant="ghost" className="h-7 px-2 text-success hover:text-success hover:bg-success/[0.12]">
                                 <Save className="w-3.5 h-3.5" />
                               </Button>
                               <Button onClick={handleCancelVideo} size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground">
@@ -1331,7 +1331,7 @@ export function CampaignDetail({ campaign, linkedPosts, linkedTasks, onEdit, onD
                 <SectionTitle>Urgência & Escassez ({campaign.copy.urgencyPhrases.length})</SectionTitle>
                 <div className="space-y-1.5">
                   {campaign.copy.urgencyPhrases.map((p, i) => (
-                    <div key={i} className="group flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary/30 transition-colors border-l-2 border-amber-500/30">
+                    <div key={i} className="group flex items-center gap-3 px-3 py-2 rounded-sub hover:bg-secondary/30 transition-colors border-l-2 border-warning/30">
                       <p className="text-xs text-foreground flex-1">{p}</p>
                       <CopyButton text={p} />
                     </div>

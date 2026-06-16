@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import OverviewPage from "./pages/OverviewPage";
 import TasksPage from "./pages/TasksPage";
@@ -12,6 +12,12 @@ import CalendarPage from "./pages/CalendarPage";
 import CampaignsPage from "./pages/CampaignsPage";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "./components/layout/AppLayout";
+import { PrivateRoute } from "./components/PrivateRoute";
+import { EstoqueLayout } from "./estoque/EstoqueLayout";
+import { FinanceiroLayout } from "./financeiro/FinanceiroLayout";
+import { Comando } from "./financeiro/telas/Comando";
+import { Lucro } from "./financeiro/telas/Lucro";
+import { Caixa } from "./financeiro/telas/Caixa";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +30,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <HashRouter>
+      <BrowserRouter>
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/overview" element={<ProtectedPage><OverviewPage /></ProtectedPage>} />
@@ -33,6 +39,13 @@ const App = () => (
           <Route path="/revendedores" element={<ProtectedPage><RevendedoresPage /></ProtectedPage>} />
           <Route path="/content" element={<ProtectedPage><ContentPage /></ProtectedPage>} />
           <Route path="/campaigns" element={<ProtectedPage><CampaignsPage /></ProtectedPage>} />
+          <Route path="/financeiro" element={<PrivateRoute><FinanceiroLayout /></PrivateRoute>}>
+            <Route index element={<Comando />} />
+            <Route path="lucro" element={<Lucro />} />
+            <Route path="caixa" element={<Caixa />} />
+          </Route>
+          <Route path="/estoque" element={<PrivateRoute><EstoqueLayout /></PrivateRoute>} />
+          <Route path="/estoque/*" element={<PrivateRoute><EstoqueLayout /></PrivateRoute>} />
           <Route path="/dashboard" element={<Navigate to="/overview" replace />} />
           <Route path="/kanban" element={<Navigate to="/tasks" replace />} />
           <Route path="/calendar" element={<ProtectedPage><CalendarPage /></ProtectedPage>} />
@@ -41,7 +54,7 @@ const App = () => (
           <Route path="/activity" element={<Navigate to="/tasks" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </HashRouter>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

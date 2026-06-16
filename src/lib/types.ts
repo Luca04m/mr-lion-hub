@@ -83,16 +83,17 @@ export interface Meeting {
   meetingStatus?: MeetingStatus;
 }
 
+// Paleta sóbria dessaturada (UI tokens — espelha os tokens CSS success/danger/warning/info/gold/neutral)
 export const MEETING_TIPO_COLORS: Record<MeetingTipo, string> = {
-  "Recorrente": "#3B82F6",
-  "Mensal": "#8B5CF6",
-  "Pontual": "#F59E0B",
+  "Recorrente": "#5A7CA8",
+  "Mensal": "#A8842C",
+  "Pontual": "#B8923C",
 };
 
 export const MEETING_STATUS_COLORS: Record<MeetingStatus, string> = {
-  "Agendada": "#3B82F6",
-  "Realizada": "#22C55E",
-  "Cancelada": "#6B7280",
+  "Agendada": "#5A7CA8",
+  "Realizada": "#4F8A63",
+  "Cancelada": "#807B72",
 };
 
 export interface Revendedor {
@@ -132,22 +133,23 @@ export const AREAS = [
   "Kit PDV", "Garrafa Nova", "RTD", "Produtos", "Press-kit",
 ];
 
+// Paleta categórica dessaturada/terrosa (distinção sem neon)
 export const AREA_COLORS: Record<string, string> = {
-  "Operacional": "#64748B",
-  "Comercial": "#3B82F6",
-  "Marketing": "#E879F9",
-  "Produto": "#F472B6",
-  "Conteúdo": "#06B6D4",
-  "Nuvemshop": "#6366F1",
-  "Carnaval": "#F59E0B",
-  "Orochi": "#EF4444",
-  "Nation": "#10B981",
-  "Carlos Prates": "#8B5CF6",
-  "Kit PDV": "#EC4899",
-  "Garrafa Nova": "#14B8A6",
-  "RTD": "#F97316",
-  "Produtos": "#84CC16",
-  "Press-kit": "#A78BFA",
+  "Operacional": "#78736B",
+  "Comercial": "#5A7CA8",
+  "Marketing": "#9A6B8A",
+  "Produto": "#A8767E",
+  "Conteúdo": "#4F8A8A",
+  "Nuvemshop": "#6A6BA0",
+  "Carnaval": "#B8923C",
+  "Orochi": "#B0524B",
+  "Nation": "#4F8A63",
+  "Carlos Prates": "#8A7BA8",
+  "Kit PDV": "#A86B82",
+  "Garrafa Nova": "#4F8A80",
+  "RTD": "#B07A4B",
+  "Produtos": "#8A9A5B",
+  "Press-kit": "#8A82A8",
 };
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -158,10 +160,10 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<TaskStatus, string> = {
-  pendente: "#6B7280",
-  "em-andamento": "#3B82F6",
-  concluida: "#22C55E",
-  atrasada: "#EF4444",
+  pendente: "#807B72",
+  "em-andamento": "#5A7CA8",
+  concluida: "#4F8A63",
+  atrasada: "#B0524B",
 };
 
 export const PRIORITY_LABELS: Record<TaskPriority, string> = {
@@ -171,9 +173,9 @@ export const PRIORITY_LABELS: Record<TaskPriority, string> = {
 };
 
 export const PRIORITY_COLORS: Record<TaskPriority, string> = {
-  alta: "#EF4444",
-  media: "#F59E0B",
-  baixa: "#6B7280",
+  alta: "#B0524B",
+  media: "#B8923C",
+  baixa: "#807B72",
 };
 
 export const FILE_TYPE_LABELS: Record<FileType, string> = {
@@ -184,11 +186,11 @@ export const FILE_TYPE_LABELS: Record<FileType, string> = {
 };
 
 export const REVENDEDOR_STATUS_COLORS: Record<RevendedorStatus, string> = {
-  "Ativo": "#22C55E",
-  "Inativo": "#6B7280",
-  "Novo Lead": "#3B82F6",
-  "Em Negociação": "#F59E0B",
-  "Recorrente": "#8B5CF6",
+  "Ativo": "#4F8A63",
+  "Inativo": "#807B72",
+  "Novo Lead": "#5A7CA8",
+  "Em Negociação": "#B8923C",
+  "Recorrente": "#A8842C",
 };
 
 export const PIPELINE_STAGES: RevendedorStatus[] = ["Novo Lead", "Em Negociação", "Ativo", "Recorrente"];
@@ -231,10 +233,10 @@ export interface ContentPost {
 export const CONTENT_CREATORS = ["MD Chefe", "Naju"];
 
 export const PLATFORM_COLORS: Record<ContentPlatform, string> = {
-  Instagram: "#E1306C",
-  YouTube: "#FF0000",
-  TikTok: "#00F2EA",
-  Twitter: "#1DA1F2",
+  Instagram: "#A8842C",
+  YouTube: "#B0524B",
+  TikTok: "#5A7CA8",
+  Twitter: "#807B72",
 };
 
 export const CONTENT_TYPE_BY_PLATFORM: Record<ContentPlatform, ContentType[]> = {
@@ -245,10 +247,10 @@ export const CONTENT_TYPE_BY_PLATFORM: Record<ContentPlatform, ContentType[]> = 
 };
 
 export const CONTENT_STATUS_COLORS: Record<ContentStatus, string> = {
-  rascunho: "#6B7280",
-  aprovado: "#3B82F6",
-  agendado: "#F59E0B",
-  publicado: "#22C55E",
+  rascunho: "#807B72",
+  aprovado: "#5A7CA8",
+  agendado: "#B8923C",
+  publicado: "#4F8A63",
 };
 
 export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
@@ -332,10 +334,10 @@ export interface Campaign {
 }
 
 export const CAMPAIGN_STATUS_COLORS: Record<CampaignStatus, string> = {
-  rascunho: "#6B7280",
-  ativa: "#22C55E",
-  pausada: "#F59E0B",
-  encerrada: "#94A3B8",
+  rascunho: "#807B72",
+  ativa: "#4F8A63",
+  pausada: "#B8923C",
+  encerrada: "#9C9A92",
 };
 
 export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
@@ -352,3 +354,4 @@ export const CAMPAIGN_CHANNELS = [
 
 export const APP_PASSWORD = "Mrlion@2026";
 export const ROLES_KEY = "mrlion_roles";
+export const PRIVATE_USERS = ["Luca", "João"] as const;

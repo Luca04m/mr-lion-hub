@@ -87,10 +87,10 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${selected === idx ? "bg-accent text-gold" : "text-foreground hover:bg-secondary/50"}`}>
                     <span className="font-mono text-xs text-gold">#{t.id}</span>
                     <span className="flex-1 truncate text-left">{t.title}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ backgroundColor: `${STATUS_COLORS[t.status]}15`, color: STATUS_COLORS[t.status] }}>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-sub" style={{ backgroundColor: `${STATUS_COLORS[t.status]}15`, color: STATUS_COLORS[t.status] }}>
                       {STATUS_LABELS[t.status]}
                     </span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded hidden sm:inline" style={{ backgroundColor: `${AREA_COLORS[t.area] || "#888"}15`, color: AREA_COLORS[t.area] || "#888" }}>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-sub hidden sm:inline" style={{ backgroundColor: `${AREA_COLORS[t.area] || "hsl(var(--muted-foreground))"}15`, color: AREA_COLORS[t.area] || "hsl(var(--muted-foreground))" }}>
                       {t.area}
                     </span>
                   </button>

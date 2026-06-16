@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getTasks, getUser, updateTask, deleteTask, createTask, logActivity, exportTasksMarkdown, getActivities, getRole, setRole, getCampaigns } from "@/lib/store";
-import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment, Activity } from "@/lib/types";
+import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment, Activity } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { TaskSidePanel } from "@/components/TaskSidePanel";
+import { StatusPill, type StatusTone } from "@/components/pro";
 import { useRealtime } from "@/hooks/use-realtime";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCorners, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
@@ -26,6 +27,25 @@ import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const COLUMNS: TaskStatus[] = ["pendente", "em-andamento", "concluida", "atrasada"];
+
+// Status da tarefa → tom sóbrio do StatusPill (design system pro)
+const TASK_TONE: Record<TaskStatus, StatusTone> = {
+  pendente: "neutral",
+  "em-andamento": "info",
+  concluida: "success",
+  atrasada: "danger",
+};
+
+// Cores sóbrias (tokens) para confetti e realces inline
+const CONFETTI_COLORS = ["hsl(var(--gold))", "hsl(var(--success))", "hsl(var(--info))"];
+
+// Status da tarefa → token de cor sóbrio (para acentos inline: dots, barras, border-top)
+const STATUS_TOKEN: Record<TaskStatus, string> = {
+  pendente: "hsl(var(--muted-foreground))",
+  "em-andamento": "hsl(var(--info))",
+  concluida: "hsl(var(--success))",
+  atrasada: "hsl(var(--danger))",
+};
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -86,7 +106,7 @@ const TasksPage = () => {
     updateTask(task.id, { status: newStatus });
     logActivity({ taskId: task.id, taskTitle: task.title, userName, action: "status_change", oldValue: prevStatus, newValue: newStatus });
     if (newStatus === "concluida") {
-      confetti({ particleCount: 80, spread: 60, colors: ["#D4A843", "#F5D77A", "#22C55E", "#6366F1"], origin: { y: 0.7 } });
+      confetti({ particleCount: 80, spread: 60, colors: CONFETTI_COLORS, origin: { y: 0.7 } });
       toast.success(`"${task.title}" concluída! 🎉`, {
         duration: 5000,
         action: {
@@ -105,7 +125,7 @@ const TasksPage = () => {
     updateTask(id, { status });
     logActivity({ taskId: id, taskTitle: task.title, userName, action: "status_change", oldValue: prevStatus, newValue: status });
     if (status === "concluida") {
-      confetti({ particleCount: 80, spread: 60, colors: ["#D4A843", "#F5D77A", "#22C55E", "#6366F1"], origin: { y: 0.7 } });
+      confetti({ particleCount: 80, spread: 60, colors: CONFETTI_COLORS, origin: { y: 0.7 } });
       toast.success(`"${task.title}" concluída! 🎉`, {
         duration: 5000,
         action: {
@@ -188,8 +208,8 @@ const TasksPage = () => {
           <h1 className="text-xl font-bold">Tarefas</h1>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-xs text-muted-foreground">{doneCount}/{tasks.length} concluídas</span>
-            <div className="w-28 h-2 rounded-full bg-surface-elevated overflow-hidden">
-              <div className="h-full rounded-full gradient-gold transition-all duration-500" style={{ width: `${progress}%` }} />
+            <div className="w-28 h-2 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full bg-gold transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
             <span className="text-xs font-mono text-gold font-semibold">{progress}%</span>
           </div>
@@ -203,7 +223,7 @@ const TasksPage = () => {
             </TooltipTrigger>
             <TooltipContent>Copiar tarefas em Markdown</TooltipContent>
           </Tooltip>
-          <Button onClick={() => { setEditingTask(undefined); setDialogOpen(true); }} className="gradient-gold text-primary-foreground font-semibold glow-pulse" size="sm">
+          <Button onClick={() => { setEditingTask(undefined); setDialogOpen(true); }} className="bg-gold text-primary-foreground font-semibold" size="sm">
             <Plus className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Nova Tarefa</span><span className="sm:hidden">Nova</span>
           </Button>
         </div>
@@ -212,13 +232,13 @@ const TasksPage = () => {
       {/* Quick Stats Strip */}
       <div className="flex gap-2 overflow-x-auto pb-0.5 -mt-1">
         {[
-          { label: "Atrasadas", count: lateCount, color: "#EF4444", icon: AlertCircle },
-          { label: "Andamento", count: inProgressCount, color: "#3B82F6", icon: Clock },
-          { label: "Pendentes", count: pendingCount, color: "#F59E0B", icon: Clock },
-          { label: "Concluídas", count: doneCount, color: "#22C55E", icon: CheckCircle2 },
+          { label: "Atrasadas", count: lateCount, color: "hsl(var(--danger))", icon: AlertCircle },
+          { label: "Andamento", count: inProgressCount, color: "hsl(var(--info))", icon: Clock },
+          { label: "Pendentes", count: pendingCount, color: "hsl(var(--warning))", icon: Clock },
+          { label: "Concluídas", count: doneCount, color: "hsl(var(--success))", icon: CheckCircle2 },
         ].map(s => (
-          <div key={s.label} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs shrink-0 transition-all"
-            style={{ borderColor: `${s.color}30`, backgroundColor: `${s.color}08`, color: s.color }}>
+          <div key={s.label} className="flex items-center gap-1.5 px-2.5 py-1 rounded-sub border text-xs shrink-0 transition-all"
+            style={{ borderColor: `color-mix(in srgb, ${s.color} 30%, transparent)`, backgroundColor: `color-mix(in srgb, ${s.color} 8%, transparent)`, color: s.color }}>
             <s.icon className="w-3 h-3" />
             <span className="font-bold font-mono">{s.count}</span>
             <span className="opacity-75">{s.label}</span>
@@ -231,7 +251,7 @@ const TasksPage = () => {
         <TabsList className="bg-secondary/40 h-auto gap-0.5 w-full overflow-x-auto flex justify-start p-1">
           <TabsTrigger value="minhas" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
             <User className="w-3 h-3 shrink-0" />Minhas
-            {lateCount > 0 && <span className="ml-0.5 text-[9px] font-mono font-bold bg-red-500/20 text-red-400 px-1 py-0.5 rounded-full">{lateCount}</span>}
+            {lateCount > 0 && <span className="ml-0.5 text-[9px] font-mono font-bold bg-danger/[0.12] text-danger px-1 py-0.5 rounded-sub">{lateCount}</span>}
           </TabsTrigger>
           <TabsTrigger value="lista" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
             <ListTodo className="w-3 h-3 shrink-0" />Lista
@@ -330,7 +350,7 @@ function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, 
           {items.map((task: Task) => {
             const due = formatDue(task.dueDate);
             return (
-              <div key={task.id} className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-center gap-2 hover:border-gold/20 transition-all cursor-pointer group">
+              <div key={task.id} className="bg-card rounded-card border border-border shadow-soft px-3 py-2.5 flex items-center gap-2 hover:border-gold/20 transition-all cursor-pointer group">
                 <button onClick={() => onToggleComplete(task)} className="shrink-0">
                   {task.status === "concluida" ? (
                     <Check className="w-4 h-4 text-emerald-500" />
@@ -340,7 +360,7 @@ function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, 
                 </button>
                 <span className="font-mono text-xs text-gold shrink-0">#{task.id}</span>
                 <span className="text-sm flex-1 truncate cursor-pointer hover:text-gold transition-colors" onClick={() => onTitleClick(task)}>{task.title}</span>
-                <Badge variant="outline" className="text-[9px] hidden sm:inline-flex" style={{ borderColor: `${AREA_COLORS[task.area] || "#888"}40`, color: AREA_COLORS[task.area] || "#888" }}>
+                <Badge variant="outline" className="text-[9px] hidden sm:inline-flex" style={{ borderColor: `color-mix(in srgb, ${AREA_COLORS[task.area] || "hsl(var(--muted-foreground))"} 25%, transparent)`, color: AREA_COLORS[task.area] || "hsl(var(--muted-foreground))" }}>
                   {task.area}
                 </Badge>
                 {task.campanha_id && (() => { const c = getCampaigns().find(x => x.id === task.campanha_id); return c ? <Badge variant="outline" className="text-[9px] hidden lg:inline-flex border-gold/30 text-gold gap-0.5"><span>⚡</span>{c.title.split(" ")[0]}</Badge> : null; })()}
@@ -355,16 +375,16 @@ function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, 
 
   return (
     <div className="space-y-3 mt-3">
-      <div className="bg-card rounded-lg border border-border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="bg-card rounded-card border border-border shadow-soft p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center text-lg font-bold text-primary-foreground shrink-0">{userName.charAt(0)}</div>
+          <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-lg font-bold text-gold shrink-0">{userName.charAt(0)}</div>
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-bold truncate">{userName}</h2>
             <div className="flex items-center gap-2 sm:gap-3 mt-0.5 flex-wrap">
               <span className="text-xs text-muted-foreground">{myTasks.length} tarefas · {doneCount} concluídas</span>
               <div className="flex items-center gap-1.5">
-                <div className="w-16 sm:w-20 h-1.5 rounded-full bg-surface-elevated overflow-hidden">
-                  <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
+                <div className="w-16 sm:w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-gold" style={{ width: `${pct}%` }} />
                 </div>
                 <span className="text-xs font-mono text-gold">{pct}%</span>
               </div>
@@ -372,7 +392,7 @@ function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, 
           </div>
         </div>
         <div className="flex gap-2 sm:gap-3 justify-around sm:justify-end flex-wrap">
-          {([["pendente", STATUS_COLORS.pendente], ["em-andamento", STATUS_COLORS["em-andamento"]], ["atrasada", STATUS_COLORS.atrasada]] as const).map(([s, c]) => (
+          {([["pendente", STATUS_TOKEN.pendente], ["em-andamento", STATUS_TOKEN["em-andamento"]], ["atrasada", STATUS_TOKEN.atrasada]] as const).map(([s, c]) => (
             <div key={s} className="text-center min-w-[40px]">
               <div className="text-sm font-bold font-mono" style={{ color: c }}>{myTasks.filter((t: Task) => t.status === s).length}</div>
               <div className="text-[9px] text-muted-foreground">{STATUS_LABELS[s]}</div>
@@ -385,10 +405,10 @@ function MyTasksTabContent({ tasks, userName, onToggleComplete, onStatusChange, 
         <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma tarefa atribuída a você</p>
       ) : (
         <>
-          {renderGroup("Atrasadas", late, STATUS_COLORS.atrasada)}
-          {renderGroup("Em Andamento", inProgress, STATUS_COLORS["em-andamento"])}
-          {renderGroup("Pendentes", pending, STATUS_COLORS.pendente)}
-          {renderGroup("Concluídas", done, STATUS_COLORS.concluida)}
+          {renderGroup("Atrasadas", late, STATUS_TOKEN.atrasada)}
+          {renderGroup("Em Andamento", inProgress, STATUS_TOKEN["em-andamento"])}
+          {renderGroup("Pendentes", pending, STATUS_TOKEN.pendente)}
+          {renderGroup("Concluídas", done, STATUS_TOKEN.concluida)}
         </>
       )}
     </div>
@@ -405,10 +425,10 @@ function ListTabContent({ tasks, filtered, search, setSearch, statusFilter, setS
       <div className="flex flex-wrap gap-1.5">
         {[
           { key: "all", label: "Total", count: tasks.length, color: "hsl(var(--gold))" },
-          { key: "pendente", label: "Pendentes", count: tasks.filter((t: Task) => t.status === "pendente").length, color: STATUS_COLORS.pendente },
-          { key: "em-andamento", label: "Em Andamento", count: tasks.filter((t: Task) => t.status === "em-andamento").length, color: STATUS_COLORS["em-andamento"] },
-          { key: "concluida", label: "Concluídas", count: tasks.filter((t: Task) => t.status === "concluida").length, color: STATUS_COLORS.concluida },
-          { key: "atrasada", label: "Atrasadas", count: tasks.filter((t: Task) => t.status === "atrasada").length, color: STATUS_COLORS.atrasada },
+          { key: "pendente", label: "Pendentes", count: tasks.filter((t: Task) => t.status === "pendente").length, color: STATUS_TOKEN.pendente },
+          { key: "em-andamento", label: "Em Andamento", count: tasks.filter((t: Task) => t.status === "em-andamento").length, color: STATUS_TOKEN["em-andamento"] },
+          { key: "concluida", label: "Concluídas", count: tasks.filter((t: Task) => t.status === "concluida").length, color: STATUS_TOKEN.concluida },
+          { key: "atrasada", label: "Atrasadas", count: tasks.filter((t: Task) => t.status === "atrasada").length, color: STATUS_TOKEN.atrasada },
         ].map(s => (
           <button key={s.key} onClick={() => setStatusFilter(statusFilter === s.key ? "all" : s.key)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${statusFilter === s.key ? "border-current opacity-100" : "border-transparent opacity-60 hover:opacity-80"}`}
@@ -480,7 +500,7 @@ function ListTabContent({ tasks, filtered, search, setSearch, statusFilter, setS
           ))}
         </AnimatePresence>
         {filtered.length === 0 && (
-          <div className="text-center py-14 bg-card/40 rounded-xl border border-border/50">
+          <div className="text-center py-14 bg-card/40 rounded-card border border-border/50">
             <div className="w-12 h-12 rounded-full bg-secondary/60 flex items-center justify-center mx-auto mb-3">
               <Search className="w-5 h-5 text-muted-foreground/50" />
             </div>
@@ -532,7 +552,7 @@ function KanbanTabContent({ tasks, reload, userName, onCardClick }: { tasks: Tas
       updateTask(taskId, { status: targetStatus });
       logActivity({ taskId, taskTitle: task.title, userName, action: "status_change", oldValue: prevStatus, newValue: targetStatus });
       if (targetStatus === "concluida") {
-        confetti({ particleCount: 80, spread: 60, colors: ["#D4A843", "#F5D77A", "#22C55E", "#6366F1"], origin: { y: 0.6 } });
+        confetti({ particleCount: 80, spread: 60, colors: CONFETTI_COLORS, origin: { y: 0.6 } });
         toast.success(`"${task.title}" concluída! 🎉`, {
           duration: 5000,
           action: {
@@ -567,10 +587,10 @@ function KanbanTabContent({ tasks, reload, userName, onCardClick }: { tasks: Tas
 function KanbanColumn({ status, tasks, onCardClick }: { status: TaskStatus; tasks: Task[]; onCardClick: (t: Task) => void }) {
   const { setNodeRef } = useSortable({ id: status });
   return (
-    <div ref={setNodeRef} className="bg-card/50 rounded-lg border border-border min-h-[200px] md:min-h-[300px] flex flex-col"
-      style={{ borderTopWidth: 3, borderTopColor: STATUS_COLORS[status] }}>
+    <div ref={setNodeRef} className="bg-card/50 rounded-card border border-border shadow-soft min-h-[200px] md:min-h-[300px] flex flex-col"
+      style={{ borderTopWidth: 3, borderTopColor: STATUS_TOKEN[status] }}>
       <div className="px-3 py-2.5 flex items-center justify-between">
-        <span className="text-sm font-semibold" style={{ color: STATUS_COLORS[status] }}>{STATUS_LABELS[status]}</span>
+        <span className="text-sm font-semibold" style={{ color: STATUS_TOKEN[status] }}>{STATUS_LABELS[status]}</span>
         <span className="text-xs font-mono bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">{tasks.length}</span>
       </div>
       <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
@@ -601,7 +621,7 @@ function KanbanCard({ task, isDragging, onClick }: { task: Task; isDragging?: bo
   const due = formatDue(task.dueDate);
   const campaign = task.campanha_id ? getCampaigns().find(x => x.id === task.campanha_id) : null;
   return (
-    <div onClick={onClick} className={`bg-card rounded-md border border-border p-2.5 cursor-grab active:cursor-grabbing hover:border-gold/20 transition-all ${isDragging ? "shadow-lg shadow-gold/10 border-gold/30" : ""}`}>
+    <div onClick={onClick} className={`bg-card rounded-card border border-border shadow-soft p-2.5 cursor-grab active:cursor-grabbing hover:border-gold/20 transition-all ${isDragging ? "shadow-elevated border-gold/30" : ""}`}>
       <div className="flex items-start gap-1.5">
         <GripVertical className="w-3 h-3 text-muted-foreground/40 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
@@ -611,7 +631,7 @@ function KanbanCard({ task, isDragging, onClick }: { task: Task; isDragging?: bo
             <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${PRIORITY_COLORS[task.priority]}40`, color: PRIORITY_COLORS[task.priority] }}>
               {PRIORITY_LABELS[task.priority]}
             </Badge>
-            <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${AREA_COLORS[task.area] || "#888"}40`, color: AREA_COLORS[task.area] || "#888" }}>
+            <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `color-mix(in srgb, ${AREA_COLORS[task.area] || "hsl(var(--muted-foreground))"} 25%, transparent)`, color: AREA_COLORS[task.area] || "hsl(var(--muted-foreground))" }}>
               {task.area}
             </Badge>
           </div>
@@ -671,8 +691,8 @@ function PeopleTabContent({ tasks, reload, userName, onTaskClick, onCreateTask }
 
           return (
             <TabsContent key={member} value={member}>
-              <div className="bg-card rounded-lg border border-border p-3 sm:p-4 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4 mb-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full gradient-gold flex items-center justify-center text-lg sm:text-xl font-bold text-primary-foreground shrink-0">{member.charAt(0)}</div>
+              <div className="bg-card rounded-card border border-border shadow-soft p-3 sm:p-4 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4 mb-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-muted border border-border flex items-center justify-center text-lg sm:text-xl font-bold text-gold shrink-0">{member.charAt(0)}</div>
                 <div className="flex-1 min-w-0">
                   <h2 className="text-base sm:text-lg font-bold">{member}</h2>
                   <Input
@@ -683,15 +703,15 @@ function PeopleTabContent({ tasks, reload, userName, onTaskClick, onCreateTask }
                   />
                   <div className="flex items-center gap-3 mt-1">
                     <span className="text-xs text-muted-foreground">{memberTasks.length} tarefas · {pct}% concluído</span>
-                    <div className="w-20 h-1.5 rounded-full bg-surface-elevated overflow-hidden">
-                      <div className="h-full rounded-full gradient-gold" style={{ width: `${pct}%` }} />
+                    <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-gold" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {(["pendente", "em-andamento", "concluida", "atrasada"] as TaskStatus[]).map(s => (
                     <div key={s} className="text-center">
-                      <div className="text-sm font-bold font-mono" style={{ color: STATUS_COLORS[s] }}>
+                      <div className="text-sm font-bold font-mono" style={{ color: STATUS_TOKEN[s] }}>
                         {memberTasks.filter(t => t.status === s).length}
                       </div>
                       <div className="text-[9px] text-muted-foreground">{STATUS_LABELS[s].split(" ")[0]}</div>
@@ -701,7 +721,7 @@ function PeopleTabContent({ tasks, reload, userName, onTaskClick, onCreateTask }
                 <div className="flex items-center gap-0.5">
                   {heatmap.map((count, i) => (
                     <div key={i} className="w-3 h-3 rounded-sm" style={{
-                      backgroundColor: count === 0 ? "hsl(var(--surface-elevated))" : count < 3 ? "hsl(var(--gold) / 0.3)" : "hsl(var(--gold))"
+                      backgroundColor: count === 0 ? "hsl(var(--muted))" : count < 3 ? "hsl(var(--gold) / 0.3)" : "hsl(var(--gold))"
                     }} title={`${count} ações`} />
                   ))}
                 </div>
@@ -715,12 +735,10 @@ function PeopleTabContent({ tasks, reload, userName, onTaskClick, onCreateTask }
               <div className="space-y-1">
                 {memberTasks.map(t => (
                   <div key={t.id} onClick={() => onTaskClick(t)}
-                    className="bg-card rounded-lg border border-border px-3 py-2.5 flex items-center gap-2 hover:border-gold/20 transition-all cursor-pointer">
+                    className="bg-card rounded-card border border-border shadow-soft px-3 py-2.5 flex items-center gap-2 hover:border-gold/20 transition-all cursor-pointer">
                     <span className="font-mono text-xs text-gold">#{t.id}</span>
                     <span className="text-sm flex-1 truncate">{t.title}</span>
-                    <Badge variant="outline" className="text-[10px]" style={{ borderColor: `${STATUS_COLORS[t.status]}40`, color: STATUS_COLORS[t.status] }}>
-                      {STATUS_LABELS[t.status]}
-                    </Badge>
+                    <StatusPill label={STATUS_LABELS[t.status]} tone={TASK_TONE[t.status]} dot={false} className="text-[10px]" />
                   </div>
                 ))}
                 {memberTasks.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma tarefa atribuída</p>}
@@ -748,11 +766,11 @@ function AreasTabContent({ tasks, onTaskClick }: { tasks: Task[]; onTaskClick: (
           if (areaTasks.length === 0) return null;
           const done = areaTasks.filter(t => t.status === "concluida").length;
           const pct = areaTasks.length > 0 ? Math.round((done / areaTasks.length) * 100) : 0;
-          const color = AREA_COLORS[area] || "#888";
+          const color = AREA_COLORS[area] || "hsl(var(--muted-foreground))";
           const expanded = expandedArea === area;
 
           return (
-            <div key={area} className="bg-card rounded-lg border border-border hover:border-gold/20 transition-all overflow-hidden">
+            <div key={area} className="bg-card rounded-card border border-border shadow-soft hover:border-gold/20 transition-all overflow-hidden">
               <button className="w-full text-left p-3" onClick={() => setExpandedArea(expanded ? null : area)}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
@@ -760,7 +778,7 @@ function AreasTabContent({ tasks, onTaskClick }: { tasks: Task[]; onTaskClick: (
                   <span className="text-xs font-mono text-muted-foreground">{areaTasks.length}</span>
                   {expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                 </div>
-                <div className="h-1.5 rounded-full bg-surface-elevated overflow-hidden mb-2">
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-2">
                   <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
                 </div>
                 <div className="flex gap-1.5">
@@ -768,9 +786,7 @@ function AreasTabContent({ tasks, onTaskClick }: { tasks: Task[]; onTaskClick: (
                     const count = areaTasks.filter(t => t.status === s).length;
                     if (count === 0) return null;
                     return (
-                      <Badge key={s} variant="outline" className="text-[9px] font-mono h-4" style={{ borderColor: `${STATUS_COLORS[s]}40`, color: STATUS_COLORS[s] }}>
-                        {count} {STATUS_LABELS[s].split(" ")[0].toLowerCase()}
-                      </Badge>
+                      <StatusPill key={s} label={`${count} ${STATUS_LABELS[s].split(" ")[0].toLowerCase()}`} tone={TASK_TONE[s]} dot={false} className="font-mono text-[9px] px-1.5 py-0" />
                     );
                   })}
                 </div>
@@ -785,9 +801,7 @@ function AreasTabContent({ tasks, onTaskClick }: { tasks: Task[]; onTaskClick: (
                           className="flex items-center gap-2 py-1 text-xs cursor-pointer hover:bg-secondary/30 rounded px-1">
                           <span className="font-mono text-gold">#{t.id}</span>
                           <span className="flex-1 truncate">{t.title}</span>
-                          <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${STATUS_COLORS[t.status]}40`, color: STATUS_COLORS[t.status] }}>
-                            {STATUS_LABELS[t.status]}
-                          </Badge>
+                          <StatusPill label={STATUS_LABELS[t.status]} tone={TASK_TONE[t.status]} dot={false} className="text-[9px] px-1.5 py-0" />
                         </div>
                       ))}
                     </div>
@@ -814,12 +828,12 @@ function getActionIcon(action: string) {
   return FileText;
 }
 
-function getActionBadge(action: string): { label: string; color: string } {
-  if (action === "task_created") return { label: "Criação", color: "#22C55E" };
-  if (action === "task_deleted") return { label: "Exclusão", color: "#EF4444" };
-  if (action === "status_change") return { label: "Status", color: "#3B82F6" };
-  if (action.includes("update") || action.includes("edit")) return { label: "Edição", color: "#F59E0B" };
-  return { label: "Ação", color: "#6B7280" };
+function getActionBadge(action: string): { label: string; tone: StatusTone } {
+  if (action === "task_created") return { label: "Criação", tone: "success" };
+  if (action === "task_deleted") return { label: "Exclusão", tone: "danger" };
+  if (action === "status_change") return { label: "Status", tone: "info" };
+  if (action.includes("update") || action.includes("edit")) return { label: "Edição", tone: "warning" };
+  return { label: "Ação", tone: "neutral" };
 }
 
 function formatAction(a: Activity): string {
@@ -879,7 +893,7 @@ function ActivityTabContent() {
           const Icon = getActionIcon(a.action);
           const badge = getActionBadge(a.action);
           return (
-            <div key={a.id} className="bg-card rounded-lg border border-border px-3 py-2.5 flex flex-col sm:flex-row sm:items-start gap-2 hover:border-gold/20 transition-all">
+            <div key={a.id} className="bg-card rounded-card border border-border shadow-soft px-3 py-2.5 flex flex-col sm:flex-row sm:items-start gap-2 hover:border-gold/20 transition-all">
               <div className="flex items-start gap-2.5 flex-1 min-w-0">
                 <div className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] font-bold text-gold shrink-0 mt-0.5">
                   {a.userName.charAt(0)}
@@ -892,9 +906,7 @@ function ActivityTabContent() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-9 sm:ml-0">
-                <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${badge.color}40`, color: badge.color }}>
-                  {badge.label}
-                </Badge>
+                <StatusPill label={badge.label} tone={badge.tone} dot={false} className="text-[9px] px-1.5 py-0" />
                 <Icon className="w-3.5 h-3.5 text-muted-foreground/60" />
                 <span className="text-[10px] font-mono text-muted-foreground">
                   {formatDistanceToNow(new Date(a.createdAt), { locale: ptBR, addSuffix: true })}
@@ -921,11 +933,11 @@ function ActivityTabContent() {
 function formatDue(dueDate: string | null | undefined): { label: string; color: string } | null {
   if (!dueDate) return null;
   const d = differenceInDays(new Date(dueDate + "T12:00:00"), new Date());
-  if (d < 0) return { label: "Atrasada", color: "#EF4444" };
-  if (d === 0) return { label: "Hoje", color: "#F59E0B" };
-  if (d === 1) return { label: "Amanhã", color: "#F59E0B" };
-  if (d <= 7) return { label: `${d}d`, color: "#6B7280" };
-  return { label: format(new Date(dueDate + "T12:00:00"), "dd/MM"), color: "#4B5563" };
+  if (d < 0) return { label: "Atrasada", color: "hsl(var(--danger))" };
+  if (d === 0) return { label: "Hoje", color: "hsl(var(--warning))" };
+  if (d === 1) return { label: "Amanhã", color: "hsl(var(--warning))" };
+  if (d <= 7) return { label: `${d}d`, color: "hsl(var(--muted-foreground))" };
+  return { label: format(new Date(dueDate + "T12:00:00"), "dd/MM"), color: "hsl(var(--muted-foreground-dim))" };
 }
 
 // ═══════════════════════════════════════════════════
@@ -941,7 +953,7 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
   const due = formatDue(task.dueDate);
   return (
     <motion.div id={`task-${task.id}`} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-      className={`bg-card rounded-lg border transition-all ${highlighted ? "border-gold/50 ring-1 ring-gold/20" : "border-border hover:border-gold/20"}`}
+      className={`bg-card rounded-card border shadow-soft transition-all ${highlighted ? "border-gold/50 ring-1 ring-gold/20" : "border-border hover:border-gold/20"}`}
     >
       <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 cursor-pointer" onClick={onToggleExpand}>
         <button onClick={e => { e.stopPropagation(); onToggleComplete(); }}
@@ -954,7 +966,7 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
         <Badge variant="outline" className="text-[10px] shrink-0 hidden sm:inline-flex" style={{ borderColor: `${PRIORITY_COLORS[task.priority]}40`, color: PRIORITY_COLORS[task.priority] }}>
           {PRIORITY_LABELS[task.priority]}
         </Badge>
-        <Badge variant="outline" className="text-[10px] shrink-0 hidden sm:inline-flex" style={{ borderColor: `${AREA_COLORS[task.area] || "#888"}40`, color: AREA_COLORS[task.area] || "#888" }}>
+        <Badge variant="outline" className="text-[10px] shrink-0 hidden sm:inline-flex" style={{ borderColor: `color-mix(in srgb, ${AREA_COLORS[task.area] || "hsl(var(--muted-foreground))"} 25%, transparent)`, color: AREA_COLORS[task.area] || "hsl(var(--muted-foreground))" }}>
           {task.area}
         </Badge>
         {(task.tags || []).slice(0, 1).map(tag => (
@@ -978,11 +990,11 @@ function TaskRow({ task, expanded, highlighted, onToggleExpand, onToggleComplete
         </div>
         <Select value={task.status} onValueChange={(v) => { onStatusChange(v as TaskStatus); }}>
           <SelectTrigger className="w-[90px] sm:w-[120px] h-7 text-[10px] bg-transparent border-none p-0 px-1" onClick={e => e.stopPropagation()}>
-            <span style={{ color: STATUS_COLORS[task.status] }} className="truncate">{STATUS_LABELS[task.status]}</span>
+            <span style={{ color: STATUS_TOKEN[task.status] }} className="truncate">{STATUS_LABELS[task.status]}</span>
           </SelectTrigger>
           <SelectContent>
             {(Object.keys(STATUS_LABELS) as TaskStatus[]).map(s => (
-              <SelectItem key={s} value={s}><span style={{ color: STATUS_COLORS[s] }}>{STATUS_LABELS[s]}</span></SelectItem>
+              <SelectItem key={s} value={s}><span style={{ color: STATUS_TOKEN[s] }}>{STATUS_LABELS[s]}</span></SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -1139,7 +1151,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSave, defaultDueDat
                 <SelectTrigger className="bg-secondary/40"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(STATUS_LABELS) as TaskStatus[]).map(s => (
-                    <SelectItem key={s} value={s}><span style={{ color: STATUS_COLORS[s] }}>{STATUS_LABELS[s]}</span></SelectItem>
+                    <SelectItem key={s} value={s}><span style={{ color: STATUS_TOKEN[s] }}>{STATUS_LABELS[s]}</span></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1200,7 +1212,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSave, defaultDueDat
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={() => onSave({ title, detail, responsible, priority, area, status, dueDate: dueDate || null, decision: decision || null, notes, tags, attachments })}
-              disabled={title.trim().length < 3} className="gradient-gold text-primary-foreground font-semibold">
+              disabled={title.trim().length < 3} className="bg-gold text-primary-foreground font-semibold">
               Salvar
             </Button>
           </div>
@@ -1238,7 +1250,7 @@ function LinkAttachmentsEditor({ attachments, setAttachments }: { attachments: T
           <Input placeholder="Label" value={label} onChange={e => setLabel(e.target.value)} className="bg-secondary/40 h-7 text-xs" />
           <Input placeholder="URL (https://...)" value={url} onChange={e => setUrl(e.target.value)} className="bg-secondary/40 h-7 text-xs" />
           <div className="flex gap-1.5">
-            <Button size="sm" onClick={handleAdd} disabled={!label.trim() || !url.trim()} className="h-6 text-[10px] gradient-gold text-primary-foreground">Salvar</Button>
+            <Button size="sm" onClick={handleAdd} disabled={!label.trim() || !url.trim()} className="h-6 text-[10px] bg-gold text-primary-foreground">Salvar</Button>
             <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setLabel(""); setUrl(""); }} className="h-6 text-[10px]">Cancelar</Button>
           </div>
         </div>

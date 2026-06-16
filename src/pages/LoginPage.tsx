@@ -45,7 +45,7 @@ const LoginPage = () => {
       return;
     }
     setUser(activeName);
-    confetti({ particleCount: 50, spread: 50, colors: ["#D4A843", "#F5D77A", "#22C55E"], origin: { y: 0.7 } });
+    confetti({ particleCount: 50, spread: 50, colors: ["#8A6A1E", "#A87A1E", "#B8943F"], origin: { y: 0.7 } });
     
     // Check late tasks
     const lateTasks = getTasks().filter(t => t.status === "atrasada");
@@ -61,20 +61,20 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background grid-pattern">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
         className="w-full max-w-md mx-4"
       >
-        <div className="gradient-card border border-border rounded-xl p-8 glow-gold">
+        <div className="bg-card border border-border rounded-card p-8 shadow-soft">
           <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-xl gradient-gold flex items-center justify-center mx-auto mb-4 text-2xl">
+            <div className="w-14 h-14 rounded-card bg-muted border border-border text-gold flex items-center justify-center mx-auto mb-4 text-2xl">
               🦁
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              <span className="text-gold">MR. LION</span>
+            <h1 className="text-2xl tracking-tight">
+              <span className="font-display text-gold">MR. LION</span>
               <span className="text-muted-foreground ml-2 font-normal">HUB</span>
             </h1>
             <p className="text-muted-foreground text-sm mt-2">Hub Operacional</p>
@@ -84,15 +84,15 @@ const LoginPage = () => {
             {TEAM_MEMBERS.map((name, i) => (
               <motion.button
                 key={name}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
                 onClick={() => handleSelect(name)}
-                className={`flex items-center gap-2.5 py-2.5 px-3.5 rounded-lg border text-foreground font-medium
+                className={`flex items-center gap-2.5 py-2.5 px-3.5 rounded-sub border text-foreground font-medium
                   hover:border-gold/40 hover:bg-accent/30 transition-all duration-200 text-sm
                   ${selectedName === name ? "border-gold/50 bg-accent/40" : "border-border bg-secondary/40"}`}
               >
-                <div className="w-7 h-7 rounded-full gradient-gold flex items-center justify-center text-xs font-bold text-primary-foreground shrink-0">
+                <div className="w-7 h-7 rounded-sub bg-muted border border-border text-gold flex items-center justify-center text-xs font-bold shrink-0">
                   {name.charAt(0)}
                 </div>
                 {name}
@@ -123,7 +123,7 @@ const LoginPage = () => {
               >
                 <div className="space-y-3 pb-1">
                   <label className="text-xs text-muted-foreground block">Senha de acesso</label>
-                  <div className={`relative ${shakePassword ? "animate-shake" : ""}`}>
+                  <div className={`relative ${shakePassword ? "animate-fade-in" : ""}`}>
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={password}
@@ -143,7 +143,7 @@ const LoginPage = () => {
                   <Button
                     onClick={handleLogin}
                     disabled={!password}
-                    className="w-full gradient-gold text-primary-foreground font-semibold hover:opacity-90 glow-pulse"
+                    className="w-full bg-gold text-primary-foreground font-semibold rounded-btn hover:opacity-90"
                   >
                     Entrar
                   </Button>

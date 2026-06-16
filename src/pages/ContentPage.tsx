@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getPosts, createPost, updatePost, getUser, getCampaigns, CAMPAIGN_CONTENT_FILTER_KEY } from "@/lib/store";
 import {
   ContentPost, ContentPlatform, ContentType, ContentStatus,
-  PLATFORM_COLORS, CONTENT_TYPE_BY_PLATFORM, CONTENT_STATUS_COLORS, CONTENT_STATUS_LABELS,
+  CONTENT_TYPE_BY_PLATFORM, CONTENT_STATUS_LABELS,
   CONTENT_CREATORS,
 } from "@/lib/types";
 import { useRealtime } from "@/hooks/use-realtime";
@@ -20,6 +20,20 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths,
 import { ptBR } from "date-fns/locale";
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
+
+// Cores sóbrias por plataforma/status (tokens — substituem PLATFORM_COLORS/CONTENT_STATUS_COLORS saturados)
+const PLATFORM_TONE: Record<ContentPlatform, string> = {
+  Instagram: "hsl(var(--gold))",
+  YouTube: "hsl(var(--danger))",
+  TikTok: "hsl(var(--info))",
+  Twitter: "hsl(var(--muted-foreground))",
+};
+const STATUS_TONE: Record<ContentStatus, string> = {
+  rascunho: "hsl(var(--muted-foreground))",
+  aprovado: "hsl(var(--info))",
+  agendado: "hsl(var(--warning))",
+  publicado: "hsl(var(--success))",
+};
 
 // ─── Draggable Post Chip ───
 function DraggablePostChip({ post, onClick }: { post: ContentPost; onClick: () => void }) {
@@ -44,8 +58,8 @@ function DraggablePostChip({ post, onClick }: { post: ContentPost; onClick: () =
       className="flex items-center gap-1 px-1 py-0.5 rounded text-[9px] truncate cursor-grab active:cursor-grabbing hover:bg-secondary/50"
       title={`${post.platform} · ${post.type} · ${CONTENT_STATUS_LABELS[post.status]}`}
     >
-      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: PLATFORM_COLORS[post.platform] }} />
-      <span className="truncate" style={{ color: PLATFORM_COLORS[post.platform] }}>{post.title}</span>
+      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: PLATFORM_TONE[post.platform] }} />
+      <span className="truncate" style={{ color: PLATFORM_TONE[post.platform] }}>{post.title}</span>
     </div>
   );
 }
@@ -135,7 +149,7 @@ function PostFormDialog({
                 <SelectTrigger className="bg-secondary/40 h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(["Instagram", "YouTube", "TikTok", "Twitter"] as ContentPlatform[]).map(p => (
-                    <SelectItem key={p} value={p}><span style={{ color: PLATFORM_COLORS[p] }}>{p}</span></SelectItem>
+                    <SelectItem key={p} value={p}><span style={{ color: PLATFORM_TONE[p] }}>{p}</span></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -206,7 +220,7 @@ function PostFormDialog({
             <Button onClick={() => handleSave("rascunho")} disabled={!title.trim()} className="flex-1 text-xs" variant="outline">
               Salvar rascunho
             </Button>
-            <Button onClick={() => handleSave("aprovado")} disabled={!title.trim()} className="flex-1 text-xs gradient-gold text-primary-foreground">
+            <Button onClick={() => handleSave("aprovado")} disabled={!title.trim()} className="flex-1 text-xs bg-gold text-primary-foreground">
               Aprovar
             </Button>
           </div>
@@ -323,7 +337,7 @@ const ContentPage = () => {
           <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())} className="text-xs text-gold border-gold/30 h-7">
             Hoje
           </Button>
-          <Button size="sm" onClick={() => { setSelectedDate(format(new Date(), "yyyy-MM-dd")); setDialogOpen(true); }} className="text-xs gradient-gold text-primary-foreground h-7 gap-1">
+          <Button size="sm" onClick={() => { setSelectedDate(format(new Date(), "yyyy-MM-dd")); setDialogOpen(true); }} className="text-xs bg-gold text-primary-foreground h-7 gap-1">
             <Plus className="w-3.5 h-3.5" /> Novo post
           </Button>
         </div>
@@ -344,7 +358,7 @@ const ContentPage = () => {
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
             {(["Instagram", "YouTube", "TikTok", "Twitter"] as ContentPlatform[]).map(p => (
-              <SelectItem key={p} value={p}><span style={{ color: PLATFORM_COLORS[p] }}>{p}</span></SelectItem>
+              <SelectItem key={p} value={p}><span style={{ color: PLATFORM_TONE[p] }}>{p}</span></SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -354,7 +368,7 @@ const ContentPage = () => {
           <SelectContent>
             <SelectItem value="all">Todos status</SelectItem>
             {(["rascunho", "aprovado", "agendado", "publicado"] as ContentStatus[]).map(s => (
-              <SelectItem key={s} value={s}><span style={{ color: CONTENT_STATUS_COLORS[s] }}>{CONTENT_STATUS_LABELS[s]}</span></SelectItem>
+              <SelectItem key={s} value={s}><span style={{ color: STATUS_TONE[s] }}>{CONTENT_STATUS_LABELS[s]}</span></SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -376,7 +390,7 @@ const ContentPage = () => {
       <div className="flex gap-3 mb-3">
         {(["Instagram", "YouTube", "TikTok", "Twitter"] as ContentPlatform[]).map(p => (
           <div key={p} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PLATFORM_COLORS[p] }} />
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PLATFORM_TONE[p] }} />
             {p}
           </div>
         ))}
@@ -384,7 +398,7 @@ const ContentPage = () => {
 
       {/* Calendar */}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="bg-card rounded-card border border-border shadow-soft overflow-hidden">
           <div className="grid grid-cols-7">
             {weekDays.map(d => (
               <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-2 border-b border-border">{d}</div>
@@ -425,7 +439,7 @@ const ContentPage = () => {
                           <TooltipContent className="bg-popover border-border text-xs">
                             <p className="font-medium">{p.title}</p>
                             <p className="text-muted-foreground">{p.platform} · {p.type} · {p.creator}</p>
-                            <p style={{ color: CONTENT_STATUS_COLORS[p.status] }}>{CONTENT_STATUS_LABELS[p.status]}</p>
+                            <p style={{ color: STATUS_TONE[p.status] }}>{CONTENT_STATUS_LABELS[p.status]}</p>
                           </TooltipContent>
                         </Tooltip>
                       ))}

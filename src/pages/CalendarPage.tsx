@@ -38,15 +38,15 @@ type CalendarEvent =
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MEETING_COLOR  = "#8B5CF6";
-const CAMPAIGN_COLOR = "#D4A843";
+const MEETING_COLOR  = "hsl(var(--info))";
+const CAMPAIGN_COLOR = "hsl(var(--gold))";
 const WEEK_DAYS      = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 const FILTER_META: Record<FilterType, { label: string; color: string }> = {
   all:      { label: "Tudo",     color: CAMPAIGN_COLOR },
-  tasks:    { label: "Tarefas",  color: "#3B82F6" },
+  tasks:    { label: "Tarefas",  color: "hsl(var(--info))" },
   meetings: { label: "Reuniões", color: MEETING_COLOR },
-  posts:    { label: "Posts",    color: "#E1306C" },
+  posts:    { label: "Posts",    color: "hsl(var(--muted-foreground))" },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -374,13 +374,13 @@ const CalendarPage = () => {
                 key={type}
                 onClick={() => setFilterType(type)}
                 className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all",
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-sub text-xs font-medium transition-all",
                   active ? "text-white" : "bg-secondary/50 text-muted-foreground hover:text-foreground",
                 )}
                 style={active ? { backgroundColor: color } : {}}
               >
                 {label}
-                <span className={cn("text-[10px] rounded-full px-1 min-w-[16px] text-center", active ? "bg-white/20" : "bg-secondary")}>
+                <span className={cn("text-[10px] rounded-sub px-1 min-w-[16px] text-center", active ? "bg-white/20" : "bg-secondary")}>
                   {count}
                 </span>
               </button>
@@ -426,7 +426,7 @@ const CalendarPage = () => {
         {/* Row 3: legend */}
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <CheckSquare className="w-3 h-3" style={{ color: "#3B82F6" }} />
+            <CheckSquare className="w-3 h-3" style={{ color: "hsl(var(--info))" }} />
             <span>Tarefas</span>
             <div className="flex gap-0.5 ml-0.5">
               {(["pendente", "em-andamento", "concluida", "atrasada"] as TaskStatus[]).map(s => (
@@ -444,7 +444,7 @@ const CalendarPage = () => {
             <span>Reuniões</span>
           </div>
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <ImageIcon className="w-3 h-3" style={{ color: "#E1306C" }} />
+            <ImageIcon className="w-3 h-3" style={{ color: "hsl(var(--muted-foreground))" }} />
             <span>Posts</span>
           </div>
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">

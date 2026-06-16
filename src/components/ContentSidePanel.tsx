@@ -10,11 +10,26 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Trash2, X as XIcon, CheckCircle2, Eye, Send } from "lucide-react";
 import {
   ContentPost, ContentPlatform, ContentType, ContentStatus,
-  PLATFORM_COLORS, CONTENT_TYPE_BY_PLATFORM, CONTENT_STATUS_COLORS, CONTENT_STATUS_LABELS,
+  CONTENT_TYPE_BY_PLATFORM, CONTENT_STATUS_LABELS,
   CONTENT_CREATORS,
 } from "@/lib/types";
 import { updatePost, deletePost, getTaskById } from "@/lib/store";
+import { StatusPill, type StatusTone } from "@/components/pro";
 import { toast } from "sonner";
+
+// Cores sóbrias por plataforma (tokens) + mapa de status → tone do StatusPill
+const PLATFORM_TONE: Record<ContentPlatform, string> = {
+  Instagram: "hsl(var(--gold))",
+  YouTube: "hsl(var(--danger))",
+  TikTok: "hsl(var(--info))",
+  Twitter: "hsl(var(--muted-foreground))",
+};
+const STATUS_TONE: Record<ContentStatus, StatusTone> = {
+  rascunho: "neutral",
+  aprovado: "info",
+  agendado: "warning",
+  publicado: "success",
+};
 
 interface Props {
   post: ContentPost | null;
@@ -61,12 +76,10 @@ export function ContentSidePanel({ post, open, onOpenChange, onUpdate }: Props) 
       <SheetContent className="w-full sm:w-[80%] sm:max-w-2xl bg-card border-border overflow-y-auto p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge className="text-[10px]" style={{ backgroundColor: `${PLATFORM_COLORS[post.platform]}20`, color: PLATFORM_COLORS[post.platform], borderColor: `${PLATFORM_COLORS[post.platform]}40` }}>
+            <Badge variant="outline" className="text-[10px] rounded-sub border-border" style={{ color: PLATFORM_TONE[post.platform] }}>
               {post.platform}
             </Badge>
-            <Badge className="text-[10px]" style={{ backgroundColor: `${CONTENT_STATUS_COLORS[post.status]}20`, color: CONTENT_STATUS_COLORS[post.status], borderColor: `${CONTENT_STATUS_COLORS[post.status]}40` }}>
-              {CONTENT_STATUS_LABELS[post.status]}
-            </Badge>
+            <StatusPill label={CONTENT_STATUS_LABELS[post.status]} tone={STATUS_TONE[post.status]} className="text-[10px]" />
             <SheetTitle className="text-foreground flex-1">{post.title}</SheetTitle>
           </div>
         </SheetHeader>
@@ -80,7 +93,7 @@ export function ContentSidePanel({ post, open, onOpenChange, onUpdate }: Props) 
                 <SelectTrigger className="bg-secondary/40 h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(["Instagram", "YouTube", "TikTok", "Twitter"] as ContentPlatform[]).map(p => (
-                    <SelectItem key={p} value={p}><span style={{ color: PLATFORM_COLORS[p] }}>{p}</span></SelectItem>
+                    <SelectItem key={p} value={p}><span style={{ color: PLATFORM_TONE[p] }}>{p}</span></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -114,7 +127,7 @@ export function ContentSidePanel({ post, open, onOpenChange, onUpdate }: Props) 
               <SelectTrigger className="bg-secondary/40 h-8 text-xs w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {(["rascunho", "aprovado", "agendado", "publicado"] as ContentStatus[]).map(s => (
-                  <SelectItem key={s} value={s}><span style={{ color: CONTENT_STATUS_COLORS[s] }}>{CONTENT_STATUS_LABELS[s]}</span></SelectItem>
+                  <SelectItem key={s} value={s}><StatusPill label={CONTENT_STATUS_LABELS[s]} tone={STATUS_TONE[s]} dot={false} /></SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -192,17 +205,17 @@ export function ContentSidePanel({ post, open, onOpenChange, onUpdate }: Props) 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
             {post.status === "rascunho" && (
-              <Button size="sm" onClick={() => save({ status: "aprovado" })} className="text-xs gap-1 gradient-gold text-primary-foreground">
+              <Button size="sm" onClick={() => save({ status: "aprovado" })} className="text-xs gap-1 bg-gold text-primary-foreground">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Aprovar
               </Button>
             )}
             {post.status === "aprovado" && (
-              <Button size="sm" onClick={() => save({ status: "agendado" })} className="text-xs gap-1" style={{ backgroundColor: CONTENT_STATUS_COLORS.agendado }}>
+              <Button size="sm" onClick={() => save({ status: "agendado" })} className="text-xs gap-1 bg-warning text-primary-foreground hover:bg-warning/90">
                 <Send className="w-3.5 h-3.5" /> Agendar
               </Button>
             )}
             {(post.status === "agendado" || post.status === "aprovado") && (
-              <Button size="sm" onClick={() => save({ status: "publicado" })} className="text-xs gap-1" style={{ backgroundColor: CONTENT_STATUS_COLORS.publicado }}>
+              <Button size="sm" onClick={() => save({ status: "publicado" })} className="text-xs gap-1 bg-success text-primary-foreground hover:bg-success/90">
                 <Eye className="w-3.5 h-3.5" /> Marcar publicado
               </Button>
             )}

@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Trash2, X as XIcon, Paperclip, FileText, Link2, ExternalLink, Plus, Zap } from "lucide-react";
-import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment } from "@/lib/types";
+import { Task, TaskStatus, TaskPriority, TEAM_MEMBERS, AREAS, AREA_COLORS, STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, TaskAttachment } from "@/lib/types";
 import { updateTask, deleteTask, logActivity, getUser, getActivities, uploadFile, getCampaigns } from "@/lib/store";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -22,6 +22,17 @@ interface Props {
   onOpenChange: (b: boolean) => void;
   onUpdate: () => void;
 }
+
+// Status da tarefa → token de cor sóbrio (texto da opção de Select)
+const STATUS_TOKEN: Record<TaskStatus, string> = {
+  pendente: "hsl(var(--muted-foreground))",
+  "em-andamento": "hsl(var(--info))",
+  concluida: "hsl(var(--success))",
+  atrasada: "hsl(var(--danger))",
+};
+
+// Cores sóbrias (tokens) para confetti
+const CONFETTI_COLORS = ["hsl(var(--gold))", "hsl(var(--success))", "hsl(var(--info))"];
 
 export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
   const userName = getUser() || "";
@@ -37,7 +48,7 @@ export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
     logActivity({ taskId: task.id, taskTitle: task.title, userName, action: `field_update:${field}`, oldValue: null, newValue: null });
     
     if (updates.status === "concluida" && oldTask.status !== "concluida") {
-      confetti({ particleCount: 80, spread: 60, colors: ["#D4A843", "#F5D77A", "#22C55E", "#6366F1"], origin: { y: 0.6 } });
+      confetti({ particleCount: 80, spread: 60, colors: CONFETTI_COLORS, origin: { y: 0.6 } });
     }
     toast.success("Salvo", { duration: 1500 });
     onUpdate();
@@ -120,7 +131,7 @@ export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
                 <SelectTrigger className="bg-secondary/40 h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(STATUS_LABELS) as TaskStatus[]).map(s => (
-                    <SelectItem key={s} value={s}><span style={{ color: STATUS_COLORS[s] }}>{STATUS_LABELS[s]}</span></SelectItem>
+                    <SelectItem key={s} value={s}><span style={{ color: STATUS_TOKEN[s] }}>{STATUS_LABELS[s]}</span></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -267,7 +278,7 @@ export function TaskSidePanel({ task, open, onOpenChange, onUpdate }: Props) {
                 <Input placeholder="Label (ex: Documento RTD)" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} className="bg-secondary/40 h-7 text-xs" />
                 <Input placeholder="URL (https://...)" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className="bg-secondary/40 h-7 text-xs" />
                 <div className="flex gap-1.5">
-                  <Button size="sm" onClick={handleAddLink} disabled={!linkLabel.trim() || !linkUrl.trim()} className="h-6 text-[10px] gradient-gold text-primary-foreground">Salvar</Button>
+                  <Button size="sm" onClick={handleAddLink} disabled={!linkLabel.trim() || !linkUrl.trim()} className="h-6 text-[10px] bg-gold text-primary-foreground">Salvar</Button>
                   <Button size="sm" variant="ghost" onClick={() => { setAddingLink(false); setLinkLabel(""); setLinkUrl(""); }} className="h-6 text-[10px]">Cancelar</Button>
                 </div>
               </div>
