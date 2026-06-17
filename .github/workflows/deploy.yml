@@ -1,8 +1,10 @@
 name: Deploy to GitHub Pages
 
+# PRODUÇÃO = Cloudflare Pages (projeto mrlionhub, deploy via `wrangler pages deploy dist`).
+# Este workflow NÃO serve o domínio mrlionhub.com.br — fica manual-only (workflow_dispatch)
+# pra que `git push` no main seja apenas backup, sem disparar deploy no host errado.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
