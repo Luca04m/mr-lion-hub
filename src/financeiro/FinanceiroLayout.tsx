@@ -3,10 +3,11 @@
 // todo o chrome. Aqui só vivem: cabeçalho da área, sub-nav (Comando/Lucro/Caixa)
 // com <NavLink> RR6, o seletor de período GLOBAL (Jan/Fev) e o <Outlet/>.
 // O período é compartilhado com as sub-telas via Outlet context (useOutletContext).
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { NavLink, Outlet, useOutletContext } from 'react-router-dom'
 import { LineChart, Coins, Wallet } from 'lucide-react'
 import { SegmentedControl } from '@/components/pro/SegmentedControl'
+import { useFinanceiroStore } from './data/store'
 import type { Periodo } from './data/source'
 
 // ── Contexto de período compartilhado com as sub-telas ──
@@ -27,8 +28,9 @@ const NAV: { to: string; label: string; icon: typeof LineChart; end?: boolean }[
 ]
 
 export function FinanceiroLayout() {
-  // Período GLOBAL (default 'fev' = período corrente da v2).
-  const [periodo, setPeriodo] = useState<Periodo>('fev')
+  // Período GLOBAL — vem do store persistido (sobrevive navegação/reload).
+  const periodo = useFinanceiroStore((s) => s.periodo)
+  const setPeriodo = useFinanceiroStore((s) => s.setPeriodo)
 
   useEffect(() => {
     document.title = 'Financeiro | MR. LION HUB'
@@ -50,6 +52,7 @@ export function FinanceiroLayout() {
             value={periodo}
             onChange={setPeriodo}
             options={[
+              { label: 'Mai/25', value: 'mai' },
               { label: 'Jan/26', value: 'jan' },
               { label: 'Fev/26', value: 'fev' },
             ]}

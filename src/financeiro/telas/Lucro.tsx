@@ -13,11 +13,12 @@
 // Margens/mix/custos por produto = SEMPRE Jan/26 (único mês com unit economics
 // auditado) — rotulado explicitamente. Top-line DRE = período corrente do seletor.
 import { useMemo, useState } from 'react'
-import { Lightbulb, ShieldX, ShieldCheck, Gauge, RotateCcw, TrendingUp, TrendingDown } from 'lucide-react'
+import { Lightbulb, ShieldX, ShieldCheck, Gauge, RotateCcw, TrendingUp, TrendingDown, Plus, Trash2, Check, X } from 'lucide-react'
 import { SegmentedControl } from '@/components/pro/SegmentedControl'
 import { cn } from '@/lib/utils'
 import { useFinanceiroCtx } from '../FinanceiroLayout'
 import { useFinance } from '../data/source'
+import { useFinanceiroStore, type EditableProduct, type Periodo } from '../data/store'
 import { PRECOS_PIX, CUSTOS_UNIT } from '../data/finance'
 import { brl, brlCompact, num, mult, ratio, pct as pctFmt } from '../lib/format'
 import { WaterfallChart, DivergingBars, CohortHeatmap, RadialGauge } from '../charts'
@@ -278,37 +279,16 @@ export function Lucro() {
               <WaterfallChart steps={snapshot.waterfall} height={320} />
             </Panel>
 
-            <Panel
+            <MargemPorProduto
               className="xl:col-span-2"
-              title="Margem por produto"
-              meta="Jan/26 · margem real ponderada por mix vendido"
-              prov="real"
-            >
-              <div className="space-y-3.5">
-                {snapshot.products.map((p) => (
-                  <div key={p.id}>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-[13px] font-medium text-foreground">{p.name}</span>
-                      <span className="tnum text-[13px] font-semibold text-gold">{num(p.marginPct, 1)}%</span>
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-gold" style={{ width: `${p.marginPct}%` }} />
-                      </div>
-                      <span className="tnum w-20 text-right text-[11px] text-muted-foreground">{brl(p.precoPix, 0)} PIX</span>
-                    </div>
-                    <div className="tnum mt-0.5 text-[10.5px] text-muted-foreground">
-                      {num(p.units)} un · custo {brl(p.custo, 2)} · CM2 {num(p.cm2Pct, 1)}%
-                    </div>
-                  </div>
-                ))}
-                <div className="grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
-                  <Stat label="Honey" value="64,3%" tone="text-gold" />
-                  <Stat label="Cappuccino" value="48,2%" tone="text-gold" />
-                  <Stat label="Blended" value="58,4%" tone="text-gold" />
-                </div>
-              </div>
-            </Panel>
+              periodo={periodo}
+              products={snapshot.products as EditableProduct[]}
+              meta={
+                periodo === 'mai'
+                  ? 'Maio/2025 · editável · custo real ÷ preço PIX (ref) · CM2 a preencher'
+                  : 'Jan/26 · editável · margem real ponderada por mix vendido'
+              }
+            />
           </div>
 
           <Simulador />
@@ -531,6 +511,248 @@ export function Lucro() {
         </div>
       )}
     </div>
+  )
+}
+
+// ════════════════════════ MARGEM POR PRODUTO (EDITÁVEL) ════════════════════════
+/** Célula numérica com edição inline (clique → input → Enter/blur commita). */
+function EditNum({
+  value, format, onCommit, className,
+}: {
+  value: number
+  format: (v: number) => string
+  onCommit: (v: number) => void
+  className?: string
+}) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState('')
+  const commit = () => {
+    const n = Number(val)
+    if (val.trim() !== '' && !Number.isNaN(n)) onCommit(n)
+    setEditing(false)
+  }
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="number"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') setEditing(false)
+        }}
+        onBlur={commit}
+        className="tnum w-16 rounded-sub border border-gold/40 bg-background px-1.5 py-0.5 text-right text-[12px] font-semibold text-foreground outline-none"
+      />
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setEditing(true)
+        setVal(String(value))
+      }}
+      title="Clique para editar"
+      className={cn('tnum underline-offset-2 transition-colors hover:text-gold hover:underline', className)}
+    >
+      {format(value)}
+    </button>
+  )
+}
+
+function ProdAjustado() {
+  return (
+    <span
+      className="inline-flex items-center rounded-sub border border-gold/30 bg-gold/[0.1] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-gold"
+      title="Produto ajustado pelo usuário (≠ baseline)"
+    >
+      ajustado
+    </span>
+  )
+}
+
+const novoIdProd = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
+
+/** Painel "Margem por produto" EDITÁVEL: custo/preço/unidades/margem inline + add/excluir/baseline. */
+function MargemPorProduto({
+  periodo, products, className, meta,
+}: {
+  periodo: Periodo
+  products: EditableProduct[]
+  className?: string
+  meta: string
+}) {
+  const editProduct = useFinanceiroStore((s) => s.editProduct)
+  const addProduct = useFinanceiroStore((s) => s.addProduct)
+  const removeProduct = useFinanceiroStore((s) => s.removeProduct)
+  const resetarPeriodo = useFinanceiroStore((s) => s.resetarPeriodo)
+
+  const [adding, setAdding] = useState(false)
+  const [fName, setFName] = useState('')
+  const [fPreco, setFPreco] = useState('')
+  const [fCusto, setFCusto] = useState('')
+  const [fUnits, setFUnits] = useState('')
+  const [fMargin, setFMargin] = useState('')
+
+  const podeSalvar = fName.trim() !== '' && Number(fPreco) > 0
+  const salvar = () => {
+    if (!podeSalvar) return
+    addProduct(periodo, {
+      id: novoIdProd(),
+      name: fName.trim(),
+      linha: fName.trim(),
+      img: '',
+      revenue: 0,
+      units: Number(fUnits) || 0,
+      precoPix: Number(fPreco) || 0,
+      custo: Number(fCusto) || 0,
+      marginPct: Number(fMargin) || 0,
+      cm2Pct: 0,
+      trend: 'flat',
+    })
+    setFName('')
+    setFPreco('')
+    setFCusto('')
+    setFUnits('')
+    setFMargin('')
+    setAdding(false)
+  }
+
+  return (
+    <Panel
+      className={className}
+      title="Margem por produto"
+      meta={meta}
+      prov="real"
+      right={
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAdding((v) => !v)}
+            className="inline-flex items-center gap-1 rounded-sub border border-gold/40 bg-gold/[0.08] px-2 py-1 text-[11px] font-medium text-gold transition-colors hover:bg-gold/[0.14]"
+          >
+            <Plus className="size-3" /> Produto
+          </button>
+          <button
+            type="button"
+            onClick={() => resetarPeriodo(periodo)}
+            title="Voltar ao baseline reconciliado"
+            className="inline-flex items-center gap-1 rounded-sub border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <RotateCcw className="size-3" /> Baseline
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-3.5">
+        {products.map((p) => (
+          <div key={p.id} className="group">
+            <div className="flex items-baseline justify-between">
+              <span className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+                {p.name}
+                {p.edited && <ProdAjustado />}
+              </span>
+              <span className="flex items-center gap-2">
+                <EditNum
+                  value={p.marginPct}
+                  format={(v) => `${num(v, 1)}%`}
+                  onCommit={(v) => editProduct(periodo, p.id, { marginPct: v })}
+                  className="text-[13px] font-semibold text-gold"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeProduct(periodo, p.id)}
+                  title="Excluir produto"
+                  className="grid size-5 place-items-center rounded-sub text-text-muted opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
+                >
+                  <Trash2 className="size-3" strokeWidth={1.8} />
+                </button>
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-gold" style={{ width: `${Math.max(0, Math.min(100, p.marginPct))}%` }} />
+              </div>
+              <span className="flex items-center justify-end gap-1 text-right text-[11px] text-muted-foreground">
+                <EditNum
+                  value={p.precoPix}
+                  format={(v) => brl(v, 0)}
+                  onCommit={(v) => editProduct(periodo, p.id, { precoPix: v })}
+                  className="text-[11px] text-muted-foreground"
+                />{' '}
+                PIX
+              </span>
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[10.5px] text-muted-foreground">
+              <EditNum value={p.units} format={(v) => num(v)} onCommit={(v) => editProduct(periodo, p.id, { units: v })} className="text-[10.5px] text-muted-foreground" />
+              <span>un · custo</span>
+              <EditNum value={p.custo} format={(v) => brl(v, 2)} onCommit={(v) => editProduct(periodo, p.id, { custo: v })} className="text-[10.5px] text-muted-foreground" />
+              <span>· CM2 {num(p.cm2Pct, 1)}%</span>
+            </div>
+          </div>
+        ))}
+
+        {products.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
+            {products.map((p) => (
+              <Stat key={p.id} label={p.linha} value={`${num(p.marginPct, 1)}%`} tone="text-gold" />
+            ))}
+          </div>
+        )}
+
+        {adding && (
+          <div className="rounded-sub border border-gold/30 bg-gold/[0.04] p-3.5">
+            <div className="flex flex-wrap items-end gap-2.5">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Nome</span>
+                <input value={fName} onChange={(e) => setFName(e.target.value)} placeholder="Black Honey" className="w-32 rounded-sub border border-border bg-background px-2 py-1 text-[12px] text-foreground outline-none focus:border-gold/40" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Preço PIX</span>
+                <input type="number" value={fPreco} onChange={(e) => setFPreco(e.target.value)} placeholder="0" className="tnum w-20 rounded-sub border border-border bg-background px-2 py-1 text-right text-[12px] text-foreground outline-none focus:border-gold/40" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Custo</span>
+                <input type="number" value={fCusto} onChange={(e) => setFCusto(e.target.value)} placeholder="0" className="tnum w-20 rounded-sub border border-border bg-background px-2 py-1 text-right text-[12px] text-foreground outline-none focus:border-gold/40" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Un.</span>
+                <input type="number" value={fUnits} onChange={(e) => setFUnits(e.target.value)} placeholder="0" className="tnum w-16 rounded-sub border border-border bg-background px-2 py-1 text-right text-[12px] text-foreground outline-none focus:border-gold/40" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Margem %</span>
+                <input type="number" value={fMargin} onChange={(e) => setFMargin(e.target.value)} placeholder="0" className="tnum w-16 rounded-sub border border-border bg-background px-2 py-1 text-right text-[12px] text-foreground outline-none focus:border-gold/40" />
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={salvar}
+                  disabled={!podeSalvar}
+                  className="inline-flex items-center gap-1.5 rounded-sub border border-gold/50 bg-gold/[0.14] px-3 py-1.5 text-[12px] font-semibold text-gold transition-colors hover:bg-gold/20 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Check className="size-3.5" /> Salvar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdding(false)}
+                  className="inline-flex items-center gap-1.5 rounded-sub border border-border px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="size-3.5" /> Cancelar
+                </button>
+              </div>
+            </div>
+            <p className="mt-2 text-[10.5px] text-text-muted">
+              Novos produtos entram como <span className="font-semibold text-gold">ajustado</span>. Custo/preço/margem por
+              produto são dados reais editáveis; o <b className="text-text-secondary">Simulador</b> abaixo é a ferramenta de
+              "e se" com margem viva.
+            </p>
+          </div>
+        )}
+      </div>
+    </Panel>
   )
 }
 

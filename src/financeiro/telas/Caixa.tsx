@@ -14,13 +14,14 @@
 //     série de caixa (escala determinística do drawdown + banda P10–P90) e a
 //     repassa ao CashProjection, que redesenha o SVG.
 import { useMemo, useState } from 'react'
-import { CalendarClock, ShieldAlert, FileText, Wallet, TrendingDown, TrendingUp } from 'lucide-react'
+import { CalendarClock, ShieldAlert, FileText, Wallet, TrendingDown, TrendingUp, Plus, Trash2, RotateCcw, Check, X } from 'lucide-react'
 import { SegmentedControl } from '@/components/pro/SegmentedControl'
 import { CashProjection } from '@/financeiro/charts'
 import { useFinanceiroCtx } from '../FinanceiroLayout'
 import { useFinance } from '../data/source'
+import { useFinanceiroStore, type EditableDRELine, type Periodo } from '../data/store'
 import { brl, brlCompact, pct } from '../lib/format'
-import type { CashPoint, DRELine, Provenance } from '../data/types'
+import type { CashPoint, DRELine, DREKind, Provenance } from '../data/types'
 
 // ── Badge de proveniência (sóbrio, dessaturado) ──────────────────────────
 const PROV_TONE: Record<Provenance, string> = {
@@ -122,6 +123,23 @@ function dreStyle(k: DRELine['kind']) {
   return { row: '', label: 'text-text-secondary', val: 'text-text-secondary' }
 }
 
+// ── Recompute da DRE a partir das linhas (edit-aware) ─────────────────────────
+// Lucro bruto = Receita − CMV; Resultado = Receita + Σ(deduções ded/tax/fixed,
+// já armazenadas negativas). NÃO lê a linha congelada de resultado — soma os
+// itens, então qualquer edição/adição/remoção recompõe os totais na hora.
+const DESPESA_KINDS: DREKind[] = ['ded', 'tax', 'fixed']
+const isLucroBrutoLine = (l: DRELine) => l.label.toLowerCase().includes('lucro bruto')
+
+function recomputeDre(dre: EditableDRELine[]) {
+  const receita = dre.find((l) => l.kind === 'rev')?.value ?? 0
+  const cmvLine = dre.find((l) => l.label.toLowerCase().includes('cmv'))
+  const cmv = cmvLine ? Math.abs(cmvLine.value) : 0
+  const lucroBruto = receita - cmv
+  const margemPct = receita ? (lucroBruto / receita) * 100 : 0
+  const resultado = receita + dre.filter((l) => DESPESA_KINDS.includes(l.kind)).reduce((a, l) => a + l.value, 0)
+  return { receita, lucroBruto, margemPct, resultado }
+}
+
 export function Caixa() {
   const { periodo } = useFinanceiroCtx()
   const { snapshot, derivados } = useFinance(periodo)
@@ -133,9 +151,10 @@ export function Caixa() {
   const at = (d: number) => pontos[d]?.base ?? 0
   const caixaHoje = pontos[0]?.base ?? snapshot.meta.caixaConsolidado
   const cenLabel = CENARIOS.find((c) => c.value === cen)!.label
-  const resultadoLinha = snapshot.dre.find((d) => d.kind === 'loss')
-    ?? snapshot.dre[snapshot.dre.length - 1]
-  const noVermelho = resultadoLinha.value < 0
+  // DRE editável (store-backed, com ids); resultado/lucro bruto recomputados das linhas.
+  const dreEditavel = snapshot.dre as EditableDRELine[]
+  const rec = recomputeDre(dreEditavel)
+  const noVermelho = rec.resultado < 0
 
   // Aging: maior barra do conjunto = escala comum.
   const agingMax = Math.max(...snapshot.aging.map((a) => Math.max(a.payable, a.receivable)), 1)
@@ -218,50 +237,15 @@ export function Caixa() {
         </>
       )}
 
-      {/* ════════════════════════ DRE GERENCIAL ════════════════════════ */}
+      {/* ════════════════════════ DRE GERENCIAL (EDITÁVEL) ════════════════════════ */}
       {bloco === 'dre' && (
-        <Section
-          title={`DRE gerencial · ${snapshot.meta.periodoLabel}`}
-          meta={`Realizado vs plano · receita ao resultado · fecha em ${brl(resultadoLinha.value, 0)}`}
-          prov="real"
-        >
-          <div className="grid grid-cols-[1.7fr_1fr_1fr_1fr] gap-3 border-b border-border/60 px-3 pb-2.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-            <span>Linha</span>
-            <span className="text-right">Realizado</span>
-            <span className="text-right">Plano</span>
-            <span className="text-right">Variação</span>
-          </div>
-          {snapshot.dre.map((l) => {
-            const st = dreStyle(l.kind)
-            const variance = l.plan != null ? l.value - l.plan : null
-            return (
-              <div key={l.label} className={`grid grid-cols-[1.7fr_1fr_1fr_1fr] items-center gap-3 rounded-sub px-3 py-2.5 ${st.row}`}>
-                <span className={`text-[13px] ${st.label}`}>
-                  {l.label}
-                  {l.pct != null && <span className="tnum ml-2 text-[11px] font-medium text-gold">{pct(l.pct)}</span>}
-                </span>
-                <span className={`tnum text-right text-[13px] ${st.val}`}>{brl(l.value, 0)}</span>
-                <span className="tnum text-right text-[12.5px] text-text-muted">{l.plan != null ? brl(l.plan, 0) : '—'}</span>
-                <span
-                  className={`tnum text-right text-[12.5px] font-medium ${
-                    variance == null ? 'text-text-muted' : variance >= 0 ? 'text-success' : 'text-danger'
-                  }`}
-                >
-                  {variance == null ? '—' : (variance >= 0 ? '+' : '−') + brlCompact(Math.abs(variance)).replace('−', '')}
-                </span>
-              </div>
-            )
-          })}
-          <div className="mt-4 flex items-start gap-2.5 rounded-sub border border-danger/30 bg-danger/[0.06] px-3 py-2.5">
-            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-danger" strokeWidth={1.8} />
-            <p className="text-[12px] leading-snug text-text-secondary">
-              <b className="text-foreground">Chargebacks {brlCompact(derivados.chargebacks)}</b>{' '}
-              ({derivados.receita ? pct((derivados.chargebacks / derivados.receita) * 100) : '—'} da receita) entram como
-              <b> sinal de risco</b>, não como linha separada da DRE — não dobra-contar.{' '}
-              <span className="text-text-muted">DRE gerencial (não contábil).</span>
-            </p>
-          </div>
-        </Section>
+        <DreEditavel
+          key={periodo}
+          periodo={periodo}
+          dre={dreEditavel}
+          derivados={derivados}
+          periodoLabel={snapshot.meta.periodoLabel}
+        />
       )}
 
       {/* ════════════════════════ CONTAS / AGING ════════════════════════ */}
@@ -403,10 +387,329 @@ export function Caixa() {
       <p className="text-[11px] leading-snug text-text-muted">
         {snapshot.meta.fonte} · gerado em {snapshot.meta.geradoEm}.{' '}
         {noVermelho
-          ? `${snapshot.meta.periodoLabel} fechou em ${brl(resultadoLinha.value, 0)} — primeiro mês no vermelho.`
-          : `${snapshot.meta.periodoLabel} fechou em ${brl(resultadoLinha.value, 0)}.`}
+          ? `${snapshot.meta.periodoLabel} fechou em ${brl(rec.resultado, 0)} — primeiro mês no vermelho.`
+          : `${snapshot.meta.periodoLabel} fechou em ${brl(rec.resultado, 0)}.`}
       </p>
     </div>
+  )
+}
+
+// ════════════════════════ DRE EDITÁVEL ════════════════════════
+const TIPO_OPTS = [
+  { label: 'Dedução', value: 'ded' },
+  { label: 'Imposto', value: 'tax' },
+  { label: 'Fixo', value: 'fixed' },
+] as const
+
+/** Badge de proveniência para lançamentos ajustados pelo usuário (≠ baseline). */
+function AjustadoBadge() {
+  return (
+    <span
+      className="inline-flex items-center rounded-sub border border-gold/30 bg-gold/[0.1] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-gold"
+      title="Lançamento ajustado pelo usuário (≠ baseline reconciliado)"
+    >
+      ajustado
+    </span>
+  )
+}
+
+/** DRE gerencial EDITÁVEL: edição inline de valor, adicionar/excluir despesa, voltar ao baseline. */
+function DreEditavel({
+  periodo,
+  dre,
+  derivados,
+  periodoLabel,
+}: {
+  periodo: Periodo
+  dre: EditableDRELine[]
+  derivados: { chargebacks: number; receita: number }
+  periodoLabel: string
+}) {
+  const editDRELine = useFinanceiroStore((s) => s.editDRELine)
+  const addDRELine = useFinanceiroStore((s) => s.addDRELine)
+  const removeDRELine = useFinanceiroStore((s) => s.removeDRELine)
+  const resetarPeriodo = useFinanceiroStore((s) => s.resetarPeriodo)
+
+  const [editing, setEditing] = useState<{ id: string; field: 'value' | 'label' | 'plan' } | null>(null)
+  const [editVal, setEditVal] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [fLabel, setFLabel] = useState('')
+  const [fKind, setFKind] = useState<DREKind>('ded')
+  const [fValor, setFValor] = useState('')
+  const [fPlano, setFPlano] = useState('')
+
+  const rec = recomputeDre(dre)
+  const lastIdx = dre.length - 1
+
+  const startEdit = (l: EditableDRELine, field: 'value' | 'label' | 'plan') => {
+    setEditing({ id: l.id, field })
+    if (field === 'label') setEditVal(l.label)
+    else if (field === 'plan') setEditVal(l.plan != null ? String(Math.abs(l.plan)) : '')
+    else setEditVal(String(Math.abs(l.value)))
+  }
+  const commit = (l: EditableDRELine) => {
+    if (!editing) return
+    if (editing.field === 'label') {
+      if (editVal.trim() !== '') editDRELine(periodo, l.id, { label: editVal.trim() })
+    } else {
+      const n = Number(editVal)
+      if (editVal.trim() !== '' && !Number.isNaN(n)) {
+        const signed = l.kind === 'rev' ? Math.abs(n) : -Math.abs(n)
+        editDRELine(periodo, l.id, editing.field === 'plan' ? { plan: signed } : { value: signed })
+      }
+    }
+    setEditing(null)
+  }
+
+  const salvarNovo = () => {
+    const v = Number(fValor)
+    if (fLabel.trim() === '' || Number.isNaN(v) || v <= 0) return
+    const plano = fPlano.trim() !== '' && !Number.isNaN(Number(fPlano)) ? -Math.abs(Number(fPlano)) : undefined
+    addDRELine(periodo, { label: fLabel.trim(), value: -Math.abs(v), kind: fKind, plan: plano })
+    setFLabel('')
+    setFValor('')
+    setFPlano('')
+    setFKind('ded')
+    setAdding(false)
+  }
+
+  const podeSalvar = fLabel.trim() !== '' && Number(fValor) > 0
+
+  return (
+    <Section
+      title={`DRE gerencial · ${periodoLabel}`}
+      meta={`Realizado vs plano · editável · fecha em ${brl(rec.resultado, 0)}`}
+      prov="real"
+      right={
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAdding((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-sub border border-gold/40 bg-gold/[0.08] px-2.5 py-1 text-[11px] font-medium text-gold transition-colors hover:bg-gold/[0.14]"
+          >
+            <Plus className="size-3" /> Adicionar
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              resetarPeriodo(periodo)
+              setEditing(null)
+              setAdding(false)
+            }}
+            title="Voltar ao baseline reconciliado"
+            className="inline-flex items-center gap-1.5 rounded-sub border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <RotateCcw className="size-3" /> Baseline
+          </button>
+        </div>
+      }
+    >
+      <div className="grid grid-cols-[1.7fr_1fr_1fr_1fr_28px] gap-3 border-b border-border/60 px-3 pb-2.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+        <span>Linha</span>
+        <span className="text-right">Realizado</span>
+        <span className="text-right">Plano</span>
+        <span className="text-right">Variação</span>
+        <span />
+      </div>
+
+      {dre.map((l, i) => {
+        const st = dreStyle(l.kind)
+        const isLB = isLucroBrutoLine(l)
+        const isRes = i === lastIdx
+        const computed = isLB || isRes
+        const despesa = DESPESA_KINDS.includes(l.kind)
+        const displayValue = isLB ? rec.lucroBruto : isRes ? rec.resultado : l.value
+        const displayPct = isLB ? rec.margemPct : l.pct
+        const variance = l.plan != null ? displayValue - l.plan : null
+        // Linha de resultado: cor segue o SINAL recomputado (neg→danger, pos→dourado),
+        // não o kind congelado — senão um resultado positivo apareceria vermelho.
+        const resNeg = isRes && displayValue < 0
+        const rowCls = isRes ? (resNeg ? 'bg-danger/[0.06]' : 'bg-gold/[0.05]') : st.row
+        const valCls = isRes ? (resNeg ? 'font-semibold text-danger' : 'font-semibold text-gold') : st.val
+        return (
+          <div
+            key={l.id}
+            className={`group grid grid-cols-[1.7fr_1fr_1fr_1fr_28px] items-center gap-3 rounded-sub px-3 py-2.5 ${rowCls}`}
+          >
+            <span className={`flex items-center gap-2 text-[13px] ${st.label}`}>
+              {editing?.id === l.id && editing.field === 'label' ? (
+                <input
+                  autoFocus
+                  value={editVal}
+                  onChange={(e) => setEditVal(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commit(l); if (e.key === 'Escape') setEditing(null) }}
+                  onBlur={() => commit(l)}
+                  className="min-w-0 flex-1 rounded-sub border border-gold/40 bg-background px-1.5 py-0.5 text-[13px] text-foreground outline-none"
+                />
+              ) : computed ? (
+                <span>{l.label}</span>
+              ) : (
+                <button type="button" onClick={() => startEdit(l, 'label')} title="Clique para renomear" className="text-left transition-colors hover:text-gold">
+                  {l.label}
+                </button>
+              )}
+              {displayPct != null && <span className="tnum text-[11px] font-medium text-gold">{pct(displayPct)}</span>}
+              {l.edited && <AjustadoBadge />}
+            </span>
+
+            {/* Realizado — editável (exceto linhas computadas) */}
+            {computed ? (
+              <span className={`tnum text-right text-[13px] ${valCls}`}>{brl(displayValue, 0)}</span>
+            ) : editing?.id === l.id && editing.field === 'value' ? (
+              <span className="flex items-center justify-end gap-1">
+                <span className="text-[11px] text-muted-foreground">R$</span>
+                <input
+                  autoFocus
+                  type="number"
+                  value={editVal}
+                  onChange={(e) => setEditVal(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commit(l)
+                    if (e.key === 'Escape') setEditing(null)
+                  }}
+                  onBlur={() => commit(l)}
+                  className="tnum w-24 rounded-sub border border-gold/40 bg-background px-2 py-1 text-right text-[13px] font-semibold text-foreground outline-none"
+                />
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEdit(l, 'value')}
+                className={`tnum text-right text-[13px] ${st.val} underline-offset-2 transition-colors hover:text-gold hover:underline`}
+                title="Clique para editar"
+              >
+                {brl(displayValue, 0)}
+              </button>
+            )}
+
+            {computed ? (
+              <span className="tnum text-right text-[12.5px] text-text-muted">{l.plan != null ? brl(l.plan, 0) : '—'}</span>
+            ) : editing?.id === l.id && editing.field === 'plan' ? (
+              <span className="flex items-center justify-end gap-1">
+                <span className="text-[11px] text-muted-foreground">R$</span>
+                <input
+                  autoFocus
+                  type="number"
+                  value={editVal}
+                  onChange={(e) => setEditVal(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commit(l); if (e.key === 'Escape') setEditing(null) }}
+                  onBlur={() => commit(l)}
+                  className="tnum w-20 rounded-sub border border-gold/40 bg-background px-1.5 py-0.5 text-right text-[12.5px] text-foreground outline-none"
+                />
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEdit(l, 'plan')}
+                className="tnum text-right text-[12.5px] text-text-muted underline-offset-2 transition-colors hover:text-gold hover:underline"
+                title="Clique para definir o plano"
+              >
+                {l.plan != null ? brl(l.plan, 0) : '—'}
+              </button>
+            )}
+            <span
+              className={`tnum text-right text-[12.5px] font-medium ${
+                variance == null ? 'text-text-muted' : variance >= 0 ? 'text-success' : 'text-danger'
+              }`}
+            >
+              {variance == null ? '—' : (variance >= 0 ? '+' : '−') + brlCompact(Math.abs(variance)).replace('−', '')}
+            </span>
+
+            {/* Excluir (só despesas) */}
+            <span className="flex justify-end">
+              {despesa && (
+                <button
+                  type="button"
+                  onClick={() => removeDRELine(periodo, l.id)}
+                  title="Excluir lançamento"
+                  className="grid size-6 place-items-center rounded-sub text-text-muted opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
+                >
+                  <Trash2 className="size-3.5" strokeWidth={1.8} />
+                </button>
+              )}
+            </span>
+          </div>
+        )
+      })}
+
+      {/* Formulário de adição (sóbrio, inline) */}
+      {adding && (
+        <div className="mt-3 rounded-sub border border-gold/30 bg-gold/[0.04] p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex min-w-[180px] flex-1 flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Categoria</span>
+              <input
+                value={fLabel}
+                onChange={(e) => setFLabel(e.target.value)}
+                placeholder="ex: (−) Frete extra"
+                className="rounded-sub border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-gold/40"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Tipo</span>
+              <SegmentedControl<DREKind>
+                size="sm"
+                value={fKind}
+                onChange={setFKind}
+                options={TIPO_OPTS as unknown as { label: string; value: DREKind }[]}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Valor (R$)</span>
+              <input
+                type="number"
+                value={fValor}
+                onChange={(e) => setFValor(e.target.value)}
+                placeholder="0"
+                className="tnum w-28 rounded-sub border border-border bg-background px-2.5 py-1.5 text-right text-[13px] text-foreground outline-none focus:border-gold/40"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Plano (opc.)</span>
+              <input
+                type="number"
+                value={fPlano}
+                onChange={(e) => setFPlano(e.target.value)}
+                placeholder="—"
+                className="tnum w-24 rounded-sub border border-border bg-background px-2.5 py-1.5 text-right text-[13px] text-foreground outline-none focus:border-gold/40"
+              />
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={salvarNovo}
+                disabled={!podeSalvar}
+                className="inline-flex items-center gap-1.5 rounded-sub border border-gold/50 bg-gold/[0.14] px-3 py-1.5 text-[12px] font-semibold text-gold transition-colors hover:bg-gold/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Check className="size-3.5" /> Salvar
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="inline-flex items-center gap-1.5 rounded-sub border border-border px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-3.5" /> Cancelar
+              </button>
+            </div>
+          </div>
+          <p className="mt-2.5 text-[11px] text-text-muted">
+            Adicionando em <b className="text-text-secondary">{periodoLabel}</b> · novos lançamentos entram como{' '}
+            <span className="font-semibold text-gold">ajustado</span> e o resultado recompõe na hora.
+          </p>
+        </div>
+      )}
+
+      {/* Nota de chargebacks (sinal de risco, não linha da DRE) */}
+      <div className="mt-4 flex items-start gap-2.5 rounded-sub border border-danger/30 bg-danger/[0.06] px-3 py-2.5">
+        <ShieldAlert className="mt-0.5 size-4 shrink-0 text-danger" strokeWidth={1.8} />
+        <p className="text-[12px] leading-snug text-text-secondary">
+          <b className="text-foreground">Chargebacks {brlCompact(derivados.chargebacks)}</b>{' '}
+          ({derivados.receita ? pct((derivados.chargebacks / derivados.receita) * 100) : '—'} da receita) entram como
+          <b> sinal de risco</b>, não como linha separada da DRE — não dobra-contar.{' '}
+          <span className="text-text-muted">DRE gerencial (não contábil).</span>
+        </p>
+      </div>
+    </Section>
   )
 }
 

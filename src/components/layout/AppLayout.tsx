@@ -247,27 +247,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Header desktop */}
         <header className="sticky top-0 z-30 hidden items-center gap-3 border-b border-border bg-background/80 px-6 py-3 backdrop-blur-md md:flex">
           <h2 className="text-sm font-semibold text-foreground">{pageTitle}</h2>
-          <button
-            onClick={() => setCmdOpen(true)}
-            className="ml-auto flex w-64 items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 text-xs text-muted-foreground transition-all hover:border-gold/30 hover:text-foreground"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span className="flex-1 text-left">Buscar tarefas, revendedores...</span>
-            <kbd className="rounded bg-secondary px-1 py-0.5 font-mono text-[9px]">⌘K</kbd>
-          </button>
-          <ThemeToggle />
-          <button
-            type="button"
-            aria-label="Notificações"
-            className="relative grid h-9 w-9 place-items-center rounded-btn border border-border bg-card text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold"
-          >
-            <Bell className="h-4 w-4" />
-            {lateCount > 0 && (
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger" />
-            )}
-          </button>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-sm font-bold text-gold" title={userName}>
-            {initial}
+          <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle />
+            <button
+              type="button"
+              aria-label="Notificações"
+              className="relative grid h-9 w-9 place-items-center rounded-btn border border-border bg-card text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold"
+            >
+              <Bell className="h-4 w-4" />
+              {lateCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger" />
+              )}
+            </button>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-sm font-bold text-gold" title={userName}>
+              {initial}
+            </div>
           </div>
         </header>
 

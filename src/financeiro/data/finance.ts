@@ -28,7 +28,7 @@ import type { FinanceSnapshot, CashPoint } from './types'
 //        → Resultado +1.130,08.
 // ════════════════════════════════════════════════════════════════════════
 
-export type Periodo = 'jan' | 'fev'
+export type Periodo = 'jan' | 'fev' | 'mai'
 
 // ── Constantes REAIS reutilizadas (prov 'real') ──────────────────────────
 export const PRECOS_PIX = { honey: 152, cappuccino: 171, blended: 107 } as const
@@ -370,8 +370,142 @@ const JAN: FinanceSnapshot = {
   goal: { label: 'MER', atual: 7.9, meta: 6.0, pct: 100, sub: 'Acima da meta. Resultado fino — atacar CMV para folga real.' },
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// MAIO/2025  (Resultado −28.227,95 · PREJUÍZO · mês de ramp)
+// FONTE: planilha DRE_Maio_2025.xlsx (real) — aba DRE + aba CMV (462 un).
+// Receita 47.042 · CMV 20.787,95 (LB 26.254,05 = 55,8%) · despesas op 53.482
+//   (Pessoal 21.991 + Impostos/Taxas 8.665 + Tráfego 11.554 + Equip. 3.119 +
+//    Materiais 2.803 + Alim./Entret. 1.994 + Hospedagem 1.946 + Adm. 1.549 +
+//    Logística 577 + Transporte 284) → Resultado −28.227,95.
+// Produtos: units + custo médio ponderado por variação 720/750 mL (aba CMV REAIS);
+//   preço PIX = referência; receita por SKU + CM2 = estimativa/pendente (editáveis).
+// Canais/coortes/aging/RFM/LTV/caixa = ILUSTRATIVO (modelos), como em Jan/Fev.
+// ════════════════════════════════════════════════════════════════════════
+const PRODUCTS_MAI: FinanceSnapshot['products'] = [
+  { id: 'honey', name: 'Mr. Lion Honey', linha: 'Honey', img: '/produtos/honey-garrafa.webp',
+    revenue: 21_586, units: 212, precoPix: 152, custo: 42.55, marginPct: 72.0, cm2Pct: 0, trend: 'flat', medal: 'Ouro' },
+  { id: 'cappuccino', name: 'Mr. Lion Cappuccino', linha: 'Cappuccino', img: '/produtos/cappuccino-garrafa.webp',
+    revenue: 10_590, units: 104, precoPix: 171, custo: 55.59, marginPct: 67.5, cm2Pct: 0, trend: 'flat', medal: 'Prata' },
+  { id: 'blended', name: 'Mr. Lion Blended', linha: 'Blended', img: '/produtos/blended-garrafa.webp',
+    revenue: 14_866, units: 146, precoPix: 107, custo: 40.99, marginPct: 61.7, cm2Pct: 0, trend: 'flat' },
+]
+
+const MAI: FinanceSnapshot = {
+  meta: {
+    empresa: 'Casa Mr. Lion',
+    periodo: 'mai-2025',
+    periodoLabel: 'Maio 2025',
+    comparaCom: 'Abril 2025',
+    geradoEm: '2025-05-31',
+    caixaConsolidado: 40_000, // ilustrativo (modelo de caixa)
+    fonte: 'DRE Maio/2025 (planilha real) + aba CMV',
+  },
+
+  kpis: [
+    { key: 'lucro', label: 'Resultado do mês', value: '−R$ 28,2 mil', delta: 'mês de ramp', deltaDir: 'down', accent: 'red', prov: 'real',
+      note: 'Maio/2025 fechou em −R$ 28.227,95. Pessoal R$ 22 mil + CMV R$ 20,8 mil + tráfego R$ 11,6 mil; pesados gastos não-recorrentes (equipamentos, hospedagem, eventos).', spark: [-28.2] },
+    { key: 'receita', label: 'Receita bruta', value: 'R$ 47,0 mil', delta: '462 unidades', deltaDir: 'flat', accent: 'neutral', prov: 'real',
+      note: 'R$ 47.042,00 (DRE Maio/2025).', spark: [47] },
+    { key: 'cm1', label: 'Lucro bruto (CM1)', value: 'R$ 26,3 mil', delta: '55,8% da receita', deltaDir: 'up', accent: 'gold', prov: 'real',
+      note: 'Receita − CMV (R$ 20.787,95). Margem bruta saudável — o prejuízo vem das despesas operacionais.', spark: [26.3] },
+    { key: 'mer', label: 'MER', value: '4,1×', delta: 'meta 6,0× · BE 1,79×', deltaDir: 'down', accent: 'red', prov: 'parcial',
+      note: 'Receita R$ 47 mil ÷ tráfego R$ 11,6 mil = 4,1×. Abaixo da meta 6×.', spark: [4.1] },
+    { key: 'unidades', label: 'Unidades vendidas', value: '462 un', delta: 'CMV R$ 20,8 mil', deltaDir: 'flat', accent: 'neutral', prov: 'real',
+      note: '462 unidades (aba CMV) · custo médio ponderado por variação 720/750 mL.', spark: [462] },
+    { key: 'caixa', label: 'Caixa projetado · 30d', value: 'R$ 40,0 mil', delta: 'modelo (ilustrativo)', deltaDir: 'warn', accent: 'neutral', prov: 'ilustrativo',
+      note: 'PROJEÇÃO — não é saldo real. Caixa de Maio não exportado.', spark: [40] },
+  ],
+
+  // Cascata = decomposição da DRE real de Maio. Fecha em −28,2 mil.
+  waterfall: [
+    { label: 'Receita', value: 47_042, kind: 'rev' },
+    { label: 'CMV', value: -20_788, kind: 'cost' },
+    { label: 'Lucro bruto', value: 26_254, kind: 'sub', pct: '55,8%' },
+    { label: 'Pessoal', value: -21_991, kind: 'cost' },
+    { label: 'Impostos/Taxas', value: -8_665, kind: 'cost' },
+    { label: 'Tráfego', value: -11_554, kind: 'cost' },
+    { label: 'Equipamentos', value: -3_119, kind: 'cost' },
+    { label: 'Materiais', value: -2_803, kind: 'cost' },
+    { label: 'Alim./Ent.', value: -1_994, kind: 'cost' },
+    { label: 'Hospedagem', value: -1_946, kind: 'cost' },
+    { label: 'Adm.', value: -1_549, kind: 'cost' },
+    { label: 'Logística', value: -577, kind: 'cost' },
+    { label: 'Transporte', value: -284, kind: 'cost' },
+    { label: 'Resultado', value: -28_228, kind: 'loss' },
+  ],
+
+  // Split de canal = ILUSTRATIVO; spends Meta 9.133 + Google 2.421 são REAIS (total tráfego 11.554).
+  channels: [
+    { name: 'B2B / Revendedores', cm2: 6_000, spend: 0, revenue: 14_000, roas: null, iroas: null, breakeven: null },
+    { name: 'D2C Orgânico', cm2: 4_000, spend: 0, revenue: 11_500, roas: null, iroas: null, breakeven: null },
+    { name: 'Google Ads', cm2: 1_500, spend: 2_421, revenue: 9_000, roas: 3.7, iroas: 2.8, breakeven: 1.79 },
+    { name: 'Meta Ads', cm2: -800, spend: 9_133, revenue: 12_542, roas: 1.4, iroas: 1.0, breakeven: 1.79, kill: true, recover: 4_000,
+      prescription: 'Meta com R$ 9,1 mil de spend e ROAS ~1,4× (modelo) — abaixo do break-even. Total de tráfego é REAL; split por canal é ilustrativo.' },
+  ],
+
+  products: PRODUCTS_MAI,
+
+  cohort: COHORT,
+
+  cash: { points: buildCash(40_000), events: [
+    { day: 10, type: 'in', label: 'Receber B2B', value: 8_000 },
+    { day: 20, type: 'out', label: 'DAS Simples', value: 2_000 },
+    { day: 30, type: 'out', label: 'Compra estoque', value: 14_000 },
+  ], min: 0, max: 60_000, alvoFolga: 40_000 },
+
+  monthly: MONTHLY,
+
+  dre: [
+    { label: 'Receita bruta', value: 47_042, kind: 'rev' },
+    { label: '(−) CMV', value: -20_787.95, kind: 'ded' },
+    { label: 'Lucro bruto (CM1)', value: 26_254, kind: 'sub', pct: 55.8 },
+    { label: '(−) Pessoal (salário + mão de obra + bartender)', value: -21_991, kind: 'fixed' },
+    { label: '(−) Impostos e taxas', value: -8_665, kind: 'tax' },
+    { label: '(−) Marketing / tráfego (Meta + Google)', value: -11_554, kind: 'ded' },
+    { label: '(−) Equipamentos e ferramentas', value: -3_119, kind: 'ded' },
+    { label: '(−) Materiais e embalagens', value: -2_803, kind: 'ded' },
+    { label: '(−) Alimentação e entretenimento', value: -1_994, kind: 'ded' },
+    { label: '(−) Hospedagem', value: -1_946, kind: 'ded' },
+    { label: '(−) Despesas administrativas', value: -1_549, kind: 'ded' },
+    { label: '(−) Logística e fretes', value: -577, kind: 'ded' },
+    { label: '(−) Transporte e mobilidade', value: -284, kind: 'ded' },
+    { label: 'Resultado do mês', value: -28_228, kind: 'loss' },
+  ],
+
+  aging: [
+    { label: 'A vencer', payable: 12_000, receivable: 18_000 },
+    { label: '1–30 dias', payable: 6_000, receivable: 8_000 },
+    { label: '31–60 dias', payable: 2_500, receivable: 3_000 },
+    { label: '60+ dias', payable: 1_000, receivable: 1_500 },
+  ],
+
+  contas: [
+    { id: 'm1', parte: 'Distribuidora', tipo: 'receber', valor: 8_000, vencimento: '10/06', status: 'aberta', categoria: 'B2B' },
+    { id: 'm2', parte: 'DAS Simples Nacional', tipo: 'pagar', valor: 2_000, vencimento: '20/06', status: 'aberta', categoria: 'Imposto' },
+    { id: 'm3', parte: 'Destilaria (insumos)', tipo: 'pagar', valor: 14_000, vencimento: '12/06', status: 'aberta', categoria: 'Estoque' },
+  ],
+
+  rfm: RFM,
+  ltvCohorts: LTV_COHORTS,
+
+  roi: { pixelReportado: 30_000, wooReal: 24_000, gapPct: 25, mer: 4.1, merMeta: 6.0, merBreakeven: 1.79, poas: 1.9 },
+
+  tax: { ...TAX, dasVencimento: '20/06/2025' },
+
+  alerts: [
+    { id: 'm-a1', kind: 'risk', tag: 'Risco · −R$ 28,2 mil',
+      text: 'Maio/2025 fechou em −R$ 28.227,95. Pessoal (R$ 22 mil) e CMV (R$ 20,8 mil) dominam; há gastos não-recorrentes de ramp (equipamentos, hospedagem, eventos).', cta: 'Abrir DRE' },
+    { id: 'm-a2', kind: 'act', tag: 'Ação · tráfego',
+      text: 'Tráfego R$ 11,6 mil com MER 4,1× — abaixo da meta 6×. Revisar alocação Meta (R$ 9,1 mil) × Google (R$ 2,4 mil).', cta: 'Ver ROI', target: 'Marketing / tráfego' },
+    { id: 'm-a3', kind: 'info', tag: 'Contexto · ramp',
+      text: 'Mês inicial com forte investimento de estruturação — não comparável aos meses operacionais de 2026.', cta: 'Abrir cascata' },
+  ],
+
+  goal: { label: 'MER', atual: 4.1, meta: 6.0, pct: 68, sub: 'Abaixo da meta — mês de ramp com prejuízo operacional pesado.' },
+}
+
 // ── Registro por período ──────────────────────────────────────────────────
-export const SNAPSHOTS: Record<Periodo, FinanceSnapshot> = { jan: JAN, fev: FEV }
+export const SNAPSHOTS: Record<Periodo, FinanceSnapshot> = { mai: MAI, jan: JAN, fev: FEV }
 
 // Retrocompat: export default = Fev (período default da v2).
 export const FINANCE = FEV
