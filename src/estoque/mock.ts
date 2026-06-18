@@ -18,8 +18,8 @@ export const FORNECEDORES: Fornecedor[] = [
   { id: 'f-sulfal',    nome: 'Sulfal (retirada na loja)',   contato: 'CMC / citrato',   leadTimeDias: 2,  itensFornecidos: ['cmc','citrato'] },
   { id: 'f-premier',   nome: 'Premier Pack',                contato: 'Garrafa / rolha', leadTimeDias: 7,  itensFornecidos: ['garrafa_hb','garrafa_cap','rolha'] },
   { id: 'f-inoove',    nome: 'Inoove Embalagens',           contato: 'Tubete',          leadTimeDias: 30, itensFornecidos: ['tubo_hb','tubo_cap'] },
-  { id: 'f-flavio',    nome: 'Flávio / Leão ou Coroa',      contato: 'Pingente',        leadTimeDias: 30, itensFornecidos: ['ping_honey','ping_cap','ping_blend'] },
-  { id: 'f-fabiana',   nome: 'Fabiana Embalagens',          contato: 'Caixas',          leadTimeDias: 30, itensFornecidos: ['caixa6','caixa23','caixa1'] },
+  { id: 'f-flavio',    nome: 'Flávio / Leão ou Coroa',      contato: 'Pingente',        leadTimeDias: 30, itensFornecidos: ['ping_leao','ping_coroa'] },
+  { id: 'f-fabiana',   nome: 'Fabiana Embalagens',          contato: 'Caixas',          leadTimeDias: 30, itensFornecidos: ['caixa6','caixa23','caixa1','caixa_blended'] },
   { id: 'f-graphix',   nome: 'Graphix',                     contato: 'Rótulos',         leadTimeDias: 7,  itensFornecidos: ['rotulo_honey','rotulo_cap','rotulo_blend'] },
 ]
 
@@ -30,44 +30,44 @@ export const ITENS: Item[] = [
   // ── matéria-prima (base do whisky + aditivos) ──
   { id:'alcool',     sku:'MP-001', nome:'Álcool de cereais 96%', tipo:'materia_prima', categoria:'liquido', uom:'L',  estoque:800, min:200, custoMedio:11.42, fornecedorId:'f-lamas',     leadTimeDias:0,  usoMedioDiario:30,  classeAbc:'B', compartilhado:true, ativo:true },
   { id:'malte',      sku:'MP-002', nome:'Malte whisky 56GL',     tipo:'materia_prima', categoria:'liquido', uom:'L',  estoque:300, min:100, custoMedio:42.63, fornecedorId:'f-lamas',     leadTimeDias:0,  usoMedioDiario:12,  classeAbc:'A', compartilhado:true, ativo:true },
-  { id:'mel',        sku:'MP-003', nome:'Mel silvestre',       tipo:'materia_prima', categoria:'liquido', uom:'kg', estoque:34,  min:12,  custoMedio:24.20, fornecedorId:'f-coopermel', leadTimeDias:7,  usoMedioDiario:2.1, perecivel:true,  classeAbc:'A', ativo:true },
-  { id:'acucar',     sku:'MP-004', nome:'Açúcar',              tipo:'materia_prima', categoria:'po',      uom:'kg', estoque:62,  min:20,  custoMedio:5.00,  fornecedorId:'f-atacado',   leadTimeDias:7,  usoMedioDiario:3.0, classeAbc:'B', compartilhado:true, ativo:true },
-  { id:'aroma_mel',  sku:'MP-005', nome:'Aroma de mel',        tipo:'materia_prima', categoria:'aditivo', uom:'L',  estoque:2.4, min:1.0, custoMedio:135.77,fornecedorId:'f-fracarolli',leadTimeDias:7,  usoMedioDiario:0.18,classeAbc:'A', ativo:true },
-  { id:'creme_leite',sku:'MP-006', nome:'Creme de leite',      tipo:'materia_prima', categoria:'liquido', uom:'kg', estoque:9.5, min:5,   custoMedio:19.31, fornecedorId:'f-atacado',   leadTimeDias:7,  usoMedioDiario:0.9, perecivel:true,  classeAbc:'B', ativo:true },
-  { id:'leite_cond', sku:'MP-007', nome:'Leite condensado',    tipo:'materia_prima', categoria:'liquido', uom:'kg', estoque:11,  min:6,   custoMedio:16.76, fornecedorId:'f-atacado',   leadTimeDias:7,  usoMedioDiario:1.0, perecivel:true,  classeAbc:'B', ativo:true },
-  { id:'aroma_cap',  sku:'MP-008', nome:'Aroma de cappuccino', tipo:'materia_prima', categoria:'aditivo', uom:'L',  estoque:1.6, min:0.8, custoMedio:128.08,fornecedorId:'f-fracarolli',leadTimeDias:7,  usoMedioDiario:0.12,classeAbc:'A', ativo:true },
-  { id:'cmc',        sku:'MP-009', nome:'CMC (espessante)',    tipo:'materia_prima', categoria:'po',      uom:'kg', estoque:0.6, min:0.3, custoMedio:38.50, fornecedorId:'f-sulfal',    leadTimeDias:2,  usoMedioDiario:0.03,classeAbc:'C', ativo:true },
-  { id:'corante',    sku:'MP-010', nome:'Corante caramelo',    tipo:'materia_prima', categoria:'aditivo', uom:'L',  estoque:0.9, min:0.4, custoMedio:54.88, fornecedorId:'f-fracarolli',leadTimeDias:7,  usoMedioDiario:0.05,classeAbc:'C', ativo:true },
+  { id:'mel',        sku:'MP-003', nome:'Mel silvestre',       tipo:'materia_prima', categoria:'liquido', uom:'kg', estoque:225, min:12,  custoMedio:24.20, fornecedorId:'f-coopermel', leadTimeDias:7,  usoMedioDiario:2.1, perecivel:true,  classeAbc:'A', ativo:true },
+  { id:'acucar',     sku:'MP-004', nome:'Açúcar',              tipo:'materia_prima', categoria:'po',      uom:'kg', estoque:135, min:20,  custoMedio:5.00,  fornecedorId:'f-atacado',   leadTimeDias:7,  usoMedioDiario:3.0, classeAbc:'B', compartilhado:true, ativo:true },
+  { id:'aroma_mel',  sku:'MP-005', nome:'Aroma de mel',        tipo:'materia_prima', categoria:'aditivo', uom:'L',  estoque:5, min:1.0, custoMedio:135.77,fornecedorId:'f-fracarolli',leadTimeDias:7,  usoMedioDiario:0.18,classeAbc:'A', ativo:true },
+  { id:'creme_leite',sku:'MP-006', nome:'Creme de leite',      tipo:'materia_prima', categoria:'liquido', uom:'kg', estoque:0, min:5,   custoMedio:19.31, fornecedorId:'f-atacado',   leadTimeDias:7,  usoMedioDiario:0.9, perecivel:true,  classeAbc:'B', ativo:true },
+  { id:'leite_cond', sku:'MP-007', nome:'Leite condensado',    tipo:'materia_prima', categoria:'liquido', uom:'kg', estoque:0, min:6,   custoMedio:16.76, fornecedorId:'f-atacado',   leadTimeDias:7,  usoMedioDiario:1.0, perecivel:true,  classeAbc:'B', ativo:true },
+  { id:'aroma_cap',  sku:'MP-008', nome:'Aroma de cappuccino', tipo:'materia_prima', categoria:'aditivo', uom:'L',  estoque:5, min:0.8, custoMedio:128.08,fornecedorId:'f-fracarolli',leadTimeDias:7,  usoMedioDiario:0.12,classeAbc:'A', ativo:true },
+  { id:'cmc',        sku:'MP-009', nome:'CMC (espessante)',    tipo:'materia_prima', categoria:'po',      uom:'kg', estoque:0.5, min:0.3, custoMedio:38.50, fornecedorId:'f-sulfal',    leadTimeDias:2,  usoMedioDiario:0.03,classeAbc:'C', ativo:true },
+  { id:'corante',    sku:'MP-010', nome:'Corante caramelo',    tipo:'materia_prima', categoria:'aditivo', uom:'L',  estoque:5, min:0.4, custoMedio:54.88, fornecedorId:'f-fracarolli',leadTimeDias:7,  usoMedioDiario:0.05,classeAbc:'C', ativo:true },
   { id:'citrato',    sku:'MP-011', nome:'Citrato de sódio',    tipo:'materia_prima', categoria:'po',      uom:'kg', estoque:0.5, min:0.2, custoMedio:42.79, fornecedorId:'f-sulfal',    leadTimeDias:2,  usoMedioDiario:0.02,classeAbc:'C', ativo:true },
 
   // ── embalagem (componentes da garrafa pronta) ──
-  { id:'garrafa_hb', sku:'EM-001', nome:'Garrafa Honey/Blended', tipo:'embalagem', categoria:'garrafa',    uom:'un', estoque:128, min:120, custoMedio:11.74, fornecedorId:'f-premier', leadTimeDias:7,  usoMedioDiario:34, classeAbc:'A', compartilhado:true, ativo:true },
-  { id:'garrafa_cap',sku:'EM-002', nome:'Garrafa Cappuccino',    tipo:'embalagem', categoria:'garrafa',    uom:'un', estoque:58,  min:80,  custoMedio:23.83, fornecedorId:'f-premier', leadTimeDias:30, usoMedioDiario:12, classeAbc:'A', ativo:true },
-  { id:'rolha',      sku:'EM-003', nome:'Rolha',                 tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:340, min:160, custoMedio:1.28,  fornecedorId:'f-premier', leadTimeDias:7,  usoMedioDiario:46, classeAbc:'B', compartilhado:true, ativo:true },
-  { id:'tubo_hb',    sku:'EM-004', nome:'Tubete Honey/Blended',  tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:210, min:150, custoMedio:14.12, fornecedorId:'f-inoove',  leadTimeDias:30, usoMedioDiario:34, classeAbc:'A', compartilhado:true, ativo:true },
-  { id:'tubo_cap',   sku:'EM-005', nome:'Tubete Cappuccino',     tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:90,  min:80,  custoMedio:11.36, fornecedorId:'f-inoove',  leadTimeDias:30, usoMedioDiario:12, classeAbc:'A', ativo:true },
-  { id:'rotulo_honey',sku:'EM-006',nome:'Rótulo Honey',          tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:92,  min:120, custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:22, classeAbc:'B', ativo:true },
+  { id:'garrafa_hb', sku:'EM-001', nome:'Garrafa Honey/Blended', tipo:'embalagem', categoria:'garrafa',    uom:'un', estoque:478, min:120, custoMedio:11.74, fornecedorId:'f-premier', leadTimeDias:7,  usoMedioDiario:34, classeAbc:'A', compartilhado:true, ativo:true },
+  { id:'garrafa_cap',sku:'EM-002', nome:'Garrafa Cappuccino',    tipo:'embalagem', categoria:'garrafa',    uom:'un', estoque:143, min:80,  custoMedio:23.83, fornecedorId:'f-premier', leadTimeDias:30, usoMedioDiario:12, classeAbc:'A', ativo:true },
+  { id:'rolha',      sku:'EM-003', nome:'Rolha',                 tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:6315, min:160, custoMedio:1.28,  fornecedorId:'f-premier', leadTimeDias:7,  usoMedioDiario:46, classeAbc:'B', compartilhado:true, ativo:true },
+  { id:'tubo_hb',    sku:'EM-004', nome:'Tubete Honey/Blended',  tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:1460, min:150, custoMedio:14.12, fornecedorId:'f-inoove',  leadTimeDias:30, usoMedioDiario:34, classeAbc:'A', compartilhado:true, ativo:true },
+  { id:'tubo_cap',   sku:'EM-005', nome:'Tubete Cappuccino',     tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:1562, min:80,  custoMedio:11.36, fornecedorId:'f-inoove',  leadTimeDias:30, usoMedioDiario:12, classeAbc:'A', ativo:true },
+  { id:'rotulo_honey',sku:'EM-006',nome:'Rótulo Honey',          tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:969, min:120, custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:22, classeAbc:'B', ativo:true },
   { id:'rotulo_cap', sku:'EM-007', nome:'Rótulo Cappuccino',     tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:150, min:80,  custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:12, classeAbc:'C', ativo:true },
-  { id:'rotulo_blend',sku:'EM-008',nome:'Rótulo Blended',        tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:44,  min:50,  custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:9,  classeAbc:'C', ativo:true },
-  { id:'ping_honey', sku:'EM-009', nome:'Pingente Honey',        tipo:'embalagem', categoria:'pingente',   uom:'un', estoque:115, min:80,  custoMedio:2.95,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:22, classeAbc:'A', ativo:true }, // planilha 7–30, conservador 30
-  { id:'ping_cap',   sku:'EM-010', nome:'Pingente Cappuccino',   tipo:'embalagem', categoria:'pingente',   uom:'un', estoque:72,  min:60,  custoMedio:2.95,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:12, classeAbc:'A', ativo:true },
-  { id:'ping_blend', sku:'EM-011', nome:'Pingente Blended',      tipo:'embalagem', categoria:'pingente',   uom:'un', estoque:26,  min:40,  custoMedio:2.95,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:9,  classeAbc:'A', ativo:true },
+  { id:'rotulo_blend',sku:'EM-008',nome:'Rótulo Blended',        tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:696, min:50,  custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:9,  classeAbc:'C', ativo:true },
+  { id:'ping_leao',  sku:'EM-009', nome:'Pingente Leão',         tipo:'embalagem', categoria:'pingente',   uom:'un', estoque:1800, min:120, custoMedio:2.95,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:34, classeAbc:'A', compartilhado:true, ativo:true }, // Honey + Cappuccino (contagem 18/06)
+  { id:'ping_coroa', sku:'EM-010', nome:'Pingente Coroa',        tipo:'embalagem', categoria:'pingente',   uom:'un', estoque:3900, min:60,  custoMedio:2.95,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:9,  classeAbc:'A', ativo:true }, // Blended (contagem 18/06)
   { id:'selo_ipi',   sku:'EM-012', nome:'Selo IPI',              tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:2000,min:500, custoMedio:0.03,                            leadTimeDias:7,  usoMedioDiario:46, classeAbc:'C', compartilhado:true, ativo:true },
   { id:'caixa6',     sku:'EM-013', nome:'Caixa 6 unidades',      tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:30,  min:20,  custoMedio:3.30,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:3,  classeAbc:'C', ativo:true }, // João: caixa média R$3,30 (não separou por tamanho)
   { id:'caixa23',    sku:'EM-014', nome:'Caixa 2–3 unidades',    tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:15,  min:20,  custoMedio:3.30,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:4,  classeAbc:'C', ativo:true },
   { id:'caixa1',     sku:'EM-015', nome:'Caixa 1 unidade',       tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:84,  min:50,  custoMedio:3.30,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:9,  classeAbc:'C', ativo:true },
-  { id:'colar',      sku:'EM-016', nome:'Colar / correntinha',   tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:180, min:150, custoMedio:1.30,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:46, classeAbc:'B', compartilhado:true, ativo:false }, // não consta na planilha do João (pingente "Leão/Coroa" já inclui correntinha?) — desativado p/ validar
+  { id:'caixa_blended',sku:'EM-017',nome:'Estojo Blended',        tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:1654, min:50,  custoMedio:3.30,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:9,  classeAbc:'B', ativo:true }, // estojo individual do Blended (contagem 18/06)
+  { id:'colar',      sku:'EM-016', nome:'Colar / correntinha',   tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:1875, min:150, custoMedio:1.30,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:46, classeAbc:'B', compartilhado:true, ativo:true }, // contagem física 18/06: 1875
 
   // ── produto intermediário (LÍQUIDO PRONTO no tanque, em litros — pedido do João 11/06) ──
   //    custoMedio = custo das matérias-primas por litro (= CMV-líquido/garrafa ÷ 0,75L de enchimento).
   //    estoque/min = exemplo até a contagem física; o caso clássico (muito líquido, pouca garrafa) aparece no envase.
-  { id:'granel_honey',      sku:'WIP-001', nome:'Granel Honey (tanque)',      tipo:'produto_intermediario', categoria:'granel', uom:'L', estoque:600, min:150, custoMedio:12.28, usoMedioDiario:11, classeAbc:'A', ativo:true },
+  { id:'granel_honey',      sku:'WIP-001', nome:'Granel Honey (tanque)',      tipo:'produto_intermediario', categoria:'granel', uom:'L', estoque:900, min:150, custoMedio:12.28, usoMedioDiario:11, classeAbc:'A', ativo:true },
   { id:'granel_cappuccino', sku:'WIP-002', nome:'Granel Cappuccino (tanque)', tipo:'produto_intermediario', categoria:'granel', uom:'L', estoque:180, min:60,  custoMedio:12.03, usoMedioDiario:6,  classeAbc:'A', ativo:true },
 
   // ── produto acabado (custoMedio = CMV real/garrafa: líquido + embalagem + mão de obra R$4,50) ──
-  { id:'pa_honey',     sku:'PA-001', nome:'Mr. Lion Honey 750ml',      tipo:'produto_acabado', categoria:'honey',      uom:'un', estoque:96,  min:60, custoMedio:45.26, fotoUrl:honeyImg,      usoMedioDiario:14, classeAbc:'A', ativo:true },
-  { id:'pa_cappuccino',sku:'PA-002', nome:'Mr. Lion Cappuccino 750ml', tipo:'produto_acabado', categoria:'cappuccino', uom:'un', estoque:48,  min:40, custoMedio:54.40, fotoUrl:cappuccinoImg, usoMedioDiario:8,  classeAbc:'A', ativo:true },
-  { id:'pa_blended',   sku:'PA-003', nome:'Mr. Lion Blended 750ml',    tipo:'produto_acabado', categoria:'blended',    uom:'un', estoque:120, min:50, custoMedio:36.05, fotoUrl:blendedImg,    usoMedioDiario:11, classeAbc:'B', ativo:true }, // incompleto: receita líquida do Blended ainda não veio
+  { id:'pa_honey',     sku:'PA-001', nome:'Mr. Lion Honey 750ml',      tipo:'produto_acabado', categoria:'honey',      uom:'un', estoque:21, min:60, custoMedio:45.26, fotoUrl:honeyImg,      usoMedioDiario:14, classeAbc:'A', ativo:true },
+  { id:'pa_cappuccino',sku:'PA-002', nome:'Mr. Lion Cappuccino 750ml', tipo:'produto_acabado', categoria:'cappuccino', uom:'un', estoque:6, min:40, custoMedio:54.40, fotoUrl:cappuccinoImg, usoMedioDiario:8,  classeAbc:'A', ativo:true },
+  { id:'pa_blended',   sku:'PA-003', nome:'Mr. Lion Blended 750ml',    tipo:'produto_acabado', categoria:'blended',    uom:'un', estoque:46, min:50, custoMedio:36.05, fotoUrl:blendedImg,    usoMedioDiario:11, classeAbc:'B', ativo:true }, // incompleto: receita líquida do Blended ainda não veio
 ]
 
 // ── Receitas / BOM — modelo de 2 ESTÁGIOS (pedido do João 11/06):
@@ -100,7 +100,7 @@ export const RECEITAS: Receita[] = [
       { itemId:'rolha', quantidade:1, uom:'un' },
       { itemId:'rotulo_honey', quantidade:1, uom:'un' },
       { itemId:'tubo_hb', quantidade:1, uom:'un' },
-      { itemId:'ping_honey', quantidade:1, uom:'un' },
+      { itemId:'ping_leao', quantidade:1, uom:'un' },
       { itemId:'selo_ipi', quantidade:1, uom:'un' },
     ],
   },
@@ -129,7 +129,7 @@ export const RECEITAS: Receita[] = [
       { itemId:'rolha', quantidade:1, uom:'un' },
       { itemId:'rotulo_cap', quantidade:1, uom:'un' },
       { itemId:'tubo_cap', quantidade:1, uom:'un' },
-      { itemId:'ping_cap', quantidade:1, uom:'un' },
+      { itemId:'ping_leao', quantidade:1, uom:'un' },
       { itemId:'selo_ipi', quantidade:1, uom:'un' },
     ],
   },
@@ -143,7 +143,8 @@ export const RECEITAS: Receita[] = [
       { itemId:'rolha', quantidade:1, uom:'un' },
       { itemId:'rotulo_blend', quantidade:1, uom:'un' },
       { itemId:'tubo_hb', quantidade:1, uom:'un' },
-      { itemId:'ping_blend', quantidade:1, uom:'un' },
+      { itemId:'ping_coroa', quantidade:1, uom:'un' },
+      { itemId:'caixa_blended', quantidade:1, uom:'un' },
       { itemId:'selo_ipi', quantidade:1, uom:'un' },
     ],
   },

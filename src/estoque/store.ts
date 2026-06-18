@@ -114,7 +114,7 @@ export const useEstoque = create<EstoqueState>()(
         set({ itens: ITENS.map(i => ({ ...i })), ordens: ORDENS.map(o => ({ ...o })), compras: [], movimentos: seedMovimentos(ITENS) }),
     }),
     {
-      name: 'mrlion-estoque-v5', // v5: modelo de 2 estágios (líquido→granel→envase) — força refresh dos defaults
+      name: 'mrlion-estoque-v6', // v6: contagem física 18/06 (João) + pingentes Leão/Coroa + estojo Blended — força refresh dos defaults
       // persiste saldo + parâmetros de planejamento editados na operação (mínimo, prazo, consumo, teto).
       partialize: (s) => ({
         itens: s.itens.map(i => ({
