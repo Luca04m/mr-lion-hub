@@ -26,7 +26,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-const COLUMNS: TaskStatus[] = ["pendente", "em-andamento", "concluida", "atrasada"];
+const COLUMNS: TaskStatus[] = ["pendente", "em-andamento", "atrasada", "concluida"];
 
 // Status da tarefa → tom sóbrio do StatusPill (design system pro)
 const TASK_TONE: Record<TaskStatus, StatusTone> = {
@@ -60,7 +60,7 @@ const TasksPage = () => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [sidePanelTask, setSidePanelTask] = useState<Task | null>(null);
   const [highlightId, setHighlightId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState("minhas");
+  const [activeTab, setActiveTab] = useState("kanban");
   const userName = getUser() || "";
   const [searchParams] = useSearchParams();
 
@@ -249,24 +249,15 @@ const TasksPage = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-secondary/40 h-auto gap-0.5 w-full overflow-x-auto flex justify-start p-1">
-          <TabsTrigger value="minhas" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
-            <User className="w-3 h-3 shrink-0" />Minhas
+          <TabsTrigger value="kanban" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
+            <LayoutGrid className="w-3 h-3 shrink-0" />Kanban
             {lateCount > 0 && <span className="ml-0.5 text-[9px] font-mono font-bold bg-danger/[0.12] text-danger px-1 py-0.5 rounded-sub">{lateCount}</span>}
           </TabsTrigger>
           <TabsTrigger value="lista" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
             <ListTodo className="w-3 h-3 shrink-0" />Lista
           </TabsTrigger>
-          <TabsTrigger value="kanban" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
-            <LayoutGrid className="w-3 h-3 shrink-0" />Kanban
-          </TabsTrigger>
           <TabsTrigger value="pessoa" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
             <Users className="w-3 h-3 shrink-0" />Pessoa
-          </TabsTrigger>
-          <TabsTrigger value="area" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
-            <Tag className="w-3 h-3 shrink-0" />Área
-          </TabsTrigger>
-          <TabsTrigger value="atividade" className="data-[state=active]:bg-accent data-[state=active]:text-gold text-xs whitespace-nowrap flex items-center gap-1.5">
-            <ActivityIcon className="w-3 h-3 shrink-0" />Atividade
           </TabsTrigger>
         </TabsList>
 
@@ -293,11 +284,6 @@ const TasksPage = () => {
           />
         </TabsContent>
 
-        {/* TAB: Minhas Tarefas */}
-        <TabsContent value="minhas">
-          <MyTasksTabContent tasks={tasks} userName={userName} onToggleComplete={handleToggleComplete} onStatusChange={handleStatusChange} onDelete={handleDelete} onEdit={(t) => { setEditingTask(t); setDialogOpen(true); }} onTitleClick={(t) => setSidePanelTask(t)} reload={reload} />
-        </TabsContent>
-
         {/* TAB: Kanban */}
         <TabsContent value="kanban">
           <KanbanTabContent tasks={tasks} reload={reload} userName={userName} onCardClick={t => setSidePanelTask(t)} />
@@ -308,16 +294,6 @@ const TasksPage = () => {
           <PeopleTabContent tasks={tasks} reload={reload} userName={userName} onTaskClick={t => setSidePanelTask(t)} onCreateTask={handleSave} />
         </TabsContent>
 
-        {/* TAB: Por Área */}
-        <TabsContent value="area">
-          <AreasTabContent tasks={tasks} onTaskClick={t => setSidePanelTask(t)} />
-        </TabsContent>
-
-
-        {/* TAB: Atividade */}
-        <TabsContent value="atividade">
-          <ActivityTabContent />
-        </TabsContent>
       </Tabs>
 
       <TaskFormDialog open={dialogOpen} onOpenChange={setDialogOpen} task={editingTask} onSave={handleSave} />
@@ -620,34 +596,51 @@ function SortableKanbanCard({ task, onCardClick }: { task: Task; onCardClick: (t
 function KanbanCard({ task, isDragging, onClick }: { task: Task; isDragging?: boolean; onClick?: () => void }) {
   const due = formatDue(task.dueDate);
   const campaign = task.campanha_id ? getCampaigns().find(x => x.id === task.campanha_id) : null;
+  const isDone = task.status === "concluida";
+  const responsibles = task.responsible || [];
+  const primary = responsibles[0];
+  const extra = responsibles.length - 1;
+  const hasLink = (task.attachments || []).some(a => a.type === "link" || a.url);
   return (
-    <div onClick={onClick} className={`bg-card rounded-card border border-border shadow-soft p-2.5 cursor-grab active:cursor-grabbing hover:border-gold/20 transition-all ${isDragging ? "shadow-elevated border-gold/30" : ""}`}>
+    <div onClick={onClick} className={`group bg-card rounded-card border shadow-soft p-2.5 cursor-grab active:cursor-grabbing transition-all ${isDragging ? "shadow-elevated border-gold/30" : "border-border hover:border-gold/30"} ${isDone ? "opacity-55" : ""}`}>
       <div className="flex items-start gap-1.5">
-        <GripVertical className="w-3 h-3 text-muted-foreground/40 mt-0.5 shrink-0" />
+        <GripVertical className="w-3 h-3 text-muted-foreground/40 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{task.title}</p>
-          {campaign && <p className="text-[9px] text-gold flex items-center gap-0.5 mt-0.5 truncate"><span>⚡</span>{campaign.title}</p>}
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${PRIORITY_COLORS[task.priority]}40`, color: PRIORITY_COLORS[task.priority] }}>
-              {PRIORITY_LABELS[task.priority]}
-            </Badge>
-            <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `color-mix(in srgb, ${AREA_COLORS[task.area] || "hsl(var(--muted-foreground))"} 25%, transparent)`, color: AREA_COLORS[task.area] || "hsl(var(--muted-foreground))" }}>
-              {task.area}
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center gap-1.5">
-              <div className="flex -space-x-1">
-                {task.responsible.slice(0, 3).map(r => (
-                  <div key={r} className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center text-[8px] font-bold text-gold">{r.charAt(0)}</div>
-                ))}
-              </div>
-              {(task.attachments || []).some(a => a.type === "link" || a.url) && (
-                <span className="text-[9px] text-gold">🔗</span>
-              )}
+          <p className={`text-sm font-medium leading-snug ${isDone ? "line-through text-muted-foreground" : "text-foreground"}`}>{task.title}</p>
+          {campaign && <p className="text-[10px] text-gold flex items-center gap-0.5 mt-0.5 truncate"><span>⚡</span>{campaign.title}</p>}
+          {!isDone && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `${PRIORITY_COLORS[task.priority]}40`, color: PRIORITY_COLORS[task.priority] }}>
+                {PRIORITY_LABELS[task.priority]}
+              </Badge>
+              <Badge variant="outline" className="text-[9px] h-4" style={{ borderColor: `color-mix(in srgb, ${AREA_COLORS[task.area] || "hsl(var(--muted-foreground))"} 25%, transparent)`, color: AREA_COLORS[task.area] || "hsl(var(--muted-foreground))" }}>
+                {task.area}
+              </Badge>
             </div>
-            {due && (
-              <span className="text-[9px] font-mono" style={{ color: due.color }}>{due.label}</span>
+          )}
+          {/* Rodapé: responsável (avatar + nome) · prazo explícito */}
+          <div className="flex items-center justify-between gap-2 mt-2.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {responsibles.length > 0 ? (
+                <>
+                  <div className="flex -space-x-1.5 shrink-0">
+                    {responsibles.slice(0, 3).map(r => (
+                      <div key={r} title={r} className="w-6 h-6 rounded-full bg-secondary ring-1 ring-border flex items-center justify-center text-[10px] font-bold text-gold">{r.charAt(0)}</div>
+                    ))}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground truncate">{extra > 0 ? `${primary} +${extra}` : primary}</span>
+                </>
+              ) : (
+                <span className="text-[11px] italic text-muted-foreground/60">Sem responsável</span>
+              )}
+              {hasLink && <Link2 className="w-3 h-3 text-gold shrink-0" />}
+            </div>
+            {due && !isDone && (
+              <span className="inline-flex items-center gap-1 rounded-sub border px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+                style={{ color: due.color, borderColor: `color-mix(in srgb, ${due.color} 30%, transparent)`, backgroundColor: `color-mix(in srgb, ${due.color} 8%, transparent)` }}>
+                <Clock className="w-2.5 h-2.5 shrink-0" />
+                {due.label}
+              </span>
             )}
           </div>
         </div>
@@ -930,14 +923,15 @@ function ActivityTabContent() {
 // ═══════════════════════════════════════════════════
 // Due Date Helper
 // ═══════════════════════════════════════════════════
-function formatDue(dueDate: string | null | undefined): { label: string; color: string } | null {
+function formatDue(dueDate: string | null | undefined): { label: string; color: string; urgent?: boolean } | null {
   if (!dueDate) return null;
-  const d = differenceInDays(new Date(dueDate + "T12:00:00"), new Date());
-  if (d < 0) return { label: "Atrasada", color: "hsl(var(--danger))" };
-  if (d === 0) return { label: "Hoje", color: "hsl(var(--warning))" };
-  if (d === 1) return { label: "Amanhã", color: "hsl(var(--warning))" };
-  if (d <= 7) return { label: `${d}d`, color: "hsl(var(--muted-foreground))" };
-  return { label: format(new Date(dueDate + "T12:00:00"), "dd/MM"), color: "hsl(var(--muted-foreground-dim))" };
+  const target = new Date(dueDate + "T12:00:00");
+  const d = differenceInDays(target, new Date());
+  if (d < 0) return { label: `Atrasada · ${format(target, "dd/MM")}`, color: "hsl(var(--danger))", urgent: true };
+  if (d === 0) return { label: "Vence hoje", color: "hsl(var(--warning))", urgent: true };
+  if (d === 1) return { label: "Vence amanhã", color: "hsl(var(--warning))" };
+  if (d <= 7) return { label: format(target, "dd/MM"), color: "hsl(var(--muted-foreground))" };
+  return { label: format(target, "dd 'de' MMM", { locale: ptBR }), color: "hsl(var(--muted-foreground-dim))" };
 }
 
 // ═══════════════════════════════════════════════════

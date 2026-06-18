@@ -76,7 +76,7 @@ const CampaignsPage = () => {
 
   const handleNavigateToContent = (campaignId: number) => {
     localStorage.setItem(CAMPAIGN_CONTENT_FILTER_KEY, String(campaignId));
-    navigate("/content");
+    navigate("/calendar");
   };
 
   return (

@@ -3,7 +3,7 @@ import { NavLink, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, CheckSquare, Building2, CalendarDays, Zap,
-  LogOut, Menu, X, Search, DollarSign, Package, Megaphone, Bell
+  LogOut, Menu, X, Search, DollarSign, Package, Sparkles, Bell
 } from "lucide-react";
 import { getUser, clearUser, getOnlineUsers, updatePresence, getTasks, initRealtime, subscribe } from "@/lib/store";
 import { PRIVATE_USERS } from "@/lib/types";
@@ -15,19 +15,19 @@ import { ThemeToggle } from "@/components/pro";
 
 const NAV_ITEMS = [
   { to: "/overview", icon: LayoutDashboard, label: "Visão Geral" },
+  { to: "/assistente", icon: Sparkles, label: "Assistente" },
   { to: "/tasks", icon: CheckSquare, label: "Tarefas", badge: true },
   { to: "/calendar", icon: CalendarDays, label: "Calendário" },
   { to: "/campaigns", icon: Zap, label: "Campanhas" },
-  { to: "/content", icon: Megaphone, label: "Conteúdo" },
   { to: "/revendedores", icon: Building2, label: "CRM" },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
   "/overview": "Visão Geral",
+  "/assistente": "Assistente",
   "/tasks": "Tarefas",
   "/calendar": "Calendário",
   "/campaigns": "Campanhas",
-  "/content": "Conteúdo",
   "/revendedores": "CRM",
   "/financeiro": "Financeiro",
   "/estoque": "Estoque",

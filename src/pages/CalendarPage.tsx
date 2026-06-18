@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getTasks, createTask, logActivity, getUser,
-  getMeetings, getPosts, getCampaigns,
+  getMeetings, getPosts, getCampaigns, createPost, CAMPAIGN_CONTENT_FILTER_KEY,
 } from "@/lib/store";
 import {
   Task, Meeting, ContentPost, Campaign,
@@ -24,7 +24,9 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TaskFormDialog } from "@/pages/TasksPage";
+import { PostFormDialog } from "@/pages/ContentPage";
 import { TaskSidePanel } from "@/components/TaskSidePanel";
+import { ContentSidePanel } from "@/components/ContentSidePanel";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -212,6 +214,8 @@ const CalendarPage = () => {
   const [dialogOpen,    setDialogOpen]    = useState(false);
   const [selectedDate,  setSelectedDate]  = useState("");
   const [selectedTask,  setSelectedTask]  = useState<Task | null>(null);
+  const [selectedPost,  setSelectedPost]  = useState<ContentPost | null>(null);
+  const [postDialogOpen, setPostDialogOpen] = useState(false);
   const userName = getUser() || "";
 
   const reload = useCallback(() => {
@@ -223,6 +227,16 @@ const CalendarPage = () => {
 
   useEffect(() => { reload(); }, [reload]);
   useRealtime(reload);
+
+  // Cross-nav: vindo de Campanhas → "Ver conteúdo" pré-filtra o calendário por campanha + posts
+  useEffect(() => {
+    const savedFilter = localStorage.getItem(CAMPAIGN_CONTENT_FILTER_KEY);
+    if (savedFilter) {
+      setFilterCampanha(Number(savedFilter));
+      setFilterType("posts");
+      localStorage.removeItem(CAMPAIGN_CONTENT_FILTER_KEY);
+    }
+  }, []);
 
   // ─── Date ranges ───
   const monthStart  = startOfMonth(currentDate);
@@ -281,6 +295,13 @@ const CalendarPage = () => {
   // ─── Handlers ───
   const handleEventClick = (e: CalendarEvent) => {
     if (e.kind === "task") setSelectedTask(e.data as Task);
+    else if (e.kind === "post") setSelectedPost(e.data as ContentPost);
+  };
+
+  const handleSavePost = (data: Omit<ContentPost, "id" | "createdAt" | "updatedAt">) => {
+    createPost(data);
+    setPostDialogOpen(false);
+    reload();
   };
 
   const handleDayClick = (day: Date) => {
@@ -357,6 +378,9 @@ const CalendarPage = () => {
             <Button variant="ghost" size="icon" onClick={goForward} className="h-8 w-8"><ChevronRight className="w-4 h-4" /></Button>
             <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())} className="text-xs text-gold border-gold/30 h-7">
               Hoje
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setSelectedDate(format(currentDate, "yyyy-MM-dd")); setPostDialogOpen(true); }} className="text-xs h-7 gap-1.5">
+              <ImageIcon className="w-3 h-3" />Post
             </Button>
           </div>
         </div>
@@ -606,7 +630,9 @@ const CalendarPage = () => {
       </div>
 
       <TaskFormDialog open={dialogOpen} onOpenChange={setDialogOpen} onSave={handleSave} defaultDueDate={selectedDate} />
+      <PostFormDialog open={postDialogOpen} onOpenChange={setPostDialogOpen} onSave={handleSavePost} defaultDate={selectedDate} />
       <TaskSidePanel task={selectedTask} open={!!selectedTask} onOpenChange={b => { if (!b) setSelectedTask(null); }} onUpdate={reload} />
+      <ContentSidePanel post={selectedPost} open={!!selectedPost} onOpenChange={b => { if (!b) setSelectedPost(null); }} onUpdate={() => { reload(); setSelectedPost(prev => prev ? getPosts().find(p => p.id === prev.id) || null : null); }} />
     </div>
   );
 };

@@ -23,7 +23,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { toast } from "sonner";
 // (Button/Badge substituídos por CTA sólido neutro .bg-cta + StatusPill do design system pro)
 import { useRealtime } from "@/hooks/use-realtime";
-import { MetricCard, AreaChartCard, AIPanel, StatusPill, type StatusTone } from "@/components/pro";
+import { MetricCard, AreaChartCard, StatusPill, type StatusTone } from "@/components/pro";
 
 // ─── Static data (DRE/Ecom — hardcoded, tratados na Fase 4) ────────────────────
 const DRE_CARDS = [
@@ -332,7 +332,6 @@ const OverviewPage = () => {
             label="Tarefas atrasadas"
             value={String(lateCount)}
             accent={lateCount > 0 ? "cta" : "success"}
-            hero={lateCount > 0}
             icon={<AlertTriangle className="h-4 w-4" />}
             delta={lateCount > 0 ? { value: "requer ação", direction: "down" } : { value: "tudo em dia", direction: "flat" }}
           />
@@ -343,7 +342,6 @@ const OverviewPage = () => {
             label="% Concluído"
             value={`${donePct}%`}
             accent="success"
-            hero={lateCount === 0}
             icon={<CheckCircle2 className="h-4 w-4" />}
             sparkline={doneSpark}
             delta={doneDelta}
@@ -360,7 +358,7 @@ const OverviewPage = () => {
           />
         </motion.div>
 
-        <motion.div variants={fadeUp} className="cursor-pointer" onClick={() => navigate("/content")}>
+        <motion.div variants={fadeUp} className="cursor-pointer" onClick={() => navigate("/calendar")}>
           <MetricCard
             label="Atividade (14d)"
             value={String(activityTotal14)}
@@ -371,23 +369,20 @@ const OverviewPage = () => {
         </motion.div>
       </motion.div>
 
-      {/* ══ LINHA PRINCIPAL — AreaChart + AIPanel ═══════════════════════════ */}
-      <motion.div variants={fadeUp} className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <AreaChartCard
-            title="Atividade (14 dias)"
-            data={activitySeries.map(b => ({ label: b.label, value: b.value }))}
-            height={240}
-            color="hsl(var(--gold))"
-            footer={
-              <span className="text-muted-foreground">
-                <span className="tnum font-semibold text-gold">{activityTotal14}</span> ações no período ·{" "}
-                <span className="tnum font-semibold text-success">{done14}</span> tarefas concluídas
-              </span>
-            }
-          />
-        </div>
-        <AIPanel className="min-h-[300px] lg:col-span-1" />
+      {/* ══ LINHA PRINCIPAL — AreaChart (largura total; Assistente tem tela própria) ══ */}
+      <motion.div variants={fadeUp}>
+        <AreaChartCard
+          title="Atividade (14 dias)"
+          data={activitySeries.map(b => ({ label: b.label, value: b.value }))}
+          height={240}
+          color="hsl(var(--gold))"
+          footer={
+            <span className="text-muted-foreground">
+              <span className="tnum font-semibold text-gold">{activityTotal14}</span> ações no período ·{" "}
+              <span className="tnum font-semibold text-success">{done14}</span> tarefas concluídas
+            </span>
+          }
+        />
       </motion.div>
 
       {/* ══ DRE ═════════════════════════════════════════════════════════════ */}
@@ -717,7 +712,7 @@ const OverviewPage = () => {
                 {upcomingPosts.map(p => (
                   <div
                     key={p.id}
-                    onClick={() => navigate("/content")}
+                    onClick={() => navigate("/calendar")}
                     className="flex cursor-pointer items-center gap-2 rounded-sub border border-border bg-muted/30 p-2.5 text-xs transition-all hover:border-gold/20"
                   >
                     <span className="tnum w-12 shrink-0 rounded bg-muted px-1.5 py-0.5 text-center text-[10px] text-muted-foreground">{fmtDate(p.scheduledDate)}</span>

@@ -1,0 +1,8 @@
+name = "mrlionhub"
+compatibility_date = "2026-06-18"
+pages_build_output_dir = "dist"
+
+# Cloudflare Workers AI (free tier) — alimenta o Assistente Mr. Lion.
+# Endpoint servido por functions/api/assistant.ts. Requer Workers AI habilitado na conta.
+[ai]
+binding = "AI"

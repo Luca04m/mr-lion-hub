@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .design-preview/
 .export/
+
+# Imports de dados com PII (leads B2B) — NUNCA commitar
+supabase/imports/

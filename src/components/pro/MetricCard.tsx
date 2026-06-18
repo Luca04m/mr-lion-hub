@@ -76,7 +76,7 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col justify-between rounded-card border bg-card p-5 transition-colors",
+        "relative flex h-full flex-col rounded-card border bg-card p-5 transition-colors",
         hero
           ? "border-gold/40 shadow-elevated"
           : "border-border shadow-soft",
@@ -116,7 +116,7 @@ export function MetricCard({
       </div>
 
       {sparkline && sparkline.length > 1 && (
-        <div className="mt-4 -mx-1">
+        <div className="mt-auto pt-4 -mx-1">
           <Sparkline
             data={sparkline}
             color={a.color}

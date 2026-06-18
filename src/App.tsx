@@ -5,9 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import OverviewPage from "./pages/OverviewPage";
+import AssistantPage from "./pages/AssistantPage";
 import TasksPage from "./pages/TasksPage";
 import RevendedoresPage from "./pages/RevendedoresPage";
-import ContentPage from "./pages/ContentPage";
 import CalendarPage from "./pages/CalendarPage";
 import CampaignsPage from "./pages/CampaignsPage";
 import NotFound from "./pages/NotFound";
@@ -34,10 +34,11 @@ const App = () => (
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/overview" element={<ProtectedPage><OverviewPage /></ProtectedPage>} />
+          <Route path="/assistente" element={<ProtectedPage><AssistantPage /></ProtectedPage>} />
           <Route path="/tasks" element={<ProtectedPage><TasksPage /></ProtectedPage>} />
           <Route path="/meetings" element={<Navigate to="/calendar" replace />} />
           <Route path="/revendedores" element={<ProtectedPage><RevendedoresPage /></ProtectedPage>} />
-          <Route path="/content" element={<ProtectedPage><ContentPage /></ProtectedPage>} />
+          <Route path="/content" element={<Navigate to="/calendar" replace />} />
           <Route path="/campaigns" element={<ProtectedPage><CampaignsPage /></ProtectedPage>} />
           <Route path="/financeiro" element={<PrivateRoute><FinanceiroLayout /></PrivateRoute>}>
             <Route index element={<Comando />} />

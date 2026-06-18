@@ -75,7 +75,7 @@ function DroppableDay({ dateStr, children }: { dateStr: string; children: React.
 }
 
 // ─── Create/Edit Dialog ───
-function PostFormDialog({
+export function PostFormDialog({
   open, onOpenChange, onSave, defaultDate,
 }: {
   open: boolean;
