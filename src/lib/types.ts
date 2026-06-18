@@ -354,4 +354,4 @@ export const CAMPAIGN_CHANNELS = [
 
 export const APP_PASSWORD = "Mrlion@2026";
 export const ROLES_KEY = "mrlion_roles";
-export const PRIVATE_USERS = ["Luca", "João"] as const;
+export const PRIVATE_USERS = ["Luca", "João", "Luhan", "Ronaldo"] as const;
