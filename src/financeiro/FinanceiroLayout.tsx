@@ -52,9 +52,10 @@ export function FinanceiroLayout() {
             value={periodo}
             onChange={setPeriodo}
             options={[
-              { label: 'Mai/25', value: 'mai' },
               { label: 'Jan/26', value: 'jan' },
               { label: 'Fev/26', value: 'fev' },
+              { label: 'Mai/26', value: 'mai' },
+              { label: 'Jun/26', value: 'jun' },
             ]}
           />
         </div>

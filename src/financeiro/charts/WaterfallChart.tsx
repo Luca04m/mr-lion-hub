@@ -43,8 +43,10 @@ export function WaterfallChart({ steps, height = 300 }: Props) {
   const allV = bars.flatMap((b) => [b.y0, b.y1, 0])
   const dataMax = Math.max(...allV)
   const dataMin = Math.min(...allV)
-  const yMax = dataMax * 1.08
-  const yMin = dataMin < 0 ? dataMin * 1.6 - 1000 : 0
+  let yMax = dataMax * 1.08
+  let yMin = dataMin < 0 ? dataMin * 1.6 - 1000 : 0
+  // Mês ainda em aberto (tudo 0) → escala degenerada faria yPx dividir por 0 (NaN).
+  if (yMax - yMin < 1) { yMax = 1; yMin = 0 }
   const yPx = (v: number) => padT + (plotH * (yMax - v)) / (yMax - yMin)
   const slot = plotW / steps.length
   const bw = Math.min(42, slot * 0.6)

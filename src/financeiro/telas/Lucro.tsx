@@ -285,7 +285,7 @@ export function Lucro() {
               products={snapshot.products as EditableProduct[]}
               meta={
                 periodo === 'mai'
-                  ? 'Maio/2025 · editável · custo real ÷ preço PIX (ref) · CM2 a preencher'
+                  ? 'Maio/2026 · editável · custo real ÷ preço PIX (ref) · CM2 a preencher'
                   : 'Jan/26 · editável · margem real ponderada por mix vendido'
               }
             />

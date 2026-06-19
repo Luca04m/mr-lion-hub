@@ -141,7 +141,10 @@ export function Comando() {
     (l) => (l.kind === 'ded' || l.kind === 'tax' || l.kind === 'fixed') && l.value < 0,
   )
   const totalExp = expLines.reduce((a, l) => a + Math.abs(l.value), 0)
-  const maiorDespesa = expLines.reduce((a, l) => (Math.abs(l.value) > Math.abs(a.value) ? l : a), expLines[0])
+  // null-safe: meses ainda em aberto (ex.: Junho vago) não têm despesas lançadas.
+  const maiorDespesa = expLines.length
+    ? expLines.reduce((a, l) => (Math.abs(l.value) > Math.abs(a.value) ? l : a))
+    : undefined
 
   // Chargebacks REAIS do período (vêm do KPI 'chargeback' → derivado).
   const cbKpi = f.kpis.find((k) => k.key === 'chargeback')
@@ -265,7 +268,11 @@ export function Comando() {
 
         <Panel
           title="Composição da despesa"
-          meta={`${expLines.length} linhas operacionais · total ${brl(totalExp)} · maior peso: ${maiorDespesa.label.replace(/^\(−\)\s*/, '')}`}
+          meta={
+            maiorDespesa
+              ? `${expLines.length} linhas operacionais · total ${brl(totalExp)} · maior peso: ${maiorDespesa.label.replace(/^\(−\)\s*/, '')}`
+              : 'Sem lançamentos ainda — preencher a DRE de Junho.'
+          }
           prov="real"
         >
           <ul className="flex flex-col gap-1.5">

@@ -28,7 +28,7 @@ import type { FinanceSnapshot, CashPoint } from './types'
 //        → Resultado +1.130,08.
 // ════════════════════════════════════════════════════════════════════════
 
-export type Periodo = 'jan' | 'fev' | 'mai'
+export type Periodo = 'jan' | 'fev' | 'mai' | 'jun'
 
 // ── Constantes REAIS reutilizadas (prov 'real') ──────────────────────────
 export const PRECOS_PIX = { honey: 152, cappuccino: 171, blended: 107 } as const
@@ -371,8 +371,10 @@ const JAN: FinanceSnapshot = {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// MAIO/2025  (Resultado −28.227,95 · PREJUÍZO · mês de ramp)
-// FONTE: planilha DRE_Maio_2025.xlsx (real) — aba DRE + aba CMV (462 un).
+// MAIO/2026  (Resultado −28.227,95 · PREJUÍZO · mês de forte estruturação)
+// FONTE: planilha DRE Maio/2026 (real) — aba DRE + aba CMV (462 un).
+// NOTA (18/06/2026): só o ANO foi corrigido (2025→2026, conforme Luca). Os
+//   números seguem provisórios — João reenvia a planilha correta depois.
 // Receita 47.042 · CMV 20.787,95 (LB 26.254,05 = 55,8%) · despesas op 53.482
 //   (Pessoal 21.991 + Impostos/Taxas 8.665 + Tráfego 11.554 + Equip. 3.119 +
 //    Materiais 2.803 + Alim./Entret. 1.994 + Hospedagem 1.946 + Adm. 1.549 +
@@ -393,19 +395,19 @@ const PRODUCTS_MAI: FinanceSnapshot['products'] = [
 const MAI: FinanceSnapshot = {
   meta: {
     empresa: 'Casa Mr. Lion',
-    periodo: 'mai-2025',
-    periodoLabel: 'Maio 2025',
-    comparaCom: 'Abril 2025',
-    geradoEm: '2025-05-31',
+    periodo: 'mai-2026',
+    periodoLabel: 'Maio 2026',
+    comparaCom: 'Abril 2026',
+    geradoEm: '2026-05-31',
     caixaConsolidado: 40_000, // ilustrativo (modelo de caixa)
-    fonte: 'DRE Maio/2025 (planilha real) + aba CMV',
+    fonte: 'DRE Maio/2026 (planilha real) + aba CMV',
   },
 
   kpis: [
     { key: 'lucro', label: 'Resultado do mês', value: '−R$ 28,2 mil', delta: 'mês de ramp', deltaDir: 'down', accent: 'red', prov: 'real',
-      note: 'Maio/2025 fechou em −R$ 28.227,95. Pessoal R$ 22 mil + CMV R$ 20,8 mil + tráfego R$ 11,6 mil; pesados gastos não-recorrentes (equipamentos, hospedagem, eventos).', spark: [-28.2] },
+      note: 'Maio/2026 fechou em −R$ 28.227,95. Pessoal R$ 22 mil + CMV R$ 20,8 mil + tráfego R$ 11,6 mil; pesados gastos não-recorrentes (equipamentos, hospedagem, eventos). Provisório — João reenvia a planilha.', spark: [-28.2] },
     { key: 'receita', label: 'Receita bruta', value: 'R$ 47,0 mil', delta: '462 unidades', deltaDir: 'flat', accent: 'neutral', prov: 'real',
-      note: 'R$ 47.042,00 (DRE Maio/2025).', spark: [47] },
+      note: 'R$ 47.042,00 (DRE Maio/2026).', spark: [47] },
     { key: 'cm1', label: 'Lucro bruto (CM1)', value: 'R$ 26,3 mil', delta: '55,8% da receita', deltaDir: 'up', accent: 'gold', prov: 'real',
       note: 'Receita − CMV (R$ 20.787,95). Margem bruta saudável — o prejuízo vem das despesas operacionais.', spark: [26.3] },
     { key: 'mer', label: 'MER', value: '4,1×', delta: 'meta 6,0× · BE 1,79×', deltaDir: 'down', accent: 'red', prov: 'parcial',
@@ -490,22 +492,103 @@ const MAI: FinanceSnapshot = {
 
   roi: { pixelReportado: 30_000, wooReal: 24_000, gapPct: 25, mer: 4.1, merMeta: 6.0, merBreakeven: 1.79, poas: 1.9 },
 
-  tax: { ...TAX, dasVencimento: '20/06/2025' },
+  tax: { ...TAX, dasVencimento: '20/06/2026' },
 
   alerts: [
     { id: 'm-a1', kind: 'risk', tag: 'Risco · −R$ 28,2 mil',
-      text: 'Maio/2025 fechou em −R$ 28.227,95. Pessoal (R$ 22 mil) e CMV (R$ 20,8 mil) dominam; há gastos não-recorrentes de ramp (equipamentos, hospedagem, eventos).', cta: 'Abrir DRE' },
+      text: 'Maio/2026 fechou em −R$ 28.227,95. Pessoal (R$ 22 mil) e CMV (R$ 20,8 mil) dominam; há gastos não-recorrentes (equipamentos, hospedagem, eventos). Números provisórios — aguardando reenvio do João.', cta: 'Abrir DRE' },
     { id: 'm-a2', kind: 'act', tag: 'Ação · tráfego',
       text: 'Tráfego R$ 11,6 mil com MER 4,1× — abaixo da meta 6×. Revisar alocação Meta (R$ 9,1 mil) × Google (R$ 2,4 mil).', cta: 'Ver ROI', target: 'Marketing / tráfego' },
-    { id: 'm-a3', kind: 'info', tag: 'Contexto · ramp',
-      text: 'Mês inicial com forte investimento de estruturação — não comparável aos meses operacionais de 2026.', cta: 'Abrir cascata' },
+    { id: 'm-a3', kind: 'info', tag: 'Contexto · estruturação',
+      text: 'Mês com forte investimento de estruturação (equipamentos, hospedagem, eventos) — gastos não-recorrentes pesam no resultado.', cta: 'Abrir cascata' },
   ],
 
   goal: { label: 'MER', atual: 4.1, meta: 6.0, pct: 68, sub: 'Abaixo da meta — mês de ramp com prejuízo operacional pesado.' },
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// JUNHO/2026  (VAGO — esqueleto p/ o João preencher pela tela editável)
+// Receita/DRE zeradas; João lança os valores reais (inline edit / add lançamento).
+// Partes ilustrativas (coortes/RFM/LTV/impostos) reusadas como nos outros meses.
+// ════════════════════════════════════════════════════════════════════════
+const JUN: FinanceSnapshot = {
+  meta: {
+    empresa: 'Casa Mr. Lion',
+    periodo: 'jun-2026',
+    periodoLabel: 'Junho 2026',
+    comparaCom: 'Maio 2026',
+    geradoEm: '2026-06-30',
+    caixaConsolidado: 0,
+    fonte: 'A preencher (João) — fechamento de Junho/2026',
+  },
+
+  kpis: [
+    { key: 'lucro', label: 'Resultado do mês', value: '—', delta: 'a preencher', deltaDir: 'flat', accent: 'neutral', prov: 'real',
+      note: 'Junho/2026 — aguardando fechamento. Lance as despesas e a receita na DRE editável.', spark: [0] },
+    { key: 'receita', label: 'Receita bruta', value: '—', delta: 'a preencher', deltaDir: 'flat', accent: 'neutral', prov: 'real',
+      note: 'Lançar a receita bruta de Junho/2026.', spark: [0] },
+    { key: 'cm1', label: 'Lucro bruto (CM1)', value: '—', delta: '—', deltaDir: 'flat', accent: 'neutral', prov: 'real',
+      note: 'Receita − CMV (recalcula ao preencher).', spark: [0] },
+    { key: 'mer', label: 'MER', value: '—', delta: 'a preencher', deltaDir: 'flat', accent: 'neutral', prov: 'parcial',
+      note: 'Receita ÷ tráfego (recalcula ao preencher).', spark: [0] },
+    { key: 'caixa', label: 'Caixa projetado · 30d', value: '—', delta: 'modelo', deltaDir: 'flat', accent: 'neutral', prov: 'ilustrativo',
+      note: 'Preencher a DRE de Junho para projetar o caixa.', spark: [0] },
+  ],
+
+  waterfall: [
+    { label: 'Receita', value: 0, kind: 'rev' },
+    { label: 'Resultado', value: 0, kind: 'loss' },
+  ],
+
+  channels: [],
+
+  // Esqueleto de DRE — João edita os valores (inline) ou adiciona lançamentos.
+  products: [],
+
+  cohort: COHORT,
+
+  cash: { points: buildCash(0), events: [], min: 0, max: 20_000, alvoFolga: 40_000 },
+
+  monthly: MONTHLY,
+
+  dre: [
+    { label: 'Receita bruta', value: 0, kind: 'rev' },
+    { label: '(−) CMV', value: 0, kind: 'ded' },
+    { label: 'Lucro bruto (CM1)', value: 0, kind: 'sub', pct: 0 },
+    { label: '(−) Marketing / tráfego', value: 0, kind: 'ded' },
+    { label: '(−) Logística / fretes', value: 0, kind: 'ded' },
+    { label: '(−) Impostos / taxas / sistemas', value: 0, kind: 'tax' },
+    { label: '(−) Pessoal', value: 0, kind: 'fixed' },
+    { label: '(−) Reembolsos / contestações', value: 0, kind: 'ded' },
+    { label: 'Resultado do mês', value: 0, kind: 'loss' },
+  ],
+
+  aging: [
+    { label: 'A vencer', payable: 0, receivable: 0 },
+    { label: '1–30 dias', payable: 0, receivable: 0 },
+    { label: '31–60 dias', payable: 0, receivable: 0 },
+    { label: '60+ dias', payable: 0, receivable: 0 },
+  ],
+
+  contas: [],
+
+  rfm: RFM,
+  ltvCohorts: LTV_COHORTS,
+
+  roi: { pixelReportado: 0, wooReal: 0, gapPct: 0, mer: 0, merMeta: 6.0, merBreakeven: 0, poas: 0 },
+
+  tax: { ...TAX, dasVencimento: '20/07/2026' },
+
+  alerts: [
+    { id: 'j-a1', kind: 'info', tag: 'Mês em aberto',
+      text: 'Junho/2026 ainda não foi fechado. Lance as despesas e a receita na DRE editável (Caixa › DRE gerencial) — os KPIs recalculam sozinhos.', cta: 'Abrir DRE' },
+  ],
+
+  goal: { label: 'MER', atual: 0, meta: 6.0, pct: 0, sub: 'Mês em aberto — preencher o fechamento de Junho.' },
+}
+
 // ── Registro por período ──────────────────────────────────────────────────
-export const SNAPSHOTS: Record<Periodo, FinanceSnapshot> = { mai: MAI, jan: JAN, fev: FEV }
+export const SNAPSHOTS: Record<Periodo, FinanceSnapshot> = { mai: MAI, jan: JAN, fev: FEV, jun: JUN }
 
 // Retrocompat: export default = Fev (período default da v2).
 export const FINANCE = FEV

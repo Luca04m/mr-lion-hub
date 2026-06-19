@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { ITENS, ORDENS, RECEITAS, gerarHistorico } from './mock'
 import type { Item, OrdemProducao, PurchaseOrder, Movimento, TipoMovimento } from './types'
+import { fetchBlingOrders, planejarBaixa } from './bling'
 
 const novoId = () =>
   (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2))
@@ -11,11 +12,23 @@ const agora = () => new Date().toISOString()
 const seedMovimentos = (itens: Item[]): Movimento[] =>
   itens.flatMap(gerarHistorico).sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1))
 
+/** Estado da sincronização Bling → estoque (idempotente por id de pedido). */
+export interface BlingSyncState {
+  lastSyncAt: string | null
+  pedidosAplicados: string[]
+  syncing: boolean
+  ultimo?: { em: string; pedidosNovos?: number; itensBaixados?: number; naoMapeados?: number; erro?: string }
+}
+
 interface EstoqueState {
   itens: Item[]
   ordens: OrdemProducao[]
   compras: PurchaseOrder[]
   movimentos: Movimento[]
+  /** sincronização com o Bling (puxa pedidos de venda e dá baixa no estoque). */
+  blingSync: BlingSyncState
+  /** puxa os pedidos novos do Bling e baixa o estoque — idempotente por id de pedido. */
+  sincronizarBling: () => Promise<void>
   /** edição inline de saldo (não gera movimento — é correção do número). */
   setEstoque: (id: string, valor: number) => void
   /** edita parâmetros de planejamento do item (mínimo, prazo de reposição, consumo médio, teto). */
@@ -36,11 +49,53 @@ const aplicar = (itens: Item[], id: string, delta: number) =>
 
 export const useEstoque = create<EstoqueState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       itens: ITENS.map(i => ({ ...i })),
       ordens: ORDENS.map(o => ({ ...o })),
       compras: [],
       movimentos: seedMovimentos(ITENS),
+      blingSync: { lastSyncAt: null, pedidosAplicados: [], syncing: false },
+
+      sincronizarBling: async () => {
+        if (get().blingSync.syncing) return
+        set(s => ({ blingSync: { ...s.blingSync, syncing: true } }))
+        let resp
+        try {
+          // 1ª sync (sem lastSync) começa de HOJE — não re-aplica o histórico de vendas
+          // já refletido na contagem física (evita baixa dobrada no 1º uso).
+          const since = get().blingSync.lastSyncAt ?? new Date().toISOString().slice(0, 10)
+          resp = await fetchBlingOrders(since)
+        } catch (e) {
+          set(s => ({ blingSync: { ...s.blingSync, syncing: false, ultimo: { em: agora(), erro: String((e as Error)?.message ?? e) } } }))
+          return
+        }
+        if (!resp.ok || !resp.orders) {
+          set(s => ({ blingSync: { ...s.blingSync, syncing: false, ultimo: { em: agora(), erro: resp.error ?? 'falha na sincronização' } } }))
+          return
+        }
+        set(s => {
+          const aplicados = new Set(s.blingSync.pedidosAplicados)
+          const plano = planejarBaixa(resp!.orders!, aplicados)
+          let itens = s.itens
+          const movs: Movimento[] = []
+          for (const m of plano.movimentos) {
+            itens = aplicar(itens, m.itemId, m.delta)
+            movs.push({ id: novoId(), itemId: m.itemId, delta: m.delta, tipo: 'venda', refTipo: 'venda', motivo: m.motivo, usuario: 'Bling', criadoEm: agora() })
+          }
+          plano.pedidosIds.forEach(id => aplicados.add(id))
+          return {
+            itens,
+            movimentos: [...movs, ...s.movimentos],
+            blingSync: {
+              ...s.blingSync,
+              syncing: false,
+              lastSyncAt: resp!.serverTime ?? agora(),
+              pedidosAplicados: [...aplicados],
+              ultimo: { em: agora(), pedidosNovos: plano.pedidosIds.length, itensBaixados: plano.movimentos.length, naoMapeados: plano.naoMapeados.length },
+            },
+          }
+        })
+      },
 
       setEstoque: (id, valor) =>
         set(s => ({ itens: s.itens.map(i => i.id === id ? { ...i, estoque: Math.max(0, valor) } : i) })),
@@ -111,7 +166,10 @@ export const useEstoque = create<EstoqueState>()(
         }),
 
       resetar: () =>
-        set({ itens: ITENS.map(i => ({ ...i })), ordens: ORDENS.map(o => ({ ...o })), compras: [], movimentos: seedMovimentos(ITENS) }),
+        set({
+          itens: ITENS.map(i => ({ ...i })), ordens: ORDENS.map(o => ({ ...o })), compras: [], movimentos: seedMovimentos(ITENS),
+          blingSync: { lastSyncAt: null, pedidosAplicados: [], syncing: false },
+        }),
     }),
     {
       name: 'mrlion-estoque-v6', // v6: contagem física 18/06 (João) + pingentes Leão/Coroa + estojo Blended — força refresh dos defaults
@@ -122,11 +180,13 @@ export const useEstoque = create<EstoqueState>()(
           leadTimeDias: i.leadTimeDias, usoMedioDiario: i.usoMedioDiario, max: i.max,
         })),
         movimentos: s.movimentos, compras: s.compras, ordens: s.ordens,
+        blingSync: { lastSyncAt: s.blingSync.lastSyncAt, pedidosAplicados: s.blingSync.pedidosAplicados, ultimo: s.blingSync.ultimo },
       }),
       merge: (persisted, current) => {
         type ItemSalvo = { id: string; estoque?: number } & Partial<Pick<Item, 'min' | 'leadTimeDias' | 'usoMedioDiario' | 'max'>>
         const p = (persisted ?? {}) as Partial<{
           itens: ItemSalvo[]; movimentos: Movimento[]; compras: PurchaseOrder[]; ordens: OrdemProducao[]
+          blingSync: Partial<BlingSyncState>
         }>
         const byId = new Map((p.itens ?? []).map(x => [x.id, x]))
         return {
@@ -147,6 +207,12 @@ export const useEstoque = create<EstoqueState>()(
           movimentos: p.movimentos ?? current.movimentos,
           compras: p.compras ?? current.compras,
           ordens: p.ordens ?? current.ordens,
+          blingSync: {
+            lastSyncAt: p.blingSync?.lastSyncAt ?? current.blingSync.lastSyncAt,
+            pedidosAplicados: p.blingSync?.pedidosAplicados ?? current.blingSync.pedidosAplicados,
+            ultimo: p.blingSync?.ultimo ?? current.blingSync.ultimo,
+            syncing: false,
+          },
         }
       },
     },

@@ -6,3 +6,13 @@ pages_build_output_dir = "dist"
 # Endpoint servido por functions/api/assistant.ts. Requer Workers AI habilitado na conta.
 [ai]
 binding = "AI"
+
+# ── Bling → Estoque (functions/api/bling-sync.ts) — ver functions/BLING_SYNC_SETUP.md ──
+# Guarda o token OAuth rotativo do Bling (o refresh_token gira a cada refresh).
+# 1) Criar o namespace:  npx wrangler kv namespace create BLING_KV
+# 2) Descomentar abaixo com o id retornado e re-deployar.
+# 3) Secrets (Pages → Settings → Variables & Secrets):
+#      BLING_CLIENT_ID · BLING_CLIENT_SECRET · BLING_SEED_REFRESH_TOKEN (refresh_token atual, seed 1x)
+[[kv_namespaces]]
+binding = "BLING_KV"
+id = "b85965bb0ebb453b961f5d3fb8ece65a"

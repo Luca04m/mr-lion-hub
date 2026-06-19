@@ -4,10 +4,21 @@
 // Estado da seção via useState (default = Painel). Reskin sóbrio do Hub.
 import { useEffect, useMemo, useState } from 'react'
 import {
-  LayoutDashboard, Boxes, Factory, ShoppingCart, Truck, BarChart3, RotateCcw,
+  LayoutDashboard, Boxes, Factory, ShoppingCart, Truck, BarChart3, RotateCcw, RefreshCw,
 } from 'lucide-react'
-import { useEstoque } from './store'
+import { useEstoque, type BlingSyncState } from './store'
 import { resumoEstoque, fmtBRL } from './engine'
+
+/** Rótulo compacto do estado da última sincronização com o Bling. */
+function syncLabel(b: BlingSyncState): string {
+  if (b.syncing) return 'sincronizando…'
+  if (b.ultimo?.erro) return 'falhou — tentar de novo'
+  if (!b.lastSyncAt) return 'nunca'
+  const min = Math.floor((Date.now() - new Date(b.lastSyncAt).getTime()) / 60000)
+  const quando = min < 1 ? 'agora' : min < 60 ? `há ${min}min` : `há ${Math.floor(min / 60)}h`
+  const baixas = b.ultimo?.itensBaixados ?? 0
+  return baixas > 0 ? `${quando} · ${baixas} baixa${baixas > 1 ? 's' : ''}` : quando
+}
 import { Dashboard } from './sections/Dashboard'
 import { Estoque } from './sections/Estoque'
 import { Producao } from './sections/Producao'
@@ -30,6 +41,8 @@ export function EstoqueLayout() {
   const [secao, setSecao] = useState<Secao>('dashboard')
   const { itens } = useEstoque()
   const resetar = useEstoque(s => s.resetar)
+  const blingSync = useEstoque(s => s.blingSync)
+  const sincronizarBling = useEstoque(s => s.sincronizarBling)
   const resumo = useMemo(() => resumoEstoque(itens), [itens])
   const alertas = resumo.repor + resumo.critico
 
@@ -38,6 +51,14 @@ export function EstoqueLayout() {
     const label = NAV.find(n => n.id === secao)?.label ?? 'Estoque'
     document.title = `${label} · Estoque | MR. LION HUB`
   }, [secao])
+
+  // Auto-sync ao abrir: puxa pedidos do Bling se nunca sincronizou (ou faz >15min).
+  // Idempotente por id de pedido — re-rodar não dá baixa dobrada.
+  useEffect(() => {
+    const last = blingSync.lastSyncAt ? new Date(blingSync.lastSyncAt).getTime() : 0
+    if (Date.now() - last > 15 * 60 * 1000) void sincronizarBling()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="animate-fade-up">
@@ -54,6 +75,21 @@ export function EstoqueLayout() {
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor em estoque</div>
             <div className="font-display text-base text-foreground">{fmtBRL(resumo.valorTotal)}</div>
           </div>
+          <div className="hidden text-right sm:block">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Bling</div>
+            <div className={'text-[11px] ' + (blingSync.ultimo?.erro ? 'text-warning' : 'text-muted-foreground')}>
+              {syncLabel(blingSync)}
+            </div>
+          </div>
+          <button
+            onClick={() => void sincronizarBling()}
+            disabled={blingSync.syncing}
+            title={blingSync.ultimo?.erro ? `Erro: ${blingSync.ultimo.erro}` : 'Puxar pedidos do Bling e dar baixa no estoque'}
+            className="flex h-9 items-center gap-1.5 rounded-btn border border-border bg-card px-3 text-xs text-muted-foreground shadow-soft transition-colors hover:border-gold/30 hover:text-foreground disabled:opacity-60"
+          >
+            <RefreshCw size={13} className={blingSync.syncing ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{blingSync.syncing ? 'Sincronizando…' : 'Sincronizar Bling'}</span>
+          </button>
           <button
             onClick={resetar}
             title="Restaurar dados de exemplo"
