@@ -77,8 +77,10 @@ export const onRequestGet = async (ctx: any) => {
     const bh = { Authorization: `Bearer ${access}`, Accept: 'application/json' }
 
     // 1) Lista paginada de pedidos de venda desde `since`.
+    // ⚠️ Cloudflare free = 50 subrequests/invocação. Orçamento: ≤4 páginas + ≤38
+    //    detalhes + 1 refresh = 43. Janela normal (since=hoje) cabe folgado.
     const pedidos: any[] = []
-    for (let pg = 1; pg <= 10; pg++) {
+    for (let pg = 1; pg <= 4; pg++) {
       const r = await fetch(`${BLING}/pedidos/vendas?dataInicial=${since}&pagina=${pg}&limite=100`, { headers: bh })
       if (!r.ok) {
         if (pg === 1) throw new Error(`lista falhou ${r.status}`)
@@ -89,10 +91,14 @@ export const onRequestGet = async (ctx: any) => {
       if (data.length < 100) break
     }
 
-    // 2) Detalhe (itens) só dos pedidos não-cancelados — limite de fôlego.
-    const elegiveis = pedidos.filter((p) => !SITUACOES_IGNORADAS.has((p.situacao || {}).id))
-    const CAP = 80
+    // 2) Detalhe (itens) só dos pedidos não-cancelados, MAIS ANTIGOS primeiro
+    //    (processa em ordem cronológica; o resto vem na próxima sync via nextSince).
+    const elegiveis = pedidos
+      .filter((p) => !SITUACOES_IGNORADAS.has((p.situacao || {}).id))
+      .sort((a, b) => (String(a.data) < String(b.data) ? -1 : 1))
+    const CAP = 38
     const alvo = elegiveis.slice(0, CAP)
+    const truncated = elegiveis.length > CAP
     const orders: any[] = []
     for (const p of alvo) {
       const r = await fetch(`${BLING}/pedidos/vendas/${p.id}`, { headers: bh })
@@ -111,12 +117,16 @@ export const onRequestGet = async (ctx: any) => {
       })
     }
 
+    // Se truncou, a próxima sync retoma da data do último processado (dedup evita re-aplicar).
+    const nextSince = truncated ? (alvo[alvo.length - 1]?.data ?? since) : null
+
     return Response.json({
       ok: true,
       since,
       total: pedidos.length,
       aplicaveis: orders.length,
-      truncated: elegiveis.length > CAP,
+      truncated,
+      nextSince,
       serverTime: new Date().toISOString(),
       orders,
     })

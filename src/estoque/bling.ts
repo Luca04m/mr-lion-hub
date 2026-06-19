@@ -39,6 +39,7 @@ export interface BlingSyncResponse {
   total?: number
   aplicaveis?: number
   truncated?: boolean
+  nextSince?: string | null
   serverTime?: string
   orders?: BlingOrder[]
   error?: string

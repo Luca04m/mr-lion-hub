@@ -89,7 +89,8 @@ export const useEstoque = create<EstoqueState>()(
             blingSync: {
               ...s.blingSync,
               syncing: false,
-              lastSyncAt: resp!.serverTime ?? agora(),
+              // se truncou (janela larga), retoma da data do último processado; senão avança p/ agora.
+              lastSyncAt: (resp!.truncated && resp!.nextSince) ? resp!.nextSince : (resp!.serverTime ?? agora()),
               pedidosAplicados: [...aplicados],
               ultimo: { em: agora(), pedidosNovos: plano.pedidosIds.length, itensBaixados: plano.movimentos.length, naoMapeados: plano.naoMapeados.length },
             },
