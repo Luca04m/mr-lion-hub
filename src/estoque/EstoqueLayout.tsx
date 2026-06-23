@@ -43,6 +43,7 @@ export function EstoqueLayout() {
   const resetar = useEstoque(s => s.resetar)
   const blingSync = useEstoque(s => s.blingSync)
   const sincronizarBling = useEstoque(s => s.sincronizarBling)
+  const hidratarSupabase = useEstoque(s => s.hidratarSupabase)
   const resumo = useMemo(() => resumoEstoque(itens), [itens])
   const alertas = resumo.repor + resumo.critico
 
@@ -52,11 +53,10 @@ export function EstoqueLayout() {
     document.title = `${label} · Estoque | MR. LION HUB`
   }, [secao])
 
-  // Auto-sync ao abrir: puxa pedidos do Bling se nunca sincronizou (ou faz >15min).
-  // Idempotente por id de pedido — re-rodar não dá baixa dobrada.
+  // Ao abrir: hidrata os saldos do Supabase (fonte de verdade — baixa via WooCommerce
+  // a cada pedido pago). O botão "Sincronizar Bling" segue disponível como apoio manual.
   useEffect(() => {
-    const last = blingSync.lastSyncAt ? new Date(blingSync.lastSyncAt).getTime() : 0
-    if (Date.now() - last > 15 * 60 * 1000) void sincronizarBling()
+    void hidratarSupabase()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

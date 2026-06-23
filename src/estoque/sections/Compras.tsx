@@ -298,7 +298,7 @@ function SimuladorCaixa({ itens }: { itens: Item[] }) {
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <Boxes size={18} className="text-gold" />
         <h2 className="font-display text-xl">Caixa por pedido</h2>
-        <span className="ml-auto text-[11px] text-text-muted">regra inferida do áudio do João — validar</span>
+        <span className="ml-auto text-[11px] text-text-muted">empacotamento estimado por tamanho do pedido</span>
       </div>
       <div className="rounded-card border border-border gradient-card p-5">
         <div className="grid sm:grid-cols-12 gap-5 items-start">

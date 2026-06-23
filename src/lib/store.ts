@@ -1,4 +1,4 @@
-import { Task, Activity, Meeting, Revendedor, BusinessKPIs, APP_PASSWORD, ROLES_KEY, RevendedorCanal, RevendedorStatus, ProximaAcao, Interacao, VolumeHistorico, ContentPost, Campaign, CampaignAd, CampaignVideo, CampaignCopy, ScriptTake } from "./types";
+import { Task, Activity, Meeting, Revendedor, BusinessKPIs, APP_PASSWORD, ROLES_KEY, RECEITA_USERS, RevendedorCanal, RevendedorStatus, ProximaAcao, Interacao, VolumeHistorico, ContentPost, Campaign, CampaignAd, CampaignVideo, CampaignCopy, ScriptTake } from "./types";
 import { supabase, isSupabaseEnabled } from "./supabase";
 
 // ─── LocalStorage Keys (used as local cache) ───
@@ -609,6 +609,11 @@ export function validatePassword(password: string): boolean {
 export function getUser(): string | null { return localStorage.getItem(USER_KEY); }
 export function setUser(name: string) { localStorage.setItem(USER_KEY, name); updatePresence(name); }
 export function clearUser() { const user = getUser(); if (user) removePresence(user); localStorage.removeItem(USER_KEY); }
+
+// Receita = segredo industrial: só os donos (RECEITA_USERS) veem a fórmula/quantidades do BOM e o CMV detalhado.
+export function podeVerReceita(user: string | null): boolean {
+  return !!user && (RECEITA_USERS as readonly string[]).includes(user);
+}
 
 // ─── Roles ───
 export function getRole(name: string): string {

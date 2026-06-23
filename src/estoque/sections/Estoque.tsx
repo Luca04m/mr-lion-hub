@@ -26,6 +26,18 @@ const TIPO_LABEL: Record<TipoItem, string> = {
 }
 const TIPO_ORDER: TipoItem[] = ['produto_acabado', 'produto_intermediario', 'materia_prima', 'embalagem']
 
+const LINHAS_PRODUTO: GrupoProduto[] = ['honey', 'cappuccino', 'blended']
+const ehLinhaProduto = (p: FiltroProduto): p is 'honey' | 'cappuccino' | 'blended' =>
+  (LINHAS_PRODUTO as FiltroProduto[]).includes(p)
+
+// Pertence ao filtro de produto. Para uma LINHA (honey/cappuccino/blended) inclui os itens
+// COMPARTILHADOS que ela usa (João: "ver tudo que o Honey precisa, inclusive garrafa/rolha").
+// Para 'compartilhado'/'geral' mantém o bucket exato.
+function pertenceAoProduto(itemId: string, p: FiltroProduto): boolean {
+  if (p === 'todos') return true
+  return ehLinhaProduto(p) ? linhasDoItem(itemId).includes(p) : grupoProduto(itemId) === p
+}
+
 // Sub-rótulo usado ao separar, dentro de cada produto, matéria-prima de insumos de embalagem.
 const SUBGRUPO_LABEL: Record<TipoItem, string> = {
   produto_acabado: 'Produto acabado', produto_intermediario: 'Líquido em tanque', materia_prima: 'Matéria-prima', embalagem: 'Insumos · embalagem',
@@ -51,7 +63,7 @@ export function Estoque() {
   const ativos = useMemo(() => itens.filter(i => i.ativo), [itens])
   const countTipo = (t: FiltroTipo) => t === 'todos' ? ativos.length : ativos.filter(i => i.tipo === t).length
   const countStatus = (s: FiltroStatus) => s === 'todos' ? ativos.length : ativos.filter(i => statusEstoque(i) === s).length
-  const countProduto = (p: FiltroProduto) => p === 'todos' ? ativos.length : ativos.filter(i => grupoProduto(i.id) === p).length
+  const countProduto = (p: FiltroProduto) => p === 'todos' ? ativos.length : ativos.filter(i => pertenceAoProduto(i.id, p)).length
 
   // fabricáveis por linha de produto (para o cabeçalho das seções)
   const fabricaveisPorLinha = useMemo(() => {
@@ -66,7 +78,7 @@ export function Estoque() {
   const filtrados = useMemo(() => {
     let r = ativos
     if (tipo !== 'todos') r = r.filter(i => i.tipo === tipo)
-    if (produto !== 'todos') r = r.filter(i => grupoProduto(i.id) === produto)
+    if (produto !== 'todos') r = r.filter(i => pertenceAoProduto(i.id, produto))
     if (status !== 'todos') r = r.filter(i => statusEstoque(i) === status)
     if (busca) r = r.filter(i => (i.nome + i.sku).toLowerCase().includes(busca.toLowerCase()))
     const sev = (i: Item) => { const s = statusEstoque(i); return s === 'critico' ? 0 : s === 'baixo' ? 1 : 2 }
@@ -182,13 +194,13 @@ export function Estoque() {
                             <Fragment key={sub.tipo}>
                               <SubHeader tipo={sub.tipo} count={sub.itens.length} />
                               {sub.itens.map(item => (
-                                <Linha key={item.id} item={item} rowH={rowH} agrupar={agrupar}
+                                <Linha key={item.id} item={item} rowH={rowH} agrupar={agrupar} produtoFiltro={produto}
                                   onSelect={() => setSel(item.id)} setEstoque={setEstoque} />
                               ))}
                             </Fragment>
                           ))
                         : sec.itens.map(item => (
-                            <Linha key={item.id} item={item} rowH={rowH} agrupar={agrupar}
+                            <Linha key={item.id} item={item} rowH={rowH} agrupar={agrupar} produtoFiltro={produto}
                               onSelect={() => setSel(item.id)} setEstoque={setEstoque} />
                           ))}
                     </SecaoRows>
@@ -252,11 +264,15 @@ function SubHeader({ tipo, count }: { tipo: TipoItem; count: number }) {
   )
 }
 
-function Linha({ item, rowH, agrupar, onSelect, setEstoque }: {
-  item: Item; rowH: string; agrupar: Agrupar; onSelect: () => void; setEstoque: (id: string, v: number) => void
+function Linha({ item, rowH, agrupar, produtoFiltro, onSelect, setEstoque }: {
+  item: Item; rowH: string; agrupar: Agrupar; produtoFiltro: FiltroProduto; onSelect: () => void; setEstoque: (id: string, v: number) => void
 }) {
   const st = statusEstoque(item)
   const cob = coberturaDias(item)
+  // Filtrando UMA linha, marca os itens compartilhados que vieram emprestados de outra(s) linha(s).
+  const linhas = linhasDoItem(item.id)
+  const compartilhadoNaLinha = ehLinhaProduto(produtoFiltro) && linhas.length > 1
+  const outras = compartilhadoNaLinha ? linhas.filter(l => l !== produtoFiltro) : []
   return (
     <tr onClick={onSelect}
       className={`group ${rowH} border-t border-border cursor-pointer hover:bg-[hsl(var(--gold)/0.04)] transition-colors`}>
@@ -268,10 +284,17 @@ function Linha({ item, rowH, agrupar, onSelect, setEstoque }: {
             : <span className="w-8 h-8 rounded-lg grid place-items-center shrink-0 text-gold" style={{ background: 'hsl(var(--gold)/0.09)', border: '1px solid hsl(var(--gold)/0.12)' }}><CategoriaIcon categoria={item.categoria} /></span>}
           <div className="min-w-0">
             <div className="font-medium text-foreground truncate">{item.nome}</div>
-            <div className="text-[11px] text-text-muted tnum flex items-center gap-1.5">
+            <div className="text-[11px] text-text-muted tnum flex items-center gap-1.5 flex-wrap">
               {item.sku}
               {/* no modo "por produto" o vínculo já é a seção; nos outros mostra o chip */}
               {agrupar !== 'produto' && <ProdutoChip itemId={item.id} />}
+              {/* filtrando uma linha: sinaliza item compartilhado emprestado de outra(s) linha(s) */}
+              {compartilhadoNaLinha && (
+                <span className="inline-flex items-center gap-1 rounded-md text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 leading-none"
+                  style={{ color: `hsl(${GRUPO_META.compartilhado.cor})`, background: `hsl(${GRUPO_META.compartilhado.cor} / 0.12)`, border: `1px solid hsl(${GRUPO_META.compartilhado.cor} / 0.24)` }}>
+                  compartilhado{outras.length ? ` · com ${outras.map(l => GRUPO_META[l].label).join(', ')}` : ''}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -378,7 +401,7 @@ function ItemDrawer({ item, onClose }: { item: Item; onClose: () => void }) {
         {/* métricas */}
         <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
           <Metric label="Cobertura" value={cob !== null ? `${cob}` : '—'} unit={cob !== null ? 'dias' : ''} />
-          <Metric label="Custo médio" value={fmtBRL(item.custoMedio)} />
+          <MetricCusto value={item.custoMedio} onChange={v => editarItem(item.id, { custoMedio: v })} />
           <Metric label="Valor total" value={fmtBRL(valorEstoque(item))} />
         </div>
 
@@ -446,6 +469,31 @@ function Metric({ label, value, unit }: { label: string; value: string; unit?: s
     <div className="p-4 text-center">
       <div className="text-[10px] uppercase tracking-wider text-text-muted">{label}</div>
       <div className="font-display text-lg mt-1 tnum">{value}{unit && <span className="text-xs text-text-muted font-sans ml-1">{unit}</span>}</div>
+    </div>
+  )
+}
+
+// Custo médio editável (pedido do João: "como faço pra mudar o preço de um insumo?").
+// Aceita vírgula ou ponto; grava no blur/Enter. Editar custoMedio recalcula valor de estoque e CMV.
+function MetricCusto({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [raw, setRaw] = useState(value.toFixed(2).replace('.', ','))
+  const commit = () => {
+    const v = parseFloat(raw.replace(/\./g, '').replace(',', '.'))
+    onChange(Number.isFinite(v) && v >= 0 ? v : value)
+    setRaw((Number.isFinite(v) && v >= 0 ? v : value).toFixed(2).replace('.', ','))
+  }
+  return (
+    <div className="p-4 text-center">
+      <div className="text-[10px] uppercase tracking-wider text-text-muted">Custo médio</div>
+      <div className="mt-1 flex items-center justify-center gap-1 font-display text-lg tnum">
+        <span className="text-text-muted text-sm font-sans">R$</span>
+        <input value={raw}
+          onChange={e => setRaw(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          inputMode="decimal"
+          className="w-20 text-center bg-transparent tnum font-display text-lg rounded px-1 py-0.5 outline-none border border-transparent hover:border-border focus:border-[hsl(var(--gold)/0.5)] focus:bg-black/30 transition" />
+      </div>
     </div>
   )
 }

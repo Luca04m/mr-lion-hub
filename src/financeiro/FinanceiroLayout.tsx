@@ -4,8 +4,8 @@
 // com <NavLink> RR6, o seletor de período GLOBAL (Jan/Fev) e o <Outlet/>.
 // O período é compartilhado com as sub-telas via Outlet context (useOutletContext).
 import { useEffect } from 'react'
-import { NavLink, Outlet, useOutletContext } from 'react-router-dom'
-import { LineChart, Coins, Wallet } from 'lucide-react'
+import { NavLink, Outlet, useOutletContext, useLocation } from 'react-router-dom'
+import { LineChart, Coins, Wallet, Receipt } from 'lucide-react'
 import { SegmentedControl } from '@/components/pro/SegmentedControl'
 import { useFinanceiroStore } from './data/store'
 import type { Periodo } from './data/source'
@@ -21,16 +21,21 @@ export function useFinanceiroCtx(): FinanceiroCtx {
   return useOutletContext<FinanceiroCtx>()
 }
 
-const NAV: { to: string; label: string; icon: typeof LineChart; end?: boolean }[] = [
-  { to: '/financeiro', label: 'Comando', icon: LineChart, end: true },
-  { to: '/financeiro/lucro', label: 'Lucro', icon: Coins },
-  { to: '/financeiro/caixa', label: 'Caixa', icon: Wallet },
+const NAV: { to: string; label: string; desc: string; icon: typeof LineChart; end?: boolean }[] = [
+  { to: '/financeiro', label: 'Comando', desc: 'Visão geral — KPIs, metas e alertas do mês.', icon: LineChart, end: true },
+  { to: '/financeiro/lucro', label: 'Lucro', desc: 'Lucro por produto e por canal — margem e CM2.', icon: Coins },
+  { to: '/financeiro/gastos', label: 'Gastos', desc: 'Planilha de gastos — lance as despesas do mês; cada uma entra no resultado e vira conta a pagar.', icon: Receipt },
+  { to: '/financeiro/caixa', label: 'Caixa', desc: 'Fluxo de caixa, resultado (DRE) e contas a pagar e a receber.', icon: Wallet },
 ]
 
 export function FinanceiroLayout() {
   // Período GLOBAL — vem do store persistido (sobrevive navegação/reload).
   const periodo = useFinanceiroStore((s) => s.periodo)
   const setPeriodo = useFinanceiroStore((s) => s.setPeriodo)
+
+  // Área ativa → descritor de 1 linha (orienta "o que tem em cada aba").
+  const { pathname } = useLocation()
+  const areaAtiva = NAV.find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to))) ?? NAV[0]
 
   useEffect(() => {
     document.title = 'Financeiro | MR. LION HUB'
@@ -64,7 +69,7 @@ export function FinanceiroLayout() {
       {/* ── Sub-nav sóbrio (NavLink RR6, padrão SegmentedControl) ── */}
       <div
         role="tablist"
-        className="mb-6 inline-flex flex-wrap items-center gap-0.5 rounded-btn border border-border bg-muted/50 p-0.5"
+        className="mb-2.5 inline-flex flex-wrap items-center gap-0.5 rounded-btn border border-border bg-muted/50 p-0.5"
       >
         {NAV.map(({ to, label, icon: Icon, end }) => (
           <NavLink
@@ -88,6 +93,9 @@ export function FinanceiroLayout() {
           </NavLink>
         ))}
       </div>
+
+      {/* Descritor de 1 linha da área ativa — orienta a navegação do João. */}
+      <p className="mb-6 text-[12px] text-text-secondary">{areaAtiva.desc}</p>
 
       {/* ── Sub-tela ativa (recebe o período via Outlet context) ── */}
       <Outlet context={{ periodo, setPeriodo } satisfies FinanceiroCtx} />

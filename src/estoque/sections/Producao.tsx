@@ -4,11 +4,12 @@
 // A etapa selecionada define a receita; BOM, fabricáveis e simulador derivam dela.
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Factory, AlertTriangle, Zap, Droplet, Wine } from 'lucide-react'
+import { Factory, AlertTriangle, Zap, Droplet, Wine, Lock } from 'lucide-react'
 import { useEstoque } from '../store'
 import { RECEITAS_PA, ITEM_BY_ID, receitasDoProduto } from '../mock'
 import { disponibilidade, fmtNum, fmtBRL, custoReceita } from '../engine'
 import { CategoriaIcon } from '../ui'
+import { getUser, podeVerReceita } from '../../lib/store'
 
 const STATUS_MO: Record<string, { label: string; cor: string }> = {
   planejada: { label: 'Planejada', cor: 'var(--neutral)' },
@@ -21,6 +22,7 @@ const semMrLion = (n: string) => n.replace('Mr. Lion ', '').replace(' 750ml', ''
 
 export function Producao() {
   const { itens, ordens, registrarProducao } = useEstoque()
+  const verReceita = podeVerReceita(getUser())
   const [produtoId, setProdutoId] = useState('pa_honey')
   // receita selecionada: por padrão, a que gera o produto acabado (envase/completa).
   const [receitaId, setReceitaId] = useState(() => RECEITAS_PA.find(r => r.produtoId === 'pa_honey')!.id)
@@ -29,7 +31,7 @@ export function Producao() {
   const etapas = useMemo(() => receitasDoProduto(produtoId), [produtoId])
   const receita = etapas.find(r => r.id === receitaId) ?? etapas[etapas.length - 1]
   const ehLiquido = receita.etapa === 'liquido'
-  const saida = ITEM_BY_ID(receita.saidaId)!
+  const saida = itens.find(i => i.id === receita.saidaId) ?? ITEM_BY_ID(receita.saidaId)!
   const unidade = saida.uom // 'L' no líquido, 'un' no envase
   const rotuloUn = ehLiquido ? 'litro' : 'garrafa'
 
@@ -81,7 +83,7 @@ export function Producao() {
           const active = r.produtoId === produtoId
           return (
             <button key={r.produtoId} onClick={() => trocarProduto(r.produtoId)}
-              className={`flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-card border transition ${active ? 'border-[hsl(var(--gold)/0.5)] gold-glow' : 'border-border hover:border-[hsl(var(--gold)/0.3)]'}`}
+              className={`flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-card border transition ${active ? 'border-[hsl(var(--gold)/0.5)]' : 'border-border hover:border-[hsl(var(--gold)/0.3)]'}`}
               style={{ background: active ? 'hsl(var(--gold)/0.08)' : 'hsl(var(--surface-raised))' }}>
               {p.fotoUrl && <img src={p.fotoUrl} alt="" className="h-12 w-auto object-contain" />}
               <div className="text-left">
@@ -119,8 +121,11 @@ export function Producao() {
         <div className="lg:col-span-7 rounded-card border border-border overflow-hidden gradient-card">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <h2 className="font-display text-xl">Receita · {receita.nome}</h2>
-            <span className="text-xs text-text-muted">por 1 {rotuloUn}</span>
+            <span className="text-xs text-text-muted">{verReceita ? `por 1 ${rotuloUn}` : 'segredo industrial'}</span>
           </div>
+          {!verReceita ? (
+            <ReceitaProtegida className="m-4 border-0" />
+          ) : (<>
           {disp.incompleta && (
             <div className="mx-5 mt-4 text-[12px] rounded-lg px-3 py-2.5 flex items-center gap-2" style={{ color: 'hsl(var(--warn))', background: 'hsl(var(--warn)/0.12)', border: '1px solid hsl(var(--warn)/0.25)' }}>
               <AlertTriangle size={14} /> Receita líquida ainda não cadastrada — fabricáveis considera só a embalagem.
@@ -150,11 +155,12 @@ export function Producao() {
               )
             })}
           </div>
+          </>)}
         </div>
 
         {/* ── Simulador de produção ── */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="rounded-card border border-border gradient-card p-5 gold-glow">
+          <div className="rounded-card border border-border gradient-card p-5">
             <div className="flex items-center gap-2 text-sm font-semibold mb-1"><Zap size={15} className="text-gold" /> Nova ordem · {ehLiquido ? 'líquido' : 'envase'}</div>
             <div className="text-xs text-text-muted mb-4">
               {ehLiquido ? `quantos litros de ${semMrLion(saida.nome)} produzir` : `quantas garrafas de ${semMrLion(saida.nome)} envasar`}
@@ -192,6 +198,7 @@ export function Producao() {
                     <span className="ml-auto text-[11px] text-text-muted tnum">{fmtNum(saida.estoque)} → <span className="text-foreground">{fmtNum(saida.estoque + qty)}</span></span>
                   </div>
                 </div>
+                {verReceita ? (
                 <div className="px-3.5 py-2.5">
                   <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">Consome</div>
                   <div className="space-y-1 max-h-44 overflow-y-auto pr-1">
@@ -209,6 +216,11 @@ export function Producao() {
                     })}
                   </div>
                 </div>
+                ) : (
+                  <div className="px-3.5 py-2.5 flex items-center gap-2 text-xs text-text-muted">
+                    <Lock size={13} /> Consumo de insumos protegido — segredo industrial.
+                  </div>
+                )}
               </div>
             )}
 
@@ -227,7 +239,9 @@ export function Producao() {
           </div>
 
           {/* ── Custo ── */}
-          {ehLiquido ? (
+          {!verReceita ? (
+            <ReceitaProtegida />
+          ) : ehLiquido ? (
             <div className="rounded-card border border-border gradient-card p-5">
               <div className="text-[11px] uppercase tracking-wider text-text-muted">Custo por litro (matéria-prima)</div>
               <div className="font-display text-4xl text-gold tnum mt-1">{fmtBRL(custo.liquido)}</div>
@@ -292,6 +306,19 @@ export function Producao() {
           })}
         </div>
       </section>
+    </div>
+  )
+}
+
+// Aviso sóbrio para quem não está no círculo da receita (segredo industrial).
+function ReceitaProtegida({ className }: { className?: string }) {
+  return (
+    <div className={`rounded-card border border-border gradient-card p-6 flex flex-col items-center text-center gap-2.5 ${className ?? ''}`}>
+      <span className="w-11 h-11 rounded-lg grid place-items-center text-text-muted shrink-0" style={{ background: 'hsl(var(--surface-overlay))', border: '1px solid hsl(var(--border))' }}>
+        <Lock size={18} />
+      </span>
+      <div className="font-display text-lg">Receita protegida</div>
+      <p className="text-xs text-text-muted max-w-[34ch] leading-relaxed">A fórmula é um segredo industrial — visível apenas para os donos.</p>
     </div>
   )
 }

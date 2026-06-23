@@ -32,6 +32,10 @@ export interface MetricCardProps {
   /** hero = card de destaque com borda mais marcada + valor maior em --gold. */
   hero?: boolean;
   className?: string;
+  /** Torna o card interativo: vira <button> com hover + focus-visible (a11y por teclado). */
+  onClick?: () => void;
+  /** aria-label do card interativo (default = label). */
+  ariaLabel?: string;
 }
 
 // Accent sóbrio: cor da linha do sparkline + classe de texto do ícone.
@@ -53,6 +57,8 @@ export function MetricCard({
   accent = "gold",
   hero = false,
   className,
+  onClick,
+  ariaLabel,
 }: MetricCardProps) {
   const a = ACCENT[accent];
 
@@ -73,16 +79,10 @@ export function MetricCard({
   // hero = destaque SÓBRIO: borda mais marcada + leve elevação. Sem box-shadow colorido.
   const heroValueClass = hero && accent !== "plain" ? "text-gold" : "text-foreground";
 
-  return (
-    <div
-      className={cn(
-        "relative flex h-full flex-col rounded-card border bg-card p-5 transition-colors",
-        hero
-          ? "border-gold/40 shadow-elevated"
-          : "border-border shadow-soft",
-        className,
-      )}
-    >
+  const interactive = typeof onClick === "function";
+
+  const inner = (
+    <>
       <div className="flex items-center gap-2">
         {icon && <span className={cn("shrink-0", a.text)}>{icon}</span>}
         <span className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -91,11 +91,11 @@ export function MetricCard({
       </div>
 
       <div className="mt-3 flex items-end justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div
             className={cn(
               "tnum font-bold leading-none",
-              hero ? "text-3xl" : "text-2xl",
+              hero ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl",
               heroValueClass,
             )}
           >
@@ -126,8 +126,33 @@ export function MetricCard({
           />
         </div>
       )}
-    </div>
+    </>
   );
+
+  const base = cn(
+    "relative flex h-full flex-col rounded-card border bg-card p-4 transition-colors sm:p-5",
+    hero ? "border-gold/40 shadow-elevated" : "border-border shadow-soft",
+    className,
+  );
+
+  if (interactive) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel ?? label}
+        className={cn(
+          base,
+          "cursor-pointer text-left outline-none hover:border-gold/40",
+          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        )}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return <div className={base}>{inner}</div>;
 }
 
 export default MetricCard;

@@ -111,9 +111,10 @@ export interface UseFinanceResult {
 /**
  * Hook PERIOD-AWARE do Financeiro v2.
  * @param periodo 'jan' | 'fev' — default 'fev' (período corrente da v2).
- * A DRE (despesas) e os custos por produto vêm do store EDITÁVEL persistido
- * (seed = baseline reconciliado); o restante do snapshot (caixa/coortes/kpis/
- * waterfall/aging…) segue congelado de SNAPSHOTS. Os derivados ('parcial') são
+ * A DRE (despesas), os custos por produto e as contas a pagar/receber vêm do
+ * store EDITÁVEL persistido (seed = baseline reconciliado); o restante do snapshot
+ * (caixa/coortes/kpis/waterfall…) segue congelado de SNAPSHOTS. O aging é DERIVADO
+ * das contas na própria tela. Os derivados ('parcial') são
  * recomputados dos reais a cada período/edição. Margens/mix por produto são
  * SEMPRE Jan/26 — a tela rotula o período de cada métrica.
  */
@@ -121,8 +122,8 @@ export function useFinance(periodo: Periodo = 'fev'): UseFinanceResult {
   const periodData = useFinanceiroStore((s) => s.data[periodo])
   return useMemo(() => {
     const base = SNAPSHOTS[periodo]
-    // Overlay editável sobre o snapshot congelado: só dre + products são mutáveis.
-    const overlaid: FinanceSnapshot = { ...base, dre: periodData.dre, products: periodData.products }
+    // Overlay editável sobre o snapshot congelado: dre + products + contas são mutáveis.
+    const overlaid: FinanceSnapshot = { ...base, dre: periodData.dre, products: periodData.products, contas: periodData.contas }
     const derivados = computeDerivados(overlaid)
     // KPIs sensíveis a edição recompõem dos derivados (period-aware); resto congelado.
     const snapshot: FinanceSnapshot = { ...overlaid, kpis: recomputeKpis(overlaid.kpis, derivados) }

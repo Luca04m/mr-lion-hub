@@ -13,6 +13,8 @@ const CAT_LABEL: Record<CategoriaItem, string> = {
   honey: 'Honey', cappuccino: 'Cappuccino', blended: 'Blended',
 }
 const ABC_COR: Record<ClasseAbc, string> = { A: 'var(--gold)', B: 'var(--chart-4)', C: 'var(--neutral)' }
+// rótulo claro em vez do jargão A/B/C de gestão de estoque
+const VALOR_LABEL: Record<ClasseAbc, string> = { A: 'alto valor', B: 'médio valor', C: 'baixo valor' }
 
 export function Relatorios() {
   const { itens } = useEstoque()
@@ -54,33 +56,33 @@ export function Relatorios() {
     <div className="animate-fade-up space-y-7">
       <div>
         <h1 className="font-display text-3xl leading-none">Relatórios</h1>
-        <p className="text-sm text-text-secondary mt-1">Curva ABC, valor por categoria e risco de ruptura.</p>
+        <p className="text-sm text-text-secondary mt-1">Onde está concentrado o valor do estoque, por categoria e risco de ruptura.</p>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MiniKpi icon={<Boxes size={15} />} label="Valor total" value={fmtBRL(resumo.valorTotal)} />
-        <MiniKpi icon={<Layers size={15} />} label="Itens classe A" value={`${abc.dist[0].itens}`} sub={`${Math.round(abc.dist[0].pct * 100)}% do valor`} />
+        <MiniKpi icon={<Layers size={15} />} label="Itens de alto valor" value={`${abc.dist[0].itens}`} sub={`${Math.round(abc.dist[0].pct * 100)}% do valor`} />
         <MiniKpi icon={<Timer size={15} />} label="Cobertura média" value={`${coberturaMedia}`} sub="dias de estoque" />
         <MiniKpi icon={<AlertTriangle size={15} />} label="Em risco (<7d)" value={`${comCobertura.filter(x => x.dias < 7).length}`} tone="warn" />
       </div>
 
       <div className="grid lg:grid-cols-12 gap-4">
-        {/* Curva ABC */}
+        {/* Onde está concentrado o valor */}
         <section className="lg:col-span-5 rounded-card border border-border gradient-card p-5">
-          <h2 className="font-display text-xl mb-1">Curva ABC</h2>
-          <p className="text-xs text-text-muted mb-4">classificação por valor em estoque (Pareto)</p>
+          <h2 className="font-display text-xl mb-1">Onde está concentrado o valor</h2>
+          <p className="text-xs text-text-muted mb-4">poucos itens costumam concentrar a maior parte do valor em estoque</p>
           {/* barra empilhada */}
           <div className="flex h-3 rounded-full overflow-hidden mb-4">
             {abc.dist.map(d => d.pct > 0 && (
-              <div key={d.classe} style={{ width: `${d.pct * 100}%`, background: `hsl(${ABC_COR[d.classe]})` }} title={`${d.classe}: ${Math.round(d.pct * 100)}%`} />
+              <div key={d.classe} style={{ width: `${d.pct * 100}%`, background: `hsl(${ABC_COR[d.classe]})` }} title={`${VALOR_LABEL[d.classe]}: ${Math.round(d.pct * 100)}%`} />
             ))}
           </div>
           <div className="grid grid-cols-3 gap-2 mb-5">
             {abc.dist.map(d => (
               <div key={d.classe} className="rounded-card p-3 text-center" style={{ background: `hsl(${ABC_COR[d.classe]}/0.08)`, border: `1px solid hsl(${ABC_COR[d.classe]}/0.2)` }}>
-                <div className="font-display text-2xl" style={{ color: `hsl(${ABC_COR[d.classe]})` }}>{d.classe}</div>
-                <div className="text-xs text-text-secondary tnum">{d.itens} itens</div>
+                <div className="font-display text-sm capitalize" style={{ color: `hsl(${ABC_COR[d.classe]})` }}>{VALOR_LABEL[d.classe]}</div>
+                <div className="text-xs text-text-secondary tnum mt-1">{d.itens} itens</div>
                 <div className="text-[11px] text-text-muted tnum">{Math.round(d.pct * 100)}% valor</div>
               </div>
             ))}
@@ -88,7 +90,7 @@ export function Relatorios() {
           <div className="space-y-1">
             {abc.classified.slice(0, 6).map(({ item, valor, classe }) => (
               <div key={item.id} className="flex items-center gap-2.5 py-1.5 text-sm">
-                <span className="w-5 h-5 rounded grid place-items-center text-[10px] font-bold shrink-0" style={{ color: `hsl(${ABC_COR[classe]})`, background: `hsl(${ABC_COR[classe]}/0.14)` }}>{classe}</span>
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: `hsl(${ABC_COR[classe]})` }} title={VALOR_LABEL[classe]} />
                 <span className="flex-1 min-w-0 truncate text-text-secondary">{item.nome}</span>
                 <span className="tnum text-foreground">{fmtBRL(valor)}</span>
               </div>

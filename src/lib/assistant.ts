@@ -1,6 +1,13 @@
 // Assistente Mr. Lion — contexto/insights derivados dos dados internos do Hub
 // (decisão Luca 2026-06-18: v1 usa só dados do app) + cliente do endpoint Workers AI.
 import { getTasks, getRevendedores, getPosts, getMeetings, getCampaigns } from "./store";
+import { useEstoque } from "../estoque/store";
+import { ITENS, RECEITA_BY_PRODUTO } from "../estoque/mock";
+import { custoReceita, resumoEstoque, statusEstoque, previsaoReposicao } from "../estoque/engine";
+import type { Item } from "../estoque/types";
+import { useFinanceiroStore } from "../financeiro/data/store";
+import { SNAPSHOTS } from "../financeiro/data/finance";
+import type { DREKind } from "../financeiro/data/types";
 
 export interface ChatMsg { role: "user" | "assistant"; content: string; }
 
@@ -8,6 +15,73 @@ export type InsightTone = "gold" | "success" | "danger" | "neutral";
 export interface AssistantInsight { label: string; value: string; hint?: string; tone: InsightTone; }
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// ── Bloco ESTOQUE: saldos vivos do store (fallback mock) + CMV/garrafa por receita ──
+function estoqueLines(): string[] {
+  let itens: Item[];
+  try { itens = useEstoque.getState().itens; } catch { itens = ITENS; }
+  if (!itens || !itens.length) itens = ITENS;
+
+  const resumo = resumoEstoque(itens);
+  const repor = previsaoReposicao(itens).filter(p => p.urgencia === "atrasado" || p.urgencia === "agora");
+
+  // CMV/garrafa por produto acabado, via receita de envase/completa.
+  const pas = itens.filter(i => i.tipo === "produto_acabado");
+  const paTxt = pas.map(pa => {
+    const rec = RECEITA_BY_PRODUTO(pa.id);
+    const cmv = rec ? custoReceita(rec, itens).total : pa.custoMedio;
+    const nome = pa.nome.replace(/ \d+ml$/, "").replace(/^Mr\. Lion /, "");
+    const inc = rec?.incompleta ? " (receita líquida incompleta)" : "";
+    return `${nome} ${pa.estoque} un — CMV R$${cmv.toFixed(2)}/garrafa${inc}`;
+  });
+
+  return [
+    `Estoque: ${resumo.itensTotais} itens ativos, valor total ${brl(resumo.valorTotal)}; ${resumo.critico} críticos, ${resumo.repor} a repor.`,
+    paTxt.length ? `Produtos acabados (estoque + CMV/garrafa): ${paTxt.join("; ")}.` : "",
+    repor.length ? `Insumos a comprar já: ${repor.slice(0, 8).map(p => `${p.item.nome} (${statusEstoque(p.item)})`).join("; ")}.` : "",
+  ].filter(Boolean);
+}
+
+// ── Bloco FINANCEIRO: DRE + produtos + contas do período corrente (store editável) ──
+const DESPESA_KINDS: DREKind[] = ["ded", "tax", "fixed"];
+function financeiroLines(): string[] {
+  try {
+    const st = useFinanceiroStore.getState();
+    const periodo = st.periodo;
+    const periodData = st.data[periodo];
+    if (!periodData) return [];
+    const dre = periodData.dre;
+    const products = periodData.products;
+    const contas = periodData.contas ?? SNAPSHOTS[periodo]?.contas ?? [];
+    const periodoLabel = SNAPSHOTS[periodo]?.meta.periodoLabel ?? periodo;
+
+    // Replica recomputeDre de telas/Caixa.tsx: lucro bruto = receita − CMV; resultado = receita + Σ despesas (já negativas).
+    const receita = dre.find(l => l.kind === "rev")?.value ?? 0;
+    const cmvLine = dre.find(l => l.label.toLowerCase().includes("cmv"));
+    const cmv = cmvLine ? Math.abs(cmvLine.value) : 0;
+    const lucroBruto = receita - cmv;
+    const margemPct = receita ? (lucroBruto / receita) * 100 : 0;
+    const resultado = receita + dre.filter(l => DESPESA_KINDS.includes(l.kind)).reduce((a, l) => a + l.value, 0);
+
+    const prodTxt = products.map(p => `${p.name} margem ${p.marginPct.toFixed(0)}% (custo R$${p.custo.toFixed(2)}, preço R$${p.precoPix.toFixed(2)})`);
+
+    const aPagar = contas.filter(c => c.tipo === "pagar" && c.status !== "paga");
+    const totalPagar = aPagar.reduce((a, c) => a + c.valor, 0);
+    const vencidas = aPagar.filter(c => c.status === "vencida");
+    const aReceber = contas.filter(c => c.tipo === "receber" && c.status !== "paga");
+    const totalReceber = aReceber.reduce((a, c) => a + c.valor, 0);
+
+    return [
+      `Financeiro (DRE ${periodoLabel}): receita bruta ${brl(receita)}, CMV ${brl(cmv)}, lucro bruto ${brl(lucroBruto)} (margem ${margemPct.toFixed(0)}%), resultado do período ${brl(resultado)}${resultado < 0 ? " (no vermelho)" : ""}.`,
+      prodTxt.length ? `Margem por produto: ${prodTxt.join("; ")}.` : "",
+      `Contas a pagar: ${brl(totalPagar)} em aberto (${vencidas.length} vencida(s)); a receber: ${brl(totalReceber)}.`,
+    ].filter(Boolean);
+  } catch {
+    return [];
+  }
+}
 
 export function buildInsights(): AssistantInsight[] {
   const tasks = getTasks();
@@ -53,6 +127,8 @@ export function buildContext(): string {
     `Conteúdo: ${posts.length} posts no calendário (${posts.filter(p => p.scheduledDate >= td).length} agendados pra frente).`,
     `Reuniões hoje: ${meetings.filter(m => m.meetingDate === td).length}.`,
     `Campanhas ativas no painel: ${campaigns.length}.`,
+    ...estoqueLines(),
+    ...financeiroLines(),
   ].filter(Boolean).join("\n");
 }
 

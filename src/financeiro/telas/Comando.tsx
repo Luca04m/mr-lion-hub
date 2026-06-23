@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { StatusPill } from '@/components/pro'
 import { cn } from '@/lib/utils'
+import { useNavigate } from 'react-router-dom'
 import { useFinanceiroCtx } from '../FinanceiroLayout'
 import { useFinance } from '../data/source'
 import { WaterfallChart, DivergingBars, Sparkline } from '../charts'
@@ -129,6 +130,10 @@ const ALERT_META: Record<'act' | 'risk' | 'info', { Icon: typeof Zap; ring: stri
 export function Comando() {
   const { periodo } = useFinanceiroCtx()
   const { snapshot: f, derivados: d } = useFinance(periodo)
+  const navigate = useNavigate()
+  // CTA de alerta → leva pra Caixa já na aba certa (DRE abre direto p/ lançar o mês).
+  const abrir = (cta: string) =>
+    navigate(/dre|despesa|cmv|tráfego|trafego|logística|logistica/i.test(cta) ? '/financeiro/caixa?aba=dre' : '/financeiro/caixa')
 
   const isLoss = d.resultado < 0
   const resultadoTone = isLoss ? 'text-danger' : 'text-success'
@@ -201,7 +206,11 @@ export function Comando() {
               </div>
               <p className="mt-1 text-[13px] leading-snug text-foreground">{a.text}</p>
             </div>
-            <button className="hidden shrink-0 items-center gap-1.5 rounded-btn border border-border px-3 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold sm:flex">
+            <button
+              type="button"
+              onClick={() => abrir(a.cta)}
+              className="flex shrink-0 items-center gap-1.5 rounded-btn border border-gold/50 bg-gold/[0.12] px-3 py-1.5 text-[12px] font-semibold text-gold transition-colors hover:bg-gold/20"
+            >
               {a.cta}
               <ArrowRight className="size-3.5" />
             </button>
@@ -241,31 +250,8 @@ export function Comando() {
         </div>
       </Panel>
 
-      {/* ── Veredito de canais (KILL) + composição de despesa ── */}
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Panel
-          title="Margem CM2 por canal"
-          meta="Receita − CMV − taxas − frete − ad spend · total de tráfego é REAL, o split por canal é modelo"
-          prov="ilustrativo"
-        >
-          <DivergingBars channels={f.channels} />
-          {killer && (
-            <div className="mt-3 flex items-start gap-3 border-t border-border/60 pt-3">
-              <div className="grid size-8 shrink-0 place-items-center rounded-sub bg-danger/[0.12] text-danger">
-                <Ban className="size-4" strokeWidth={1.9} />
-              </div>
-              <p className="text-[12px] leading-relaxed text-muted-foreground">
-                <b className="font-semibold text-danger">
-                  {killer.cm2 < 0 ? `KILL · ${killer.name} CM2 ${brlCompact(killer.cm2)}.` : `Atenção · ${killer.name}.`}
-                </b>{' '}
-                {killer.prescription ??
-                  `ROAS ${killer.roas != null ? mult(killer.roas) : '—'} vs break-even ${killer.breakeven != null ? mult(killer.breakeven) : '—'}.`}
-                {killer.recover ? <> Recupera ~<span className="tnum">{brlCompact(killer.recover)}</span>/mês.</> : null}
-              </p>
-            </div>
-          )}
-        </Panel>
-
+      {/* ── Composição de despesa ── */}
+      <div className="grid gap-4">
         <Panel
           title="Composição da despesa"
           meta={
@@ -330,7 +316,11 @@ export function Comando() {
                     <div className={cn('text-[9.5px] font-bold uppercase tracking-[0.08em]', m.tag)}>{a.tag}</div>
                     <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{a.text}</p>
                   </div>
-                  <button className="hidden shrink-0 items-center gap-1.5 rounded-btn border border-border px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold sm:flex">
+                  <button
+                    type="button"
+                    onClick={() => abrir(a.cta)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-btn border border-border px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold"
+                  >
                     {a.cta}
                     <ArrowRight className="size-3" />
                   </button>
@@ -345,7 +335,7 @@ export function Comando() {
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
         <span>Fonte: {f.meta.fonte}.</span>
         <span>Margens/mix por produto são sempre Jan/26 (único mês com unit economics auditado).</span>
-        <span>Resultado real do período: <b className={cn('font-semibold', resultadoTone)}>{brl(d.resultado)}</b> · MER <span className="tnum">{mult(d.mer)}</span> (computado · break-even {mult(d.merBreakeven)}).</span>
+        <span>Resultado real do período: <b className={cn('font-semibold', resultadoTone)}>{brl(d.resultado)}</b>.</span>
       </p>
     </div>
   )

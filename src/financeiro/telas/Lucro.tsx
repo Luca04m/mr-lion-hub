@@ -13,24 +13,15 @@
 // Margens/mix/custos por produto = SEMPRE Jan/26 (único mês com unit economics
 // auditado) — rotulado explicitamente. Top-line DRE = período corrente do seletor.
 import { useMemo, useState } from 'react'
-import { Lightbulb, ShieldX, ShieldCheck, Gauge, RotateCcw, TrendingUp, TrendingDown, Plus, Trash2, Check, X } from 'lucide-react'
-import { SegmentedControl } from '@/components/pro/SegmentedControl'
+import { Lightbulb, RotateCcw, TrendingUp, TrendingDown, Plus, Trash2, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useFinanceiroCtx } from '../FinanceiroLayout'
 import { useFinance } from '../data/source'
 import { useFinanceiroStore, type EditableProduct, type Periodo } from '../data/store'
 import { PRECOS_PIX, CUSTOS_UNIT } from '../data/finance'
-import { brl, brlCompact, num, mult, ratio, pct as pctFmt } from '../lib/format'
-import { WaterfallChart, DivergingBars, CohortHeatmap, RadialGauge } from '../charts'
+import { brl, brlCompact, num, pct as pctFmt } from '../lib/format'
+import { WaterfallChart } from '../charts'
 import type { Provenance } from '../data/types'
-
-type Tab = 'margem' | 'roi' | 'coortes'
-
-const TABS: { label: string; value: Tab }[] = [
-  { label: 'Margem', value: 'margem' },
-  { label: 'ROI & Atribuição', value: 'roi' },
-  { label: 'Coortes & LTV', value: 'coortes' },
-]
 
 // ── Primitivos sóbrios locais ────────────────────────────────────────────────
 const PROV_META: Record<Provenance, { label: string; cls: string }> = {
@@ -242,8 +233,7 @@ function Simulador() {
 // ════════════════════════════════════════════════════════════════════════════
 export function Lucro() {
   const { periodo } = useFinanceiroCtx()
-  const { snapshot, derivados } = useFinance(periodo)
-  const [tab, setTab] = useState<Tab>('margem')
+  const { snapshot } = useFinance(periodo)
 
   const periodoTopline = snapshot.meta.periodoLabel
   // Margem ponderada do simulador-baseline / margens por produto = SEMPRE Jan/26.
@@ -257,17 +247,14 @@ export function Lucro() {
             Onde o <span className="text-gold">lucro</span> nasce e morre
           </h2>
           <p className="mt-1 max-w-[64ch] text-[13px] leading-relaxed text-muted-foreground">
-            Margem por SKU, atribuição por canal e LTV. Top-line <b className="font-medium text-foreground">{periodoTopline}</b>;
+            Margem por produto e simulador de contribuição. Top-line <b className="font-medium text-foreground">{periodoTopline}</b>;
             unit economics por produto <b className="font-medium text-foreground">sempre Jan/26</b> (único mês auditado).
-            ROAS abaixo do break-even dispara KILL.
           </p>
         </div>
-        <SegmentedControl<Tab> value={tab} onChange={setTab} options={TABS} />
       </div>
 
-      {/* ───────────────────────── ABA A · MARGEM ───────────────────────── */}
-      {tab === 'margem' && (
-        <div className="space-y-6">
+      {/* ───────────────────────── MARGEM ───────────────────────── */}
+      <div className="space-y-6">
           <div className="grid gap-6 xl:grid-cols-5">
             <Panel
               className="xl:col-span-3"
@@ -293,223 +280,6 @@ export function Lucro() {
 
           <Simulador />
         </div>
-      )}
-
-      {/* ──────────────────── ABA B · ROI & ATRIBUIÇÃO ──────────────────── */}
-      {tab === 'roi' && (
-        <div className="space-y-6">
-          <div className="grid gap-6 xl:grid-cols-5">
-            <Panel
-              className="xl:col-span-2"
-              title="MER — Marketing Efficiency Ratio"
-              meta={`${periodoTopline} · receita ÷ ad spend`}
-              prov="parcial"
-            >
-              <div className="flex flex-col items-center">
-                <RadialGauge
-                  pct={Math.min(100, (derivados.mer / (snapshot.roi.merMeta * 1.4)) * 100)}
-                  centerTop={mult(derivados.mer)}
-                  centerSub={`meta ${mult(snapshot.roi.merMeta)}`}
-                  size={184}
-                />
-                <div className="mt-2 grid w-full grid-cols-2 gap-3">
-                  <Stat label="MER atual" value={mult(derivados.mer)} tone="text-gold" />
-                  <Stat label="Break-even" value={mult(derivados.merBreakeven)} tone="text-danger" />
-                </div>
-                <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
-                  MER = receita {brlCompact(derivados.receita)} ÷ ad spend {brlCompact(derivados.adSpend)} ={' '}
-                  <b className="font-semibold text-foreground">{mult(derivados.mer)}</b>.
-                  Break-even = 1 ÷ margem CM1 ({pctFmt(derivados.margemBrutaPct)}) = {mult(derivados.merBreakeven)}.
-                </p>
-              </div>
-            </Panel>
-
-            <Panel
-              className="xl:col-span-3"
-              title="CM2 por canal"
-              meta="Margem de contribuição após mídia · split é modelo; total de spend é real"
-              prov="ilustrativo"
-            >
-              <DivergingBars channels={snapshot.channels} height={232} />
-            </Panel>
-          </div>
-
-          <Panel
-            title="Veredito por canal"
-            meta="ROAS de plataforma × iROAS causal × break-even — abaixo do BE = KILL"
-            prov="parcial"
-          >
-            <div className="grid grid-cols-[1.3fr_repeat(5,1fr)] items-center gap-3 border-b border-border/60 px-1 pb-2.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <span>Canal</span>
-              <span className="text-right">Ad spend</span>
-              <span className="text-right">ROAS</span>
-              <span className="text-right">iROAS</span>
-              <span className="text-right">Break-even</span>
-              <span className="text-right">Veredito</span>
-            </div>
-            {snapshot.channels.filter((c) => (c.spend ?? 0) > 0).map((c) => {
-              const roas = c.roas ?? 0
-              const be = c.breakeven ?? 0
-              // Regra: ROAS abaixo do break-even = KILL.
-              const kill = roas < be
-              // Escalar = folga clara (≥1,3× o BE); senão Manter.
-              const verdict = kill ? 'KILL' : roas >= be * 1.3 ? 'Escalar' : 'Manter'
-              const vCls =
-                verdict === 'KILL'
-                  ? 'text-danger border-danger/40 bg-danger/10'
-                  : verdict === 'Escalar'
-                    ? 'text-success border-success/35 bg-success/10'
-                    : 'text-warning border-warning/35 bg-warning/10'
-              const VIcon = kill ? ShieldX : ShieldCheck
-              return (
-                <div key={c.name} className="grid grid-cols-[1.3fr_repeat(5,1fr)] items-center gap-3 rounded-sub px-1 py-3 transition-colors hover:bg-muted/40">
-                  <div className="text-[13px] font-medium text-foreground">{c.name}</div>
-                  <div className="tnum text-right text-[13px] text-muted-foreground">{brlCompact(c.spend)}</div>
-                  <div className="tnum text-right text-[13px] text-foreground">{mult(roas)}</div>
-                  <div className={cn('tnum text-right text-[13px] font-semibold', kill ? 'text-danger' : 'text-success')}>{mult(c.iroas ?? 0)}</div>
-                  <div className="tnum text-right text-[13px] text-muted-foreground">{mult(be)}</div>
-                  <div className="flex justify-end">
-                    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold', vCls)}>
-                      <VIcon className="size-3" />{verdict}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-            {snapshot.channels.some((c) => c.kill) && (
-              <div className="mt-3 flex items-start gap-2 rounded-sub border border-danger/25 bg-danger/[0.06] p-3 text-[12px] leading-snug text-muted-foreground">
-                <ShieldX className="mt-0.5 size-3.5 shrink-0 text-danger" />
-                <span>
-                  <b className="font-semibold text-foreground">
-                    {snapshot.channels.find((c) => c.kill)?.name}
-                  </b>{' '}
-                  abaixo do break-even ROAS {mult(snapshot.channels.find((c) => c.kill)?.breakeven ?? 0)}.
-                  {snapshot.channels.find((c) => c.prescription)?.prescription}
-                </span>
-              </div>
-            )}
-          </Panel>
-
-          <div className="grid gap-6 xl:grid-cols-2">
-            <Panel
-              title="Reconciliação pixel × WooCommerce"
-              meta="A verdade do caixa, não do gerenciador de anúncios"
-              prov="ilustrativo"
-            >
-              <div className="space-y-4 pt-1">
-                {[
-                  { l: 'Reportado pelo pixel', v: snapshot.roi.pixelReportado, bar: 'bg-muted-foreground/50', t: 'text-muted-foreground' },
-                  { l: 'Real no WooCommerce', v: snapshot.roi.wooReal, bar: 'bg-gold', t: 'text-gold' },
-                ].map((r) => (
-                  <div key={r.l}>
-                    <div className="flex items-baseline justify-between text-[12.5px]">
-                      <span className="text-muted-foreground">{r.l}</span>
-                      <span className={cn('tnum font-semibold', r.t)}>{brlCompact(r.v)}</span>
-                    </div>
-                    <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-muted">
-                      <div className={cn('h-full rounded-full', r.bar)} style={{ width: `${(r.v / snapshot.roi.pixelReportado) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
-                <p className="text-[12px] leading-snug text-muted-foreground">
-                  O pixel infla a receita em <b className="font-semibold text-danger">+{snapshot.roi.gapPct}%</b>.
-                  Decisões de matar/escalar usam o número do Woo (modelo).
-                </p>
-              </div>
-            </Panel>
-
-            <Panel
-              title="Eficiência de mídia"
-              meta="North star + guard-rails do Luca"
-              prov="parcial"
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <Stat label="MER atual" value={mult(derivados.mer)} tone="text-gold" />
-                <Stat label="MER meta" value={mult(snapshot.roi.merMeta)} />
-                <Stat label="Break-even" value={mult(derivados.merBreakeven)} tone="text-danger" />
-                <Stat label="POAS (modelo)" value={mult(snapshot.roi.poas)} tone="text-success" />
-              </div>
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-btn bg-cta px-3.5 py-2 text-[12px] font-semibold text-cta-foreground transition-opacity hover:opacity-90"
-              >
-                <Gauge className="size-3.5" /> Reavaliar alocação de mídia
-              </a>
-            </Panel>
-          </div>
-        </div>
-      )}
-
-      {/* ───────────────────── ABA C · COORTES & LTV ───────────────────── */}
-      {tab === 'coortes' && (
-        <div className="space-y-6">
-          <div className="grid gap-6 xl:grid-cols-5">
-            <Panel
-              className="xl:col-span-3"
-              title="Retenção por coorte"
-              meta="Base lucro bruto · leitura diagonal"
-              prov="ilustrativo"
-            >
-              <CohortHeatmap cols={snapshot.cohort.cols} rows={snapshot.cohort.rows} height={258} />
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <Stat label="Recompra mediana" value={`${num(snapshot.cohort.recompraMediana)} dias`} />
-                <Stat label="Multi-SKU" value={pctFmt(snapshot.cohort.multiSku)} />
-              </div>
-            </Panel>
-
-            <Panel
-              className="xl:col-span-2"
-              title="LTV : CAC por canal"
-              meta="LTV em lucro bruto · payback 30d · guard-rail ≥ 3:1"
-              prov="ilustrativo"
-            >
-              <div className="grid grid-cols-[1.4fr_repeat(3,1fr)] gap-2 border-b border-border/60 px-1 pb-2 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <span>Canal</span>
-                <span className="text-right">CAC</span>
-                <span className="text-right">LTV</span>
-                <span className="text-right">Razão</span>
-              </div>
-              {snapshot.ltvCohorts.map((c) => (
-                <div key={c.cohort} className="grid grid-cols-[1.4fr_repeat(3,1fr)] items-center gap-2 px-1 py-2.5">
-                  <div className="text-[12.5px] font-medium text-foreground">{c.cohort}</div>
-                  <div className="tnum text-right text-[12.5px] text-muted-foreground">{c.cac ? brl(c.cac, 0) : '—'}</div>
-                  <div className="tnum text-right text-[12.5px] text-foreground">{brl(c.ltv, 0)}</div>
-                  <div className={cn('tnum text-right text-[12.5px] font-semibold', c.ratio >= 3 ? 'text-success' : 'text-danger')}>
-                    {c.ratio >= 20 ? '∞' : ratio(c.ratio)}
-                  </div>
-                </div>
-              ))}
-              <p className="mt-2 px-1 text-[11px] text-muted-foreground">
-                Meta paga abaixo do piso (1,8:1) — payback 71 dias. B2B financia a aquisição.
-              </p>
-            </Panel>
-          </div>
-
-          <Panel
-            title="Segmentos RFM"
-            meta="Recência · frequência · valor monetário"
-            prov="ilustrativo"
-          >
-            <div className="grid gap-3 md:grid-cols-5">
-              {snapshot.rfm.map((s) => {
-                const tone = { gold: 'text-gold', green: 'text-success', warn: 'text-warning', crit: 'text-danger', neutral: 'text-foreground' }[s.tone]
-                const bar = { gold: 'bg-gold', green: 'bg-success', warn: 'bg-warning', crit: 'bg-danger', neutral: 'bg-muted-foreground' }[s.tone]
-                return (
-                  <div key={s.name} className="rounded-sub border border-border bg-muted/30 p-4">
-                    <div className="text-[12px] font-semibold text-foreground">{s.name}</div>
-                    <div className={cn('tnum mt-2 text-xl font-semibold', tone)}>{num(s.count)}</div>
-                    <div className="mt-1 text-[11px] text-muted-foreground">ticket {brl(s.ticket, 0)}</div>
-                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className={cn('h-full rounded-full', bar)} style={{ width: `${Math.min(100, s.share * 3)}%` }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Panel>
-        </div>
-      )}
     </div>
   )
 }

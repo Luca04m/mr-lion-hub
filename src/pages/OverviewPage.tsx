@@ -3,16 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getTasks, getActivities, getRevendedores, getMeetings, getPosts, exportTasksMarkdown, getUser } from "@/lib/store";
 import {
-  Task, TaskStatus, TEAM_MEMBERS, STATUS_LABELS,
+  Task, TaskStatus, STATUS_LABELS,
   Revendedor, RevendedorStatus,
   Meeting, ContentPost, CONTENT_STATUS_LABELS, ContentStatus,
 } from "@/lib/types";
 import { format, formatDistanceToNow, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  TrendingUp, BarChart2, DollarSign, Package, Download,
+  DollarSign, Download,
   CheckCircle2, AlertTriangle, Clock, Zap, Calendar, Building2,
-  Megaphone, AlertCircle, ChevronRight, Users, Activity as ActivityIcon,
+  Megaphone, AlertCircle, ChevronRight, Activity as ActivityIcon,
   Plus, Trash2, RefreshCw, UserPlus, Edit2,
 } from "lucide-react";
 import {
@@ -23,37 +23,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { toast } from "sonner";
 // (Button/Badge substituídos por CTA sólido neutro .bg-cta + StatusPill do design system pro)
 import { useRealtime } from "@/hooks/use-realtime";
-import { MetricCard, AreaChartCard, StatusPill, type StatusTone } from "@/components/pro";
-
-// ─── Static data (DRE/Ecom — hardcoded, tratados na Fase 4) ────────────────────
-const DRE_CARDS = [
-  { label: "Faturamento Bruto", value: "R$ 95.175",         icon: TrendingUp,    color: "hsl(var(--info))" },
-  { label: "CMV",               value: "R$ 50.794 · 53,4%", icon: Package,       color: "hsl(var(--danger))" },
-  { label: "Lucro Bruto",       value: "R$ 44.381 · 46,6%", icon: DollarSign,    color: "hsl(var(--success))" },
-  { label: "Despesas Totais",   value: "R$ 92.913 · 97,6%", icon: AlertTriangle, color: "hsl(var(--warning))" },
-  { label: "Resultado Líquido", value: "R$ 1.131 · 1,2%",   icon: BarChart2,     color: "hsl(var(--gold))",
-    badge: "⚠ Margem crítica", badgeTip: "Margem de 1,2% — qualquer imprevisto gera prejuízo." },
-];
-
-// Composição de custo — paleta SÓBRIA (neutro + gold + status dessaturados).
-// Escala de cinzas para os pesos maiores, status fosco para os menores.
-const COST_COMPOSITION = [
-  { name: "CMV",            value: 50794, color: "hsl(var(--foreground))" },
-  { name: "Marketing",      value: 16708, color: "hsl(var(--gold))" },
-  { name: "Logística",      value: 7925,  color: "hsl(var(--muted-foreground))" },
-  { name: "Impostos/Taxas", value: 7170,  color: "hsl(var(--warning))" },
-  { name: "Pessoal",        value: 6200,  color: "hsl(var(--info))" },
-  { name: "Reembolsos",     value: 5248,  color: "hsl(var(--danger))" },
-  { name: "Resultado",      value: 1131,  color: "hsl(var(--success))" },
-];
-
-const ECOM_CARDS = [
-  { label: "Vendas Totais",     value: "R$ 72.200" },
-  { label: "Pedidos",           value: "339" },
-  { label: "Itens Vendidos",    value: "619" },
-  { label: "ROAS",              value: "10,24x", tone: "success" as StatusTone, badge: "Saudável", tip: "R$ 7.053 investidos em Meta + Google Ads" },
-  { label: "Taxa de Devolução", value: "11,5%",  tone: "warning" as StatusTone, badge: "Atenção",  tip: "R$ 8.278 em devoluções no mês" },
-];
+import { MetricCard, StatusPill, type StatusTone } from "@/components/pro";
 
 // ─── Activity action config ───────────────────────────────────────────────────
 const ACTION_CONFIG: Record<string, { icon: React.ElementType; color: string; label: (t: string) => string }> = {
@@ -115,12 +85,6 @@ function fmtDate(dateStr: string) {
   catch { return dateStr.slice(5); }
 }
 
-function workloadColor(pct: number): string {
-  if (pct >= 75) return "hsl(var(--success))";
-  if (pct >= 35) return "hsl(var(--warning))";
-  return "hsl(var(--danger))";
-}
-
 /** Conta itens por dia nos últimos `days` dias (série pronta p/ Sparkline/AreaChart). */
 function dailyCounts(timestamps: string[], days: number) {
   const buckets: { key: string; label: string; value: number }[] = [];
@@ -156,9 +120,35 @@ function SectionTitle({ icon: Icon, title, color = "hsl(var(--gold))", action, o
         {title}
       </h2>
       {action && onAction && (
-        <button onClick={onAction} className="group flex items-center gap-0.5 text-[11px] text-muted-foreground transition-colors hover:text-gold">
+        <button
+          onClick={onAction}
+          className="group flex items-center gap-0.5 rounded-btn px-1 py-0.5 text-[11px] text-muted-foreground outline-none transition-colors hover:text-gold focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
+        >
           {action}
           <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Empty-state que ENSINA — ícone neutro + frase orientadora + ação opcional.
+function EmptyState({ icon: Icon, message, action, onAction }: {
+  icon: React.ElementType; message: string; action?: string; onAction?: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 rounded-sub border border-dashed border-border/60 py-6 text-center">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/40">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <p className="max-w-[34ch] text-xs text-muted-foreground">{message}</p>
+      {action && onAction && (
+        <button
+          onClick={onAction}
+          className="mt-0.5 inline-flex items-center gap-1 rounded-btn px-2 py-1 text-[11px] font-medium text-gold outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        >
+          {action}
+          <ChevronRight className="h-3 w-3" />
         </button>
       )}
     </div>
@@ -220,7 +210,6 @@ const OverviewPage = () => {
   const activitySpark = activitySeries.map(b => b.value);
   const doneSpark = doneSeries.map(b => b.value);
   const activityTotal14 = activitySpark.reduce((s, v) => s + v, 0);
-  const done14 = doneSpark.reduce((s, v) => s + v, 0);
   const donePrev7 = doneSpark.slice(0, 7).reduce((s, v) => s + v, 0);
   const doneLast7 = doneSpark.slice(7).reduce((s, v) => s + v, 0);
   const doneDelta = (() => {
@@ -260,8 +249,6 @@ const OverviewPage = () => {
     { name: "atrasada",     value: lateCount },
   ].filter(d => d.value > 0).map(d => ({ ...d, fill: TASK_DONUT_COLORS[d.name as TaskStatus] }));
 
-  const costTotal = COST_COMPOSITION.reduce((s, c) => s + c.value, 0);
-
   const handleExport = () => {
     navigator.clipboard.writeText(exportTasksMarkdown());
     toast.success("Tarefas exportadas para o clipboard ✓");
@@ -272,7 +259,7 @@ const OverviewPage = () => {
 
   return (
     <motion.div
-      className="space-y-5"
+      className="space-y-6"
       initial="hidden"
       animate="visible"
       variants={stagger}
@@ -291,7 +278,7 @@ const OverviewPage = () => {
         </div>
         <button
           onClick={handleExport}
-          className="bg-cta inline-flex items-center gap-2 self-start rounded-btn px-4 py-2.5 text-sm font-semibold shadow-soft transition-colors hover:opacity-90 sm:self-auto"
+          className="bg-cta inline-flex items-center gap-2 self-start rounded-btn px-4 py-2.5 text-sm font-semibold shadow-soft outline-none transition-colors hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:self-auto"
         >
           <Download className="h-4 w-4" />
           Exportar tarefas
@@ -309,35 +296,41 @@ const OverviewPage = () => {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-danger">
-              <span className="tnum">{lateCount}</span> {lateCount === 1 ? "tarefa atrasada" : "tarefas atrasadas"} · margem crítica em 1,2%
+              <span className="tnum">{lateCount}</span> {lateCount === 1 ? "tarefa atrasada" : "tarefas atrasadas"}
             </p>
-            <p className="mt-0.5 text-[11px] text-danger/60">Atenção imediata necessária para evitar impacto financeiro</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Atenção imediata necessária</p>
           </div>
           <button
             onClick={() => navigate("/tasks")}
-            className="shrink-0 rounded-btn border border-danger/30 px-2.5 py-1 text-xs font-medium text-danger transition-colors hover:bg-danger/10"
+            className="shrink-0 rounded-btn border border-danger/30 px-2.5 py-1 text-xs font-medium text-danger outline-none transition-colors hover:bg-danger/10 focus-visible:ring-2 focus-visible:ring-danger/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Ver tarefas
           </button>
-          <button onClick={() => setAlertDismissed(true)} className="shrink-0 text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground">
+          <button
+            onClick={() => setAlertDismissed(true)}
+            aria-label="Dispensar alerta"
+            className="shrink-0 rounded-btn p-1 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
             ✕
           </button>
         </motion.div>
       )}
 
-      {/* ══ LINHA HERO — 4 MetricCards (dados REAIS) ════════════════════════ */}
+      {/* ══ LINHA HERO — 4 MetricCards (dados REAIS, clicáveis via teclado) ══ */}
       <motion.div variants={stagger} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <motion.div variants={fadeUp} className="cursor-pointer" onClick={() => navigate("/tasks")}>
+        <motion.div variants={fadeUp} className="h-full">
           <MetricCard
             label="Tarefas atrasadas"
             value={String(lateCount)}
             accent={lateCount > 0 ? "cta" : "success"}
             icon={<AlertTriangle className="h-4 w-4" />}
             delta={lateCount > 0 ? { value: "requer ação", direction: "down" } : { value: "tudo em dia", direction: "flat" }}
+            onClick={() => navigate("/tasks")}
+            ariaLabel={`${lateCount} tarefas atrasadas. Abrir tarefas`}
           />
         </motion.div>
 
-        <motion.div variants={fadeUp} className="cursor-pointer" onClick={() => navigate("/tasks")}>
+        <motion.div variants={fadeUp} className="h-full">
           <MetricCard
             label="% Concluído"
             value={`${donePct}%`}
@@ -345,146 +338,52 @@ const OverviewPage = () => {
             icon={<CheckCircle2 className="h-4 w-4" />}
             sparkline={doneSpark}
             delta={doneDelta}
+            onClick={() => navigate("/tasks")}
+            ariaLabel={`${donePct}% das tarefas concluídas. Abrir tarefas`}
           />
         </motion.div>
 
-        <motion.div variants={fadeUp} className="cursor-pointer" onClick={() => navigate("/calendar")}>
+        <motion.div variants={fadeUp} className="h-full">
           <MetricCard
             label="Reuniões hoje"
             value={String(todayMeetings.length)}
             accent="gold"
             icon={<Calendar className="h-4 w-4" />}
             delta={todayMeetings.length > 0 ? { value: todayMeetings[0].hora || "agendada", direction: "flat" } : undefined}
+            onClick={() => navigate("/calendar")}
+            ariaLabel={`${todayMeetings.length} reuniões hoje. Abrir calendário`}
           />
         </motion.div>
 
-        <motion.div variants={fadeUp} className="cursor-pointer" onClick={() => navigate("/calendar")}>
+        <motion.div variants={fadeUp} className="h-full">
           <MetricCard
             label="Atividade (14d)"
             value={String(activityTotal14)}
             accent="gold"
             icon={<ActivityIcon className="h-4 w-4" />}
             sparkline={activitySpark}
+            onClick={() => navigate("/calendar")}
+            ariaLabel={`${activityTotal14} ações nos últimos 14 dias. Abrir calendário`}
           />
         </motion.div>
       </motion.div>
 
-      {/* ══ LINHA PRINCIPAL — AreaChart (largura total; Assistente tem tela própria) ══ */}
-      <motion.div variants={fadeUp}>
-        <AreaChartCard
-          title="Atividade (14 dias)"
-          data={activitySeries.map(b => ({ label: b.label, value: b.value }))}
-          height={240}
-          color="hsl(var(--gold))"
-          footer={
-            <span className="text-muted-foreground">
-              <span className="tnum font-semibold text-gold">{activityTotal14}</span> ações no período ·{" "}
-              <span className="tnum font-semibold text-success">{done14}</span> tarefas concluídas
-            </span>
-          }
-        />
-      </motion.div>
-
-      {/* ══ DRE ═════════════════════════════════════════════════════════════ */}
-      <motion.div variants={fadeUp}>
-        <SectionTitle icon={TrendingUp} title="DRE Simplificado — Jan/26" color="hsl(var(--info))" />
-        <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-          {DRE_CARDS.map(card => (
-            <div
-              key={card.label}
-              className="group rounded-card border border-border bg-card p-3.5 shadow-soft transition-colors hover:border-gold/40"
-              style={{ borderLeftWidth: 3, borderLeftColor: card.color }}
-            >
-              <div className="mb-2 flex items-center gap-1.5">
-                <card.icon className="h-3 w-3 shrink-0" style={{ color: card.color }} />
-                <span className="text-[9px] uppercase leading-tight tracking-wider text-muted-foreground">{card.label}</span>
-              </div>
-              <span className="tnum block leading-snug text-sm font-bold" style={{ color: card.color }}>
-                {card.value}
-              </span>
-              {card.badge && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="mt-2 inline-block cursor-help">
-                      <StatusPill label={card.badge} tone="danger" dot={false} />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[240px] text-xs">{card.badgeTip}</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          ))}
+      {/* ══ ATALHO FINANCEIRO ══════════════════════════════════════════════ */}
+      <motion.button
+        variants={fadeUp}
+        type="button"
+        onClick={() => navigate("/financeiro")}
+        className="group flex w-full items-center gap-3 rounded-card border border-border bg-card p-4 text-left shadow-soft outline-none transition-colors hover:border-gold/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sub bg-gold/[0.12]">
+          <DollarSign className="h-4 w-4 text-gold" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">Financeiro</p>
+          <p className="text-[11px] text-muted-foreground">DRE, contas a pagar e receber por período</p>
         </div>
-
-        {/* Onde foi o dinheiro */}
-        <div className="rounded-card border border-border bg-card p-4 shadow-soft">
-          <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Onde foi o dinheiro</p>
-          <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-2">
-            <div className="relative">
-              <ResponsiveContainer width="100%" height={210}>
-                <PieChart>
-                  <Pie data={COST_COMPOSITION} cx="50%" cy="50%" innerRadius={58} outerRadius={88} dataKey="value" paddingAngle={2}>
-                    {COST_COMPOSITION.map((entry, i) => <Cell key={i} fill={entry.color} strokeWidth={0} />)}
-                  </Pie>
-                  <RTooltip contentStyle={TOOLTIP_STYLE} formatter={(val: number) => `R$ ${val.toLocaleString("pt-BR")}`} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <span className="tnum block leading-none text-lg font-bold text-foreground">
-                    R$ {costTotal.toLocaleString("pt-BR")}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">total saídas</span>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {COST_COMPOSITION.map(c => (
-                <div key={c.name} className="flex items-center gap-2.5">
-                  <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
-                  <span className="flex-1 text-xs text-muted-foreground">{c.name}</span>
-                  <span className="tnum text-xs text-foreground">R$ {c.value.toLocaleString("pt-BR")}</span>
-                  <div className="h-1.5 w-10 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full" style={{ width: `${(c.value / costTotal) * 100}%`, backgroundColor: c.color }} />
-                  </div>
-                  <span className="tnum w-8 text-right text-[10px] text-muted-foreground">
-                    {((c.value / costTotal) * 100).toFixed(0)}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ══ E-COMMERCE ══════════════════════════════════════════════════════ */}
-      <motion.div variants={fadeUp}>
-        <SectionTitle icon={Zap} title="E-commerce — WooCommerce · Jan/26" color="hsl(var(--gold))" />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-          {ECOM_CARDS.map(card => (
-            <div
-              key={card.label}
-              className="rounded-card border border-border bg-card p-3.5 shadow-soft transition-colors hover:border-gold/40"
-              style={{ borderLeftWidth: 3, borderLeftColor: "hsl(var(--gold))" }}
-            >
-              <span className="mb-1.5 block text-[9px] uppercase tracking-wider text-muted-foreground">{card.label}</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="tnum text-xl font-bold text-foreground">{card.value}</span>
-                {card.badge && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help">
-                        <StatusPill label={card.badge} tone={card.tone} dot={false} />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[240px] text-xs">{card.tip}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </motion.button>
 
       {/* ══ CRM ══════════════════════════════════════════════════════════════ */}
       <motion.div variants={fadeUp} className="rounded-card border border-border bg-card p-4 shadow-soft">
@@ -535,7 +434,7 @@ const OverviewPage = () => {
               </div>
             </div>
           ) : (
-            <p className="py-6 text-center text-xs text-muted-foreground">Nenhum revendedor cadastrado</p>
+            <EmptyState icon={Building2} message="Nenhum revendedor cadastrado ainda. Adicione o primeiro para acompanhar o pipeline." action="Abrir CRM" onAction={() => navigate("/revendedores")} />
           )}
           {/* Bar chart */}
           {crmBarData.length > 0 && (
@@ -611,50 +510,21 @@ const OverviewPage = () => {
             ) : (
               <div className="space-y-1.5">
                 {lateTasks.map(t => (
-                  <div
+                  <button
+                    type="button"
                     key={t.id}
                     onClick={() => navigate(`/tasks?highlight=${t.id}`)}
-                    className="flex cursor-pointer items-center gap-2 rounded-sub border border-danger/10 bg-danger/[0.05] p-2 text-xs transition-all hover:border-danger/30 hover:bg-danger/[0.08]"
+                    aria-label={`Tarefa atrasada ${t.title}. Abrir nas tarefas`}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-sub border border-danger/10 bg-danger/[0.05] p-2 text-left text-xs outline-none transition-all hover:border-danger/30 hover:bg-danger/[0.08] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
                   >
                     <span className="tnum shrink-0 text-[10px] text-gold">#{t.id}</span>
                     <span className="flex-1 truncate font-medium">{t.title}</span>
                     <span className="shrink-0 text-[9px] text-muted-foreground">{t.responsible.join(", ")}</span>
                     <StatusPill label="Atrasada" tone="danger" dot={false} className="shrink-0 px-1.5 py-0 text-[8px]" />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
-          </motion.div>
-
-          {/* Carga por Pessoa */}
-          <motion.div variants={fadeUp} className="rounded-card border border-border bg-card p-4 shadow-soft">
-            <SectionTitle icon={Users} title="Carga por Pessoa" />
-            <div className="space-y-3">
-              {TEAM_MEMBERS.map(member => {
-                const mt     = tasks.filter(t => t.responsible.includes(member));
-                const done   = mt.filter(t => t.status === "concluida").length;
-                const pct    = mt.length > 0 ? Math.round((done / mt.length) * 100) : 0;
-                const open   = mt.filter(t => t.status !== "concluida").length;
-                const late   = mt.filter(t => t.status === "atrasada").length;
-                const bColor = workloadColor(pct);
-                return (
-                  <div key={member} className="flex items-center gap-2.5">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-[9px] font-bold text-gold">
-                      {member.charAt(0)}
-                    </div>
-                    <span className="w-14 truncate text-xs text-foreground/80">{member}</span>
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: bColor }} />
-                    </div>
-                    <span className="tnum w-6 text-right text-[10px] text-muted-foreground">{pct}%</span>
-                    <span className="tnum w-8 text-right text-[10px]" style={{ color: open > 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--success))" }}>
-                      {open}ab.
-                    </span>
-                    {late > 0 && <span className="tnum shrink-0 text-[9px] text-danger">{late}⚠</span>}
-                  </div>
-                );
-              })}
-            </div>
           </motion.div>
         </div>
 
@@ -665,13 +535,13 @@ const OverviewPage = () => {
           <motion.div variants={fadeUp} className="rounded-card border border-border bg-card p-4 shadow-soft">
             <SectionTitle icon={Calendar} title="Reuniões de hoje" action="Ver reuniões" onAction={() => navigate("/calendar")} />
             {todayMeetings.length === 0 ? (
-              <p className="py-5 text-center text-xs text-muted-foreground">Nenhuma reunião hoje</p>
+              <EmptyState icon={Calendar} message="Nenhuma reunião hoje. Agende encontros no calendário para vê-los aqui." action="Abrir calendário" onAction={() => navigate("/calendar")} />
             ) : (
               <div className="space-y-1.5">
                 {todayMeetings.map(m => (
                   <div key={m.id} className="flex items-center gap-2.5 rounded-sub border border-gold/10 bg-gold/[0.05] p-2.5 text-xs">
                     <div className="h-6 w-1 shrink-0 rounded-full bg-gold" />
-                    <span className="tnum shrink-0 text-[11px] text-gold">{m.hora || "—"}</span>
+                    <span className="tnum shrink-0 text-[11px] text-gold">{m.hora || "·"}</span>
                     <span className="flex-1 truncate font-medium">{m.title}</span>
                     {m.tipo && <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">{m.tipo}</span>}
                   </div>
@@ -684,19 +554,21 @@ const OverviewPage = () => {
           <motion.div variants={fadeUp} className="rounded-card border border-border bg-card p-4 shadow-soft">
             <SectionTitle icon={Clock} title="Próximas entregas" color="hsl(var(--warning))" action="Ver tarefas" onAction={() => navigate("/tasks")} />
             {upcomingTasks.length === 0 ? (
-              <p className="py-5 text-center text-xs text-muted-foreground">Nenhuma entrega nos próximos 3 dias</p>
+              <EmptyState icon={Clock} message="Nenhuma entrega nos próximos 3 dias. Defina prazos nas tarefas para planejar a semana." action="Abrir tarefas" onAction={() => navigate("/tasks")} />
             ) : (
               <div className="space-y-1.5">
                 {upcomingTasks.map(t => (
-                  <div
+                  <button
+                    type="button"
                     key={t.id}
                     onClick={() => navigate(`/tasks?highlight=${t.id}`)}
-                    className="flex cursor-pointer items-center gap-2 rounded-sub border border-border bg-muted/30 p-2.5 text-xs transition-all hover:border-gold/20 hover:bg-muted/40"
+                    aria-label={`Entrega ${t.title} em ${fmtDate(t.dueDate!)}. Abrir nas tarefas`}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-sub border border-border bg-muted/30 p-2.5 text-left text-xs outline-none transition-all hover:border-gold/20 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
                   >
                     <span className="tnum shrink-0 text-[10px] text-gold">#{t.id}</span>
                     <span className="flex-1 truncate">{t.title}</span>
                     <span className="tnum shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{fmtDate(t.dueDate!)}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -706,21 +578,23 @@ const OverviewPage = () => {
           <motion.div variants={fadeUp} className="rounded-card border border-border bg-card p-4 shadow-soft">
             <SectionTitle icon={Megaphone} title="Próximas Postagens" color="hsl(var(--gold))" action="Ver calendário" onAction={() => navigate("/calendar")} />
             {upcomingPosts.length === 0 ? (
-              <p className="py-5 text-center text-xs text-muted-foreground">Nenhuma postagem esta semana</p>
+              <EmptyState icon={Megaphone} message="Nenhuma postagem agendada esta semana. Programe conteúdo no calendário editorial." action="Abrir calendário" onAction={() => navigate("/calendar")} />
             ) : (
               <div className="space-y-1.5">
                 {upcomingPosts.map(p => (
-                  <div
+                  <button
+                    type="button"
                     key={p.id}
                     onClick={() => navigate("/calendar")}
-                    className="flex cursor-pointer items-center gap-2 rounded-sub border border-border bg-muted/30 p-2.5 text-xs transition-all hover:border-gold/20"
+                    aria-label={`Postagem ${p.title} em ${fmtDate(p.scheduledDate)}. Abrir no calendário`}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-sub border border-border bg-muted/30 p-2.5 text-left text-xs outline-none transition-all hover:border-gold/20 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
                   >
                     <span className="tnum w-12 shrink-0 rounded bg-muted px-1.5 py-0.5 text-center text-[10px] text-muted-foreground">{fmtDate(p.scheduledDate)}</span>
                     <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: platformDot(p.platform) }} />
                     <span className="flex-1 truncate">{p.title}</span>
                     <span className="shrink-0 text-[10px] text-muted-foreground">{p.creator}</span>
                     <StatusPill label={CONTENT_STATUS_LABELS[p.status]} tone={CONTENT_TONE[p.status]} dot={false} className="shrink-0 px-1.5 py-0 text-[8px]" />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -732,7 +606,7 @@ const OverviewPage = () => {
       <motion.div variants={fadeUp} className="rounded-card border border-border bg-card p-4 shadow-soft">
         <SectionTitle icon={Zap} title="Atividade Recente" />
         {activities.length === 0 ? (
-          <p className="py-2 text-xs text-muted-foreground">Nenhuma atividade ainda</p>
+          <EmptyState icon={ActivityIcon} message="Nenhuma atividade ainda. Ações da equipe (tarefas, revendedores) aparecem aqui." />
         ) : (
           <div className="space-y-1">
             {activities.slice(0, 8).map(a => {

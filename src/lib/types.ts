@@ -355,3 +355,5 @@ export const CAMPAIGN_CHANNELS = [
 export const APP_PASSWORD = "Mrlion@2026";
 export const ROLES_KEY = "mrlion_roles";
 export const PRIVATE_USERS = ["Luca", "João", "Luhan", "Ronaldo"] as const;
+// Círculo da receita: MENOR que PRIVATE_USERS — só os donos veem a fórmula (segredo industrial).
+export const RECEITA_USERS = ["Luca", "João"] as const;

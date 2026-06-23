@@ -581,7 +581,7 @@ const JUN: FinanceSnapshot = {
 
   alerts: [
     { id: 'j-a1', kind: 'info', tag: 'Mês em aberto',
-      text: 'Junho/2026 ainda não foi fechado. Lance as despesas e a receita na DRE editável (Caixa › DRE gerencial) — os KPIs recalculam sozinhos.', cta: 'Abrir DRE' },
+      text: 'Junho/2026 ainda não foi fechado. Clique em Abrir DRE para lançar a receita e as despesas do mês — os KPIs recalculam sozinhos.', cta: 'Abrir DRE' },
   ],
 
   goal: { label: 'MER', atual: 0, meta: 6.0, pct: 0, sub: 'Mês em aberto — preencher o fechamento de Junho.' },

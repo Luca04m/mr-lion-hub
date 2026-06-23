@@ -13,15 +13,16 @@
 //   • Seletor de CENÁRIO (Pessimista/Base/Otimista) que RECOMPUTA de fato a
 //     série de caixa (escala determinística do drawdown + banda P10–P90) e a
 //     repassa ao CashProjection, que redesenha o SVG.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CalendarClock, ShieldAlert, FileText, Wallet, TrendingDown, TrendingUp, Plus, Trash2, RotateCcw, Check, X } from 'lucide-react'
 import { SegmentedControl } from '@/components/pro/SegmentedControl'
 import { CashProjection } from '@/financeiro/charts'
 import { useFinanceiroCtx } from '../FinanceiroLayout'
 import { useFinance } from '../data/source'
-import { useFinanceiroStore, type EditableDRELine, type Periodo } from '../data/store'
+import { useFinanceiroStore, type EditableDRELine, type EditableContaItem, type Periodo } from '../data/store'
 import { brl, brlCompact, pct } from '../lib/format'
-import type { CashPoint, DRELine, DREKind, Provenance } from '../data/types'
+import type { CashPoint, ContaItem, DRELine, DREKind, Provenance } from '../data/types'
 
 // ── Badge de proveniência (sóbrio, dessaturado) ──────────────────────────
 const PROV_TONE: Record<Provenance, string> = {
@@ -29,19 +30,45 @@ const PROV_TONE: Record<Provenance, string> = {
   parcial: 'bg-info/[0.12] text-info border-info/30',
   ilustrativo: 'bg-warning/[0.12] text-warning border-warning/30',
 }
+// Rótulos em PT claro p/ o João (dono da operação, não-financeiro) — sem "ilustrativo".
 const PROV_LABEL: Record<Provenance, string> = {
   real: 'real',
-  parcial: 'parcial',
-  ilustrativo: 'ilustrativo',
+  parcial: 'estimativa',
+  ilustrativo: 'projeção',
+}
+const PROV_HINT: Record<Provenance, string> = {
+  real: 'Números reais — vendas, custos e DRE já conciliados.',
+  parcial: 'Estimativa — calculada pelo modelo a partir dos dados reais.',
+  ilustrativo: 'Projeção — cenário estimado, não é extrato bancário.',
+}
+const PROV_GLOSSA: Record<Provenance, string> = {
+  real: 'número fechado',
+  parcial: 'calculado',
+  ilustrativo: 'cenário',
 }
 function ProvBadge({ prov, className = '' }: { prov: Provenance; className?: string }) {
   return (
     <span
       className={`inline-flex items-center rounded-sub border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${PROV_TONE[prov]} ${className}`}
-      title={`Proveniência do dado: ${PROV_LABEL[prov]}`}
+      title={PROV_HINT[prov]}
     >
       {PROV_LABEL[prov]}
     </span>
+  )
+}
+
+/** Legenda compacta dos selos — orienta quem não é da área financeira. */
+function ProvLegend({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 ${className}`}>
+      <span className="text-[10px] uppercase tracking-wider text-text-muted">Como ler os selos</span>
+      {(['real', 'parcial', 'ilustrativo'] as Provenance[]).map((p) => (
+        <span key={p} className="flex items-center gap-1.5 text-[11px] text-text-secondary" title={PROV_HINT[p]}>
+          <ProvBadge prov={p} />
+          {PROV_GLOSSA[p]}
+        </span>
+      ))}
+    </div>
   )
 }
 
@@ -74,9 +101,9 @@ function Section({
 }
 
 const BLOCOS = [
-  { label: 'Fluxo', value: 'fluxo' },
-  { label: 'DRE', value: 'dre' },
-  { label: 'Contas', value: 'contas' },
+  { label: 'Fluxo de caixa', value: 'fluxo' },
+  { label: 'Resultado (DRE)', value: 'dre' },
+  { label: 'Contas a pagar/receber', value: 'contas' },
   { label: 'Impostos', value: 'impostos' },
 ] as const
 type Bloco = (typeof BLOCOS)[number]['value']
@@ -140,10 +167,60 @@ function recomputeDre(dre: EditableDRELine[]) {
   return { receita, lucroBruto, margemPct, resultado }
 }
 
+// ── Aging DERIVADO das contas editáveis ───────────────────────────────────
+// Bucketiza por janela de vencimento a partir de HOJE (new Date()). Status 'paga'
+// sai do aging. Soma payable (tipo 'pagar') e receivable (tipo 'receber') por bucket.
+// Determinístico: regra única de dias → bucket; add/remove conta atualiza na hora.
+const AGING_BUCKETS = ['A vencer', '1–30 dias', '31–60 dias', '60+ dias'] as const
+
+/** Parser tolerante: "YYYY-MM-DD" (input date), "dd/mm" ou "dd/mm/aaaa" (seed). */
+function parseVencimento(s: string): Date | null {
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
+  const br = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/)
+  if (br) {
+    const hoje = new Date()
+    const ano = br[3] ? (br[3].length === 2 ? 2000 + Number(br[3]) : Number(br[3])) : hoje.getFullYear()
+    return new Date(ano, Number(br[2]) - 1, Number(br[1]))
+  }
+  return null
+}
+
+/** Dias entre hoje e o vencimento → rótulo do bucket. */
+function bucketDe(venc: string, hoje: Date): (typeof AGING_BUCKETS)[number] {
+  const d = parseVencimento(venc)
+  if (!d) return 'A vencer'
+  const dias = Math.floor((d.getTime() - hoje.getTime()) / 86_400_000)
+  if (dias <= 0) return 'A vencer' // vencidas/hoje contam como pressão imediata
+  if (dias <= 30) return '1–30 dias'
+  if (dias <= 60) return '31–60 dias'
+  return '60+ dias'
+}
+
+/** Agrega contas (≠ 'paga') em buckets de aging — mesmo shape de AgingBucket. */
+function deriveAging(contas: ContaItem[]) {
+  const hoje = new Date()
+  const map = new Map(AGING_BUCKETS.map((label) => [label, { label, payable: 0, receivable: 0 }]))
+  for (const c of contas) {
+    if (c.status === 'paga') continue
+    const b = map.get(bucketDe(c.vencimento, hoje))!
+    if (c.tipo === 'pagar') b.payable += c.valor
+    else b.receivable += c.valor
+  }
+  return AGING_BUCKETS.map((label) => map.get(label)!)
+}
+
 export function Caixa() {
   const { periodo } = useFinanceiroCtx()
   const { snapshot, derivados } = useFinance(periodo)
-  const [bloco, setBloco] = useState<Bloco>('fluxo')
+  // Deep-link da aba via ?aba=dre|contas|impostos (ex.: botão "Abrir DRE" do Comando).
+  const [searchParams] = useSearchParams()
+  const abaParam = searchParams.get('aba')
+  const blocoInicial = (BLOCOS.some((b) => b.value === abaParam) ? abaParam : 'fluxo') as Bloco
+  const [bloco, setBloco] = useState<Bloco>(blocoInicial)
+  useEffect(() => {
+    if (abaParam && BLOCOS.some((b) => b.value === abaParam)) setBloco(abaParam as Bloco)
+  }, [abaParam])
   const [cen, setCen] = useState<Cenario>('base')
 
   // Série RECOMPUTADA pelo cenário — memoizada por (período, cenário).
@@ -156,21 +233,25 @@ export function Caixa() {
   const rec = recomputeDre(dreEditavel)
   const noVermelho = rec.resultado < 0
 
+  // Contas editáveis (store-backed via overlay) + aging DERIVADO delas (≠ snapshot congelado).
+  const contas = snapshot.contas as EditableContaItem[]
+  const aging = useMemo(() => deriveAging(contas), [contas])
   // Aging: maior barra do conjunto = escala comum.
-  const agingMax = Math.max(...snapshot.aging.map((a) => Math.max(a.payable, a.receivable)), 1)
+  const agingMax = Math.max(...aging.map((a) => Math.max(a.payable, a.receivable)), 1)
 
   return (
     <div className="space-y-6 animate-fade-up">
       {/* ── Hero da tela ── */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="space-y-4">
         <div>
           <h1 className="font-display text-2xl leading-tight text-foreground">
             O <span className="text-gold">caixa</span> não mente
           </h1>
-          <p className="mt-1.5 max-w-[62ch] text-[13px] leading-relaxed text-text-secondary">
-            {snapshot.meta.periodoLabel} · projeção timing-aware com vencimentos do Bling, DRE
-            gerencial real, contas a pagar/receber e a conta do Simples Nacional.
+          <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-text-secondary">
+            {snapshot.meta.periodoLabel} · seu fluxo de caixa, o resultado do mês e as contas a
+            pagar e a receber, tudo num lugar só.
           </p>
+          <ProvLegend className="mt-3" />
         </div>
         <SegmentedControl<Bloco> value={bloco} onChange={setBloco} options={BLOCOS as unknown as { label: string; value: Bloco }[]} />
       </div>
@@ -200,19 +281,8 @@ export function Caixa() {
           {/* Projeção 90d + seletor de cenário (RECOMPUTA a série) */}
           <Section
             title="Projeção de caixa · 90 dias"
-            meta={`Banda de confiança P10–P90 · pins de vencimento · cenário ${cenLabel}`}
+            meta="Faixa provável do saldo · marcos de vencimento"
             prov="ilustrativo"
-            right={
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-[9.5px] uppercase tracking-wider text-muted-foreground">Cenário</span>
-                <SegmentedControl<Cenario>
-                  size="sm"
-                  value={cen}
-                  onChange={setCen}
-                  options={CENARIOS as unknown as { label: string; value: Cenario }[]}
-                />
-              </div>
-            }
           >
             <CashProjection points={pontos} events={snapshot.cash.events} max={snapshot.cash.max} height={320} />
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-border/60 pt-3 text-[12px]">
@@ -229,9 +299,7 @@ export function Caixa() {
               ))}
             </div>
             <p className="mt-3 text-[11px] leading-snug text-text-muted">
-              Modelo determinístico ancorado no caixa consolidado — NÃO é fechamento bancário. O cenário
-              <b className="text-text-secondary"> {cenLabel}</b> recalcula o drawdown e a banda de
-              confiança; <b className="text-text-secondary">Base</b> reflete a série original do período.
+              Estimativa ancorada no caixa de hoje — não é extrato bancário. Reflete a projeção do período.
             </p>
           </Section>
         </>
@@ -251,9 +319,9 @@ export function Caixa() {
       {/* ════════════════════════ CONTAS / AGING ════════════════════════ */}
       {bloco === 'contas' && (
         <div className="grid gap-6 xl:grid-cols-2">
-          <Section title="Aging · a pagar × a receber" meta="Saldos por janela de vencimento" prov="ilustrativo">
+          <Section title="Aging · a pagar × a receber" meta="Saldos por janela de vencimento (derivado das contas, a partir de hoje)" prov="parcial">
             <div className="space-y-3.5 pt-1">
-              {snapshot.aging.map((a) => (
+              {aging.map((a) => (
                 <div key={a.label} className="grid grid-cols-[88px_1fr] items-center gap-4">
                   <span className="text-[12px] font-medium text-text-secondary">{a.label}</span>
                   <div className="space-y-1.5">
@@ -275,42 +343,7 @@ export function Caixa() {
             </div>
           </Section>
 
-          <Section title="Lançamentos" meta="Vencimentos próximos · espelho Bling /contas" prov="ilustrativo">
-            <div className="grid grid-cols-[1.4fr_0.9fr_auto_auto] gap-3 border-b border-border/60 px-1 pb-2.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-              <span>Parte</span>
-              <span>Categoria</span>
-              <span className="text-right">Venc. / valor</span>
-              <span className="text-right">Status</span>
-            </div>
-            {snapshot.contas.map((c) => (
-              <div key={c.id} className="grid grid-cols-[1.4fr_0.9fr_auto_auto] items-center gap-3 px-1 py-2.5">
-                <div className="flex items-center gap-2">
-                  <i className={`size-2 rounded-[2px] ${c.tipo === 'receber' ? 'bg-success' : 'bg-danger'}`} />
-                  <span className="text-[13px] text-foreground">{c.parte}</span>
-                </div>
-                <span className="text-[12px] text-text-muted">{c.categoria}</span>
-                <span className="text-right">
-                  <span className="tnum block text-[12px] text-text-secondary">{c.vencimento}</span>
-                  <span className={`tnum block text-[13px] font-semibold ${c.tipo === 'receber' ? 'text-success' : 'text-foreground'}`}>
-                    {brlCompact(c.valor)}
-                  </span>
-                </span>
-                <span className="flex justify-end">
-                  <span
-                    className={`rounded-sub border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                      c.status === 'vencida'
-                        ? 'border-danger/30 bg-danger/[0.1] text-danger'
-                        : c.status === 'paga'
-                          ? 'border-success/30 bg-success/[0.1] text-success'
-                          : 'border-border bg-muted/40 text-muted-foreground'
-                    }`}
-                  >
-                    {c.status}
-                  </span>
-                </span>
-              </div>
-            ))}
-          </Section>
+          <ContasEditavel periodo={periodo} contas={contas} />
         </div>
       )}
 
@@ -327,7 +360,7 @@ export function Caixa() {
               {[
                 { l: 'Alíquota nominal', v: pct(snapshot.tax.aliquotaNominal), t: 'text-foreground', p: 'ilustrativo' as Provenance },
                 { l: 'Alíquota efetiva', v: pct(snapshot.tax.aliquotaEfetiva), t: 'text-success', p: 'parcial' as Provenance },
-                { l: 'RBT12', v: brlCompact(snapshot.tax.rbt12), t: 'text-foreground', p: 'ilustrativo' as Provenance },
+                { l: 'Faturamento 12m', v: brlCompact(snapshot.tax.rbt12), t: 'text-foreground', p: 'ilustrativo' as Provenance },
                 { l: 'DAS do mês', v: brlCompact(snapshot.tax.dasValor), t: 'text-warning', p: 'ilustrativo' as Provenance },
               ].map((s) => (
                 <div key={s.l} className="rounded-sub border border-border bg-muted/40 p-3.5">
@@ -477,8 +510,8 @@ function DreEditavel({
 
   return (
     <Section
-      title={`DRE gerencial · ${periodoLabel}`}
-      meta={`Realizado vs plano · editável · fecha em ${brl(rec.resultado, 0)}`}
+      title={`Resultado do mês (DRE) · ${periodoLabel}`}
+      meta={`Receita − custos − despesas · editável · fecha em ${brl(rec.resultado, 0)}`}
       prov="real"
       right={
         <div className="flex items-center gap-2">
@@ -487,7 +520,7 @@ function DreEditavel({
             onClick={() => setAdding((v) => !v)}
             className="inline-flex items-center gap-1.5 rounded-sub border border-gold/40 bg-gold/[0.08] px-2.5 py-1 text-[11px] font-medium text-gold transition-colors hover:bg-gold/[0.14]"
           >
-            <Plus className="size-3" /> Adicionar
+            <Plus className="size-3" /> Lançar despesa
           </button>
           <button
             type="button"
@@ -504,6 +537,11 @@ function DreEditavel({
         </div>
       }
     >
+      <p className="mb-3 text-[12px] leading-snug text-text-secondary">
+        Resumo do mês: a receita menos os custos e as despesas dá o resultado. Para contas com{' '}
+        <b className="text-foreground">vencimento</b> (a pagar / a receber), use a aba{' '}
+        <b className="text-gold">Contas a pagar/receber</b>.
+      </p>
       <div className="grid grid-cols-[1.7fr_1fr_1fr_1fr_28px] gap-3 border-b border-border/60 px-3 pb-2.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
         <span>Linha</span>
         <span className="text-right">Realizado</span>
@@ -709,6 +747,331 @@ function DreEditavel({
           <span className="text-text-muted">DRE gerencial (não contábil).</span>
         </p>
       </div>
+    </Section>
+  )
+}
+
+// ════════════════════════ CONTAS A PAGAR / RECEBER (EDITÁVEL) ════════════════════════
+const TIPO_CONTA_OPTS = [
+  { label: 'A pagar', value: 'pagar' },
+  { label: 'A receber', value: 'receber' },
+] as const
+const STATUS_CONTA_OPTS = [
+  { label: 'Aberta', value: 'aberta' },
+  { label: 'Paga', value: 'paga' },
+  { label: 'Vencida', value: 'vencida' },
+] as const
+// Atalhos de categoria (o João pediu "marketing / logística") — clica e preenche.
+const CATEGORIAS_COMUNS = ['Marketing', 'Logística', 'Insumos', 'Impostos', 'Frete', 'B2B', 'Reembolso'] as const
+
+const STATUS_TONE: Record<ContaItem['status'], string> = {
+  vencida: 'border-danger/30 bg-danger/[0.1] text-danger',
+  paga: 'border-success/30 bg-success/[0.1] text-success',
+  aberta: 'border-border bg-muted/40 text-muted-foreground',
+}
+
+/** Contas a pagar/receber EDITÁVEL: lançamento (parte/categoria/tipo/valor/venc/status),
+ *  edição inline e exclusão. Mesmo molde do DreEditavel; o aging deriva destas contas. */
+function ContasEditavel({ periodo, contas }: { periodo: Periodo; contas: EditableContaItem[] }) {
+  const addConta = useFinanceiroStore((s) => s.addConta)
+  const editConta = useFinanceiroStore((s) => s.editConta)
+  const removeConta = useFinanceiroStore((s) => s.removeConta)
+
+  const [editing, setEditing] = useState<{ id: string; field: 'parte' | 'categoria' | 'valor' | 'vencimento' } | null>(null)
+  const [editVal, setEditVal] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [fParte, setFParte] = useState('')
+  const [fCategoria, setFCategoria] = useState('')
+  const [fTipo, setFTipo] = useState<ContaItem['tipo']>('pagar')
+  const [fValor, setFValor] = useState('')
+  const [fVenc, setFVenc] = useState('')
+  const [fStatus, setFStatus] = useState<ContaItem['status']>('aberta')
+
+  const startEdit = (c: EditableContaItem, field: 'parte' | 'categoria' | 'valor' | 'vencimento') => {
+    setEditing({ id: c.id, field })
+    if (field === 'valor') setEditVal(String(c.valor))
+    else setEditVal(c[field])
+  }
+  const commit = (c: EditableContaItem) => {
+    if (!editing) return
+    if (editing.field === 'valor') {
+      const n = Number(editVal)
+      if (editVal.trim() !== '' && !Number.isNaN(n) && n > 0) editConta(periodo, c.id, { valor: Math.abs(n) })
+    } else if (editVal.trim() !== '') {
+      const patch: Partial<ContaItem> = { [editing.field]: editVal.trim() }
+      editConta(periodo, c.id, patch)
+    }
+    setEditing(null)
+  }
+
+  const salvarNovo = () => {
+    const v = Number(fValor)
+    if (fParte.trim() === '' || Number.isNaN(v) || v <= 0) return
+    addConta(periodo, {
+      id: '', // sobrescrito no store
+      parte: fParte.trim(),
+      tipo: fTipo,
+      valor: Math.abs(v),
+      vencimento: fVenc.trim(),
+      status: fStatus,
+      categoria: fCategoria.trim(),
+    })
+    setFParte('')
+    setFCategoria('')
+    setFTipo('pagar')
+    setFValor('')
+    setFVenc('')
+    setFStatus('aberta')
+    setAdding(false)
+  }
+  const podeSalvar = fParte.trim() !== '' && Number(fValor) > 0
+
+  return (
+    <Section
+      title="Contas a pagar e a receber"
+      meta="Lance o que tem a pagar e a receber · o aging ao lado se atualiza sozinho"
+      prov="real"
+      right={
+        <button
+          type="button"
+          onClick={() => setAdding((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-sub border border-gold/40 bg-gold/[0.08] px-2.5 py-1 text-[11px] font-medium text-gold transition-colors hover:bg-gold/[0.14]"
+        >
+          <Plus className="size-3" /> Lançar conta
+        </button>
+      }
+    >
+      <p className="mb-3 text-[12px] leading-snug text-text-secondary">
+        Lance aqui tudo que tem a <b className="text-foreground">pagar</b> (frete, impostos,
+        fornecedores) e a <b className="text-foreground">receber</b> (vendas a prazo). Clique em
+        qualquer campo pra editar.
+      </p>
+      <div className="grid grid-cols-[1.4fr_0.9fr_auto_auto_28px] gap-3 border-b border-border/60 px-1 pb-2.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+        <span>Parte</span>
+        <span>Categoria</span>
+        <span className="text-right">Venc. / valor</span>
+        <span className="text-right">Status</span>
+        <span />
+      </div>
+
+      {contas.length === 0 && (
+        <p className="px-1 py-4 text-[12px] text-text-muted">Nenhum lançamento. Clique em <b className="text-gold">Adicionar</b> para lançar uma conta a pagar ou a receber.</p>
+      )}
+
+      {contas.map((c) => (
+        <div key={c.id} className="group grid grid-cols-[1.4fr_0.9fr_auto_auto_28px] items-center gap-3 rounded-sub px-1 py-2.5">
+          {/* Parte (texto, click-to-edit) + indicador de tipo */}
+          <div className="flex items-center gap-2">
+            <i className={`size-2 shrink-0 rounded-[2px] ${c.tipo === 'receber' ? 'bg-success' : 'bg-danger'}`} />
+            {editing?.id === c.id && editing.field === 'parte' ? (
+              <input
+                autoFocus
+                value={editVal}
+                onChange={(e) => setEditVal(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') commit(c); if (e.key === 'Escape') setEditing(null) }}
+                onBlur={() => commit(c)}
+                className="min-w-0 flex-1 rounded-sub border border-gold/40 bg-background px-1.5 py-0.5 text-[13px] text-foreground outline-none"
+              />
+            ) : (
+              <button type="button" onClick={() => startEdit(c, 'parte')} title="Clique para renomear" className="text-left text-[13px] text-foreground transition-colors hover:text-gold">
+                {c.parte}
+              </button>
+            )}
+            {c.edited && <AjustadoBadge />}
+          </div>
+
+          {/* Categoria (texto livre, click-to-edit) */}
+          {editing?.id === c.id && editing.field === 'categoria' ? (
+            <input
+              autoFocus
+              value={editVal}
+              onChange={(e) => setEditVal(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') commit(c); if (e.key === 'Escape') setEditing(null) }}
+              onBlur={() => commit(c)}
+              placeholder="ex: Marketing"
+              className="min-w-0 rounded-sub border border-gold/40 bg-background px-1.5 py-0.5 text-[12px] text-foreground outline-none"
+            />
+          ) : (
+            <button type="button" onClick={() => startEdit(c, 'categoria')} title="Clique para editar a categoria" className="text-left text-[12px] text-text-muted transition-colors hover:text-gold">
+              {c.categoria || '—'}
+            </button>
+          )}
+
+          {/* Venc. / valor (click-to-edit cada) */}
+          <span className="flex flex-col items-end gap-0.5">
+            {editing?.id === c.id && editing.field === 'vencimento' ? (
+              <input
+                autoFocus
+                type="date"
+                value={editVal}
+                onChange={(e) => setEditVal(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') commit(c); if (e.key === 'Escape') setEditing(null) }}
+                onBlur={() => commit(c)}
+                className="tnum rounded-sub border border-gold/40 bg-background px-1.5 py-0.5 text-[12px] text-foreground outline-none"
+              />
+            ) : (
+              <button type="button" onClick={() => startEdit(c, 'vencimento')} title="Clique para editar o vencimento" className="tnum text-[12px] text-text-secondary underline-offset-2 transition-colors hover:text-gold hover:underline">
+                {c.vencimento || '—'}
+              </button>
+            )}
+            {editing?.id === c.id && editing.field === 'valor' ? (
+              <span className="flex items-center justify-end gap-1">
+                <span className="text-[11px] text-muted-foreground">R$</span>
+                <input
+                  autoFocus
+                  type="number"
+                  value={editVal}
+                  onChange={(e) => setEditVal(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commit(c); if (e.key === 'Escape') setEditing(null) }}
+                  onBlur={() => commit(c)}
+                  className="tnum w-24 rounded-sub border border-gold/40 bg-background px-2 py-0.5 text-right text-[13px] font-semibold text-foreground outline-none"
+                />
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEdit(c, 'valor')}
+                title="Clique para editar o valor"
+                className={`tnum text-[13px] font-semibold underline-offset-2 transition-colors hover:text-gold hover:underline ${c.tipo === 'receber' ? 'text-success' : 'text-foreground'}`}
+              >
+                {brlCompact(c.valor)}
+              </button>
+            )}
+          </span>
+
+          {/* Tipo + Status (segmented inline, commit imediato) */}
+          <span className="flex flex-col items-end gap-1">
+            <SegmentedControl<ContaItem['tipo']>
+              size="sm"
+              value={c.tipo}
+              onChange={(t) => editConta(periodo, c.id, { tipo: t })}
+              options={TIPO_CONTA_OPTS as unknown as { label: string; value: ContaItem['tipo'] }[]}
+            />
+            <span className="flex items-center gap-1.5">
+              <span className={`rounded-sub border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_TONE[c.status]}`}>{c.status}</span>
+              <SegmentedControl<ContaItem['status']>
+                size="sm"
+                value={c.status}
+                onChange={(st) => editConta(periodo, c.id, { status: st })}
+                options={STATUS_CONTA_OPTS as unknown as { label: string; value: ContaItem['status'] }[]}
+              />
+            </span>
+          </span>
+
+          {/* Excluir */}
+          <span className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => removeConta(periodo, c.id)}
+              title="Excluir lançamento"
+              className="grid size-6 place-items-center rounded-sub text-text-muted opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
+            >
+              <Trash2 className="size-3.5" strokeWidth={1.8} />
+            </button>
+          </span>
+        </div>
+      ))}
+
+      {/* Formulário de adição (sóbrio, inline) */}
+      {adding && (
+        <div className="mt-3 rounded-sub border border-gold/30 bg-gold/[0.04] p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex min-w-[160px] flex-1 flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Parte</span>
+              <input
+                value={fParte}
+                onChange={(e) => setFParte(e.target.value)}
+                placeholder="ex: Distribuidora BH"
+                className="rounded-sub border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-gold/40"
+              />
+            </label>
+            <label className="flex min-w-[140px] flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Categoria</span>
+              <input
+                value={fCategoria}
+                onChange={(e) => setFCategoria(e.target.value)}
+                placeholder="ex: Marketing / Logística"
+                className="rounded-sub border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-gold/40"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Tipo</span>
+              <SegmentedControl<ContaItem['tipo']>
+                size="sm"
+                value={fTipo}
+                onChange={setFTipo}
+                options={TIPO_CONTA_OPTS as unknown as { label: string; value: ContaItem['tipo'] }[]}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Valor (R$)</span>
+              <input
+                type="number"
+                value={fValor}
+                onChange={(e) => setFValor(e.target.value)}
+                placeholder="0"
+                className="tnum w-28 rounded-sub border border-border bg-background px-2.5 py-1.5 text-right text-[13px] text-foreground outline-none focus:border-gold/40"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Vencimento</span>
+              <input
+                type="date"
+                value={fVenc}
+                onChange={(e) => setFVenc(e.target.value)}
+                className="tnum rounded-sub border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-gold/40"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Status</span>
+              <SegmentedControl<ContaItem['status']>
+                size="sm"
+                value={fStatus}
+                onChange={setFStatus}
+                options={STATUS_CONTA_OPTS as unknown as { label: string; value: ContaItem['status'] }[]}
+              />
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={salvarNovo}
+                disabled={!podeSalvar}
+                className="inline-flex items-center gap-1.5 rounded-sub border border-gold/50 bg-gold/[0.14] px-3 py-1.5 text-[12px] font-semibold text-gold transition-colors hover:bg-gold/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Check className="size-3.5" /> Salvar
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="inline-flex items-center gap-1.5 rounded-sub border border-border px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-3.5" /> Cancelar
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-text-muted">Categorias rápidas</span>
+            {CATEGORIAS_COMUNS.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setFCategoria(cat)}
+                className={`rounded-sub border px-2 py-0.5 text-[11px] transition-colors ${
+                  fCategoria === cat
+                    ? 'border-gold/50 bg-gold/[0.1] text-gold'
+                    : 'border-border text-text-secondary hover:border-gold/40 hover:text-gold'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2.5 text-[11px] text-text-muted">
+            Novos lançamentos entram como <span className="font-semibold text-gold">ajustado</span> e o aging
+            (a pagar × a receber) recompõe na hora a partir do vencimento.
+          </p>
+        </div>
+      )}
     </Section>
   )
 }

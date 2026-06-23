@@ -18,6 +18,7 @@ import { FinanceiroLayout } from "./financeiro/FinanceiroLayout";
 import { Comando } from "./financeiro/telas/Comando";
 import { Lucro } from "./financeiro/telas/Lucro";
 import { Caixa } from "./financeiro/telas/Caixa";
+import { Gastos } from "./financeiro/telas/Gastos";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/financeiro" element={<PrivateRoute><FinanceiroLayout /></PrivateRoute>}>
             <Route index element={<Comando />} />
             <Route path="lucro" element={<Lucro />} />
+            <Route path="gastos" element={<Gastos />} />
             <Route path="caixa" element={<Caixa />} />
           </Route>
           <Route path="/estoque" element={<PrivateRoute><EstoqueLayout /></PrivateRoute>} />

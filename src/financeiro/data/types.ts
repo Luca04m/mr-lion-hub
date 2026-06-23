@@ -83,6 +83,8 @@ export interface DRELine {
   kind: DREKind
   pct?: number
   plan?: number
+  /** Vínculo ao gasto unificado (aba Gastos): esta linha espelha um ContaItem de mesmo gastoId. */
+  gastoId?: string
 }
 
 export interface AgingBucket {
@@ -98,6 +100,8 @@ export interface ContaItem {
   vencimento: string
   status: 'aberta' | 'paga' | 'vencida'
   categoria: string
+  /** Vínculo ao gasto unificado (aba Gastos): esta conta espelha uma DRELine de mesmo gastoId. */
+  gastoId?: string
 }
 
 export interface RFMSegment {

@@ -447,35 +447,6 @@ const CalendarPage = () => {
           )}
         </div>
 
-        {/* Row 3: legend */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <CheckSquare className="w-3 h-3" style={{ color: "hsl(var(--info))" }} />
-            <span>Tarefas</span>
-            <div className="flex gap-0.5 ml-0.5">
-              {(["pendente", "em-andamento", "concluida", "atrasada"] as TaskStatus[]).map(s => (
-                <Tooltip key={s}>
-                  <TooltipTrigger>
-                    <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: STATUS_COLORS[s] }} />
-                  </TooltipTrigger>
-                  <TooltipContent className="text-[10px]">{STATUS_LABELS[s]}</TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Users className="w-3 h-3" style={{ color: MEETING_COLOR }} />
-            <span>Reuniões</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <ImageIcon className="w-3 h-3" style={{ color: "hsl(var(--muted-foreground))" }} />
-            <span>Posts</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: CAMPAIGN_COLOR }} />
-            <span>Vinculado a campanha</span>
-          </div>
-        </div>
       </div>
 
       {/* ── Calendar body ── */}

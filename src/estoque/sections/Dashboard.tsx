@@ -1,22 +1,53 @@
-// Painel de controle — KPIs, produção possível, reposição, distribuição de valor.
+// Painel de controle — garrafas em estoque, últimas movimentações, produção possível, reposição.
 import { useMemo } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { AlertTriangle, TriangleAlert, ArrowRight } from 'lucide-react'
+import {
+  AlertTriangle, TriangleAlert, ArrowRight,
+  ShoppingBag, PackagePlus, PackageCheck, Factory, SlidersHorizontal, TrendingDown, ArrowLeftRight,
+} from 'lucide-react'
 import { useEstoque } from '../store'
-import { RECEITAS_PA, ITEM_BY_ID, granelDaLinha } from '../mock'
+import { RECEITAS_PA, granelDaLinha } from '../mock'
 import {
   disponibilidade, resumoEstoque, listaCompras, valorEstoque, statusEstoque,
   fmtBRL, fmtNum,
 } from '../engine'
-import { Card, StatusPill, StockBar, Sparkline } from '../ui'
-import type { Item } from '../types'
+import { Card, StatusPill, StockBar, STATUS_VAR } from '../ui'
+import type { Item, Movimento, TipoMovimento } from '../types'
 
-export function Dashboard({ goto }: { goto: (s: 'estoque' | 'producao') => void }) {
-  const { itens } = useEstoque()
+// Aparência de cada tipo de movimento no painel de "últimas movimentações" (mesmo léxico da seção Movimentações).
+const MOV_META: Record<TipoMovimento, { label: string; icon: typeof ShoppingBag; cor: string }> = {
+  recebimento:      { label: 'Recebimento',   icon: PackagePlus,       cor: 'var(--ok)' },
+  entrada_producao: { label: 'Produção',      icon: PackageCheck,      cor: 'var(--ok)' },
+  consumo_producao: { label: 'Consumo',       icon: Factory,           cor: 'var(--warn)' },
+  venda:            { label: 'Venda',         icon: ShoppingBag,       cor: 'var(--warn)' },
+  ajuste:           { label: 'Ajuste',        icon: SlidersHorizontal, cor: 'var(--neutral)' },
+  perda:            { label: 'Perda',         icon: TrendingDown,      cor: 'var(--crit)' },
+  transferencia:    { label: 'Transferência', icon: ArrowLeftRight,    cor: 'var(--neutral)' },
+}
+
+const fmtQuando = (iso: string) =>
+  new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) +
+  ' · ' + new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
+export function Dashboard({ goto }: { goto: (s: 'estoque' | 'producao' | 'movimentacoes') => void }) {
+  const { itens, movimentos } = useEstoque()
   const resumo = useMemo(() => resumoEstoque(itens), [itens])
   const disp = useMemo(() => RECEITAS_PA.map(r => ({ receita: r, d: disponibilidade(r, itens) })), [itens])
   const totalFabricavel = disp.reduce((s, x) => s + x.d.fabricaveis, 0)
   const compras = useMemo(() => listaCompras(itens), [itens])
+  // lookup reativo do store (estoque atualizado pela hidratação do Supabase) — NÃO usar o mock estático
+  const byId = useMemo(() => new Map(itens.map(i => [i.id, i])), [itens])
+
+  // Garrafas prontas (produto acabado), na ordem das linhas — o que está pronto pra vender.
+  const garrafas = useMemo(
+    () => RECEITAS_PA.map(r => byId.get(r.produtoId)).filter((x): x is Item => !!x && x.ativo),
+    [byId],
+  )
+  // Últimas movimentações (vendas a cada pedido pago + entradas/produção) — fonte: ledger do Supabase.
+  const recentes = useMemo<Movimento[]>(
+    () => [...movimentos].sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1)).slice(0, 8),
+    [movimentos],
+  )
 
   const valorPorTipo = useMemo(() => {
     const g = { materia_prima: 0, embalagem: 0, produto_intermediario: 0, produto_acabado: 0 }
@@ -29,9 +60,6 @@ export function Dashboard({ goto }: { goto: (s: 'estoque' | 'producao') => void 
     ].filter(s => s.valor > 0)
   }, [itens])
 
-  // série sintética de produção possível (sparkline KPI)
-  const trend = useMemo(() => [62, 58, 71, 65, 80, 76, 74, totalFabricavel].map(Number), [totalFabricavel])
-
   return (
     <div className="space-y-7 animate-fade-up">
       {/* Hero title */}
@@ -42,15 +70,85 @@ export function Dashboard({ goto }: { goto: (s: 'estoque' | 'producao') => void 
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi label="Valor em estoque" value={fmtBRL(resumo.valorTotal)} sub={`${resumo.itensTotais} itens ativos`} accent>
-          <Sparkline values={[resumo.valorTotal * 0.92, resumo.valorTotal * 0.97, resumo.valorTotal * 0.94, resumo.valorTotal]} />
-        </Kpi>
-        <Kpi label="Produção possível hoje" value={fmtNum(totalFabricavel)} unit="garrafas" sub="somando os 3 produtos">
-          <Sparkline values={trend} />
-        </Kpi>
+        <Kpi label="Valor em estoque" value={fmtBRL(resumo.valorTotal)} sub={`${resumo.itensTotais} itens ativos`} accent />
+        <Kpi label="Produção possível hoje" value={fmtNum(totalFabricavel)} unit="garrafas" sub="somando os 3 produtos" />
         <Kpi label="A repor" value={resumo.repor} icon={<AlertTriangle size={15} />} tone="warn" sub="abaixo do mínimo" onClick={() => goto('estoque')} />
         <Kpi label="Crítico / esgotado" value={resumo.critico} icon={<TriangleAlert size={15} />} tone="crit" sub="ação urgente" onClick={() => goto('estoque')} />
       </div>
+
+      {/* Garrafas prontas em estoque — destaque por produto */}
+      <section>
+        <div className="flex items-end gap-3 mb-4">
+          <h2 className="font-display text-2xl leading-none">Garrafas em estoque</h2>
+          <span className="text-xs text-text-muted mb-0.5">quanto tem pronto pra vender agora, por produto</span>
+          <div className="ml-auto text-right">
+            <div className="font-display text-2xl leading-none tnum" style={{ color: 'hsl(var(--gold-bright))' }}>{fmtNum(resumo.unidadesPA)}</div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted mt-0.5">no total</div>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          {garrafas.map(pa => {
+            const st = statusEstoque(pa)
+            const nome = pa.nome.replace('Mr. Lion ', '').replace(/ \d+ml$/, '')
+            return (
+              <Card key={pa.id} className="p-5 flex items-center gap-4">
+                {pa.fotoUrl && (
+                  <img src={pa.fotoUrl} alt={pa.nome} className="h-24 w-auto object-contain shrink-0"
+                    style={{ filter: 'drop-shadow(0 8px 14px rgba(0,0,0,.45))' }} />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-display text-lg leading-none">{nome}</span>
+                    <StatusPill status={st} dense />
+                  </div>
+                  <div className="mt-2.5 flex items-baseline gap-1.5">
+                    <span className="font-display text-[44px] leading-none tnum" style={{ color: `hsl(${STATUS_VAR[st]})` }}>{fmtNum(pa.estoque)}</span>
+                    <span className="text-sm text-text-muted">garrafas</span>
+                  </div>
+                  <div className="mt-3.5"><StockBar item={pa} height={5} /></div>
+                  <div className="mt-1.5 text-[11px] text-text-muted">mínimo {fmtNum(pa.min)} un · {pa.sku}</div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* Últimas movimentações — vendas e entradas mais recentes (ledger Supabase) */}
+      <section>
+        <div className="flex items-end gap-3 mb-4">
+          <h2 className="font-display text-2xl leading-none">Últimas movimentações</h2>
+          <span className="text-xs text-text-muted mb-0.5">cada venda dá baixa automática; entradas e produção também entram aqui</span>
+          <button onClick={() => goto('movimentacoes')} className="ml-auto text-xs text-gold hover:underline flex items-center gap-1">Ver todas <ArrowRight size={13} /></button>
+        </div>
+        <Card className="p-5">
+          {recentes.length === 0 ? (
+            <div className="text-sm text-text-secondary py-8 text-center">Sem movimentações ainda — a primeira venda paga aparece aqui.</div>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-x-8">
+              {recentes.map(m => {
+                const it = byId.get(m.itemId)
+                const meta = MOV_META[m.tipo] ?? MOV_META.ajuste
+                const Icon = meta.icon
+                return (
+                  <div key={m.id} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0 sm:[&:nth-last-child(2):nth-child(odd)]:border-0">
+                    <span className="w-8 h-8 rounded-lg grid place-items-center shrink-0" style={{ color: `hsl(${meta.cor})`, background: `hsl(${meta.cor}/0.12)` }}>
+                      <Icon size={15} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{it?.nome ?? m.itemId}</div>
+                      <div className="text-[11px] text-text-muted truncate">{meta.label}{m.usuario ? ` · ${m.usuario}` : ''} · {fmtQuando(m.criadoEm)}</div>
+                    </div>
+                    <div className="font-display text-base tnum shrink-0" style={{ color: m.delta >= 0 ? 'hsl(var(--ok))' : 'hsl(var(--crit))' }}>
+                      {m.delta >= 0 ? '+' : ''}{fmtNum(m.delta)} <span className="text-[11px] text-text-muted font-sans">{it?.uom}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Card>
+      </section>
 
       {/* Produção possível */}
       <section>
@@ -61,16 +159,17 @@ export function Dashboard({ goto }: { goto: (s: 'estoque' | 'producao') => void 
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           {disp.map(({ receita, d }) => {
-            const pa = ITEM_BY_ID(receita.produtoId)!
-            const gargalo = d.gargaloItemId ? ITEM_BY_ID(d.gargaloItemId) : null
+            const pa = byId.get(receita.produtoId)!
+            const gargalo = d.gargaloItemId ? byId.get(d.gargaloItemId) : null
             const granelId = granelDaLinha(receita.produtoId)
-            const granel = granelId ? ITEM_BY_ID(granelId) : null
+            const granel = granelId ? byId.get(granelId) : null
+            // litros/garrafa = quantidade de granel na própria receita de envase (Honey 0,72 · Cappuccino 0,75)
+            const litrosPorGarrafa = granelId ? (receita.componentes.find(c => c.itemId === granelId)?.quantidade ?? 0.75) : 0.75
             return (
               <Card key={receita.id} className="p-5 relative overflow-hidden">
-                <div className="absolute -right-6 -top-10 w-40 h-40 rounded-full" style={{ background: 'radial-gradient(circle, hsl(var(--gold)/0.10), transparent 70%)' }} />
                 <div className="flex items-start justify-between gap-3 relative">
                   <div>
-                    <div className="font-display text-xl leading-tight">{pa.nome.replace('Mr. Lion ', '').replace(' 750ml', '')}</div>
+                    <div className="font-display text-xl leading-tight">{pa.nome.replace('Mr. Lion ', '').replace(/ \d+ml$/, '')}</div>
                     <div className="text-[11px] uppercase tracking-wider text-gold-dim mt-1">{pa.sku} · {pa.estoque} em estoque</div>
                   </div>
                   {pa.fotoUrl && <img src={pa.fotoUrl} alt={pa.nome} className="h-24 w-auto object-contain" style={{ filter: 'drop-shadow(0 8px 14px rgba(0,0,0,.55))' }} />}
@@ -86,7 +185,7 @@ export function Dashboard({ goto }: { goto: (s: 'estoque' | 'producao') => void 
                   <div className="mt-2 text-xs text-text-secondary relative flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'hsl(var(--info))' }} />
                     Líquido pronto: <span className="text-foreground font-medium tnum">{fmtNum(granel.estoque)} L</span>
-                    <span className="text-text-muted">· dá p/ ~{fmtNum(Math.floor(granel.estoque / 0.75))} garrafas</span>
+                    <span className="text-text-muted">· dá p/ ~{fmtNum(Math.floor(granel.estoque / litrosPorGarrafa))} garrafas</span>
                   </div>
                 )}
                 {d.incompleta && (

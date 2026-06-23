@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware'
 import { ITENS, ORDENS, RECEITAS, gerarHistorico } from './mock'
 import type { Item, OrdemProducao, PurchaseOrder, Movimento, TipoMovimento } from './types'
 import { fetchBlingOrders, planejarBaixa } from './bling'
+import { supabase } from '../lib/supabase'
 
 const novoId = () =>
   (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2))
@@ -27,12 +28,14 @@ interface EstoqueState {
   movimentos: Movimento[]
   /** sincronização com o Bling (puxa pedidos de venda e dá baixa no estoque). */
   blingSync: BlingSyncState
+  /** hidrata os saldos a partir do Supabase (fonte de verdade server-side; baixa via WooCommerce). */
+  hidratarSupabase: () => Promise<void>
   /** puxa os pedidos novos do Bling e baixa o estoque — idempotente por id de pedido. */
   sincronizarBling: () => Promise<void>
   /** edição inline de saldo (não gera movimento — é correção do número). */
   setEstoque: (id: string, valor: number) => void
   /** edita parâmetros de planejamento do item (mínimo, prazo de reposição, consumo médio, teto). */
-  editarItem: (id: string, patch: Partial<Pick<Item, 'min' | 'leadTimeDias' | 'usoMedioDiario' | 'max'>>) => void
+  editarItem: (id: string, patch: Partial<Pick<Item, 'min' | 'leadTimeDias' | 'usoMedioDiario' | 'max' | 'custoMedio'>>) => void
   /** aplica delta (+/−) e registra movimento no ledger. */
   ajustar: (id: string, delta: number, tipo?: TipoMovimento, motivo?: string) => void
   /** executa uma receita (etapa): consome o BOM, gera a saída (granel ou PA) e cria ordem concluída. */
@@ -55,6 +58,30 @@ export const useEstoque = create<EstoqueState>()(
       compras: [],
       movimentos: seedMovimentos(ITENS),
       blingSync: { lastSyncAt: null, pedidosAplicados: [], syncing: false },
+
+      // Lê os saldos reais do Supabase (RPC saldos_estoque) e sobrescreve os locais.
+      // O estoque server-side é a fonte de verdade — baixa a cada pedido pago no WooCommerce.
+      hidratarSupabase: async () => {
+        try {
+          const [saldosRes, movsRes] = await Promise.all([
+            supabase.rpc('saldos_estoque'),
+            supabase.rpc('movimentos_recentes', { p_limit: 200 }),
+          ])
+          set(s => {
+            const patch: Partial<EstoqueState> = {}
+            if (!saldosRes.error && saldosRes.data) {
+              const bySlug = new Map((saldosRes.data as { slug: string; estoque: number }[]).map(r => [r.slug, Number(r.estoque)]))
+              patch.itens = s.itens.map(i => (bySlug.has(i.id) ? { ...i, estoque: bySlug.get(i.id)! } : i))
+            }
+            // ledger real do Supabase (saldo inicial + vendas a cada pedido pago) substitui o histórico mock
+            if (!movsRes.error && movsRes.data) {
+              patch.movimentos = (movsRes.data as Array<{ id: string; item_slug: string; delta: number; tipo: TipoMovimento; motivo: string | null; usuario: string | null; criado_em: string }>)
+                .map(r => ({ id: r.id, itemId: r.item_slug, delta: Number(r.delta), tipo: r.tipo, motivo: r.motivo ?? undefined, usuario: r.usuario ?? undefined, criadoEm: r.criado_em }))
+            }
+            return patch
+          })
+        } catch { /* offline: mantém os dados locais persistidos */ }
+      },
 
       sincronizarBling: async () => {
         if (get().blingSync.syncing) return
@@ -179,12 +206,13 @@ export const useEstoque = create<EstoqueState>()(
         itens: s.itens.map(i => ({
           id: i.id, estoque: i.estoque, min: i.min,
           leadTimeDias: i.leadTimeDias, usoMedioDiario: i.usoMedioDiario, max: i.max,
+          custoMedio: i.custoMedio, // custo do insumo editável na operação (não re-hidratado do Supabase → persiste local)
         })),
         movimentos: s.movimentos, compras: s.compras, ordens: s.ordens,
         blingSync: { lastSyncAt: s.blingSync.lastSyncAt, pedidosAplicados: s.blingSync.pedidosAplicados, ultimo: s.blingSync.ultimo },
       }),
       merge: (persisted, current) => {
-        type ItemSalvo = { id: string; estoque?: number } & Partial<Pick<Item, 'min' | 'leadTimeDias' | 'usoMedioDiario' | 'max'>>
+        type ItemSalvo = { id: string; estoque?: number } & Partial<Pick<Item, 'min' | 'leadTimeDias' | 'usoMedioDiario' | 'max' | 'custoMedio'>>
         const p = (persisted ?? {}) as Partial<{
           itens: ItemSalvo[]; movimentos: Movimento[]; compras: PurchaseOrder[]; ordens: OrdemProducao[]
           blingSync: Partial<BlingSyncState>
@@ -203,6 +231,7 @@ export const useEstoque = create<EstoqueState>()(
               leadTimeDias: o.leadTimeDias ?? i.leadTimeDias,
               usoMedioDiario: o.usoMedioDiario ?? i.usoMedioDiario,
               max: o.max ?? i.max,
+              custoMedio: o.custoMedio ?? i.custoMedio,
             }
           }),
           movimentos: p.movimentos ?? current.movimentos,

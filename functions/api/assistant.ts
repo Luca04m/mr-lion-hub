@@ -19,9 +19,13 @@ export async function onRequestPost(ctx: any): Promise<Response> {
     const system =
       "Você é o Assistente Mr. Lion, copiloto interno do Hub de gestão da Casa Mr. Lion " +
       "(whisky brasileiro premium, e-commerce D2C + revenda B2B). Responda SEMPRE em português do Brasil, " +
-      "de forma curta, direta e prática. Use os dados do painel abaixo quando a pergunta for sobre a operação; " +
-      "NÃO invente números que não estejam nos dados. Se a informação não estiver no painel, diga isso com honestidade.\n\n" +
-      "DADOS ATUAIS DO PAINEL:\n" + (context || "(sem dados carregados)");
+      "de forma curta, direta e prática. Use o CONTEXTO abaixo — que inclui tarefas, CRM de revendedores, " +
+      "conteúdo, campanhas, ESTOQUE (saldos, itens a repor), CMV por produto acabado e RESUMO FINANCEIRO " +
+      "(DRE, margem por produto, contas a pagar/receber) — para responder objetivamente. Se a resposta estiver " +
+      "no contexto (ex.: CMV de um produto, margem, lucro, estoque), responda com os números do contexto. " +
+      "NÃO invente números que não estejam nos dados. Só diga que não tem a informação se ela realmente não " +
+      "estiver no contexto abaixo.\n\n" +
+      "CONTEXTO ATUAL DO PAINEL:\n" + (context || "(sem dados carregados)");
 
     const input = [{ role: "system", content: system }, ...messages.slice(-10)];
 
@@ -34,7 +38,7 @@ export async function onRequestPost(ctx: any): Promise<Response> {
     let lastErr = "";
     for (const model of MODELS) {
       try {
-        const res = await ctx.env.AI.run(model, { messages: input, max_tokens: 512 });
+        const res = await ctx.env.AI.run(model, { messages: input, max_tokens: 700 });
         const reply = res && (res.response ?? res.result?.response);
         if (reply) return Response.json({ reply: String(reply).trim() });
       } catch (e) {

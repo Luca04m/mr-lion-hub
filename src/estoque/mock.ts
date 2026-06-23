@@ -16,8 +16,8 @@ export const FORNECEDORES: Fornecedor[] = [
   { id: 'f-fracarolli',nome: 'Irmãos Fracarolli',           contato: 'Aromas / corante',leadTimeDias: 7,  itensFornecidos: ['aroma_mel','aroma_cap','corante'] },
   { id: 'f-atacado',   nome: 'Atacadista (melhor preço)',   contato: 'Leite / creme / açúcar', leadTimeDias: 7, itensFornecidos: ['leite_cond','creme_leite','acucar'] },
   { id: 'f-sulfal',    nome: 'Sulfal (retirada na loja)',   contato: 'CMC / citrato',   leadTimeDias: 2,  itensFornecidos: ['cmc','citrato'] },
-  { id: 'f-premier',   nome: 'Premier Pack',                contato: 'Garrafa / rolha', leadTimeDias: 7,  itensFornecidos: ['garrafa_hb','garrafa_cap','rolha'] },
-  { id: 'f-inoove',    nome: 'Inoove Embalagens',           contato: 'Tubete',          leadTimeDias: 30, itensFornecidos: ['tubo_hb','tubo_cap'] },
+  { id: 'f-premier',   nome: 'Premier Pack',                contato: 'Garrafa / rolha', leadTimeDias: 7,  itensFornecidos: ['garrafa_hb','garrafa_cap','rolha_preta','rolha_bege'] },
+  { id: 'f-inoove',    nome: 'Inoove Embalagens',           contato: 'Tubete',          leadTimeDias: 30, itensFornecidos: ['tubo_honey','tubo_cap'] },
   { id: 'f-flavio',    nome: 'Flávio / Leão ou Coroa',      contato: 'Pingente',        leadTimeDias: 30, itensFornecidos: ['ping_leao','ping_coroa'] },
   { id: 'f-fabiana',   nome: 'Fabiana Embalagens',          contato: 'Caixas',          leadTimeDias: 30, itensFornecidos: ['caixa6','caixa23','caixa1','caixa_blended'] },
   { id: 'f-graphix',   nome: 'Graphix',                     contato: 'Rótulos',         leadTimeDias: 7,  itensFornecidos: ['rotulo_honey','rotulo_cap','rotulo_blend'] },
@@ -43,11 +43,12 @@ export const ITENS: Item[] = [
   // ── embalagem (componentes da garrafa pronta) ──
   { id:'garrafa_hb', sku:'EM-001', nome:'Garrafa Honey/Blended', tipo:'embalagem', categoria:'garrafa',    uom:'un', estoque:478, min:120, custoMedio:11.74, fornecedorId:'f-premier', leadTimeDias:7,  usoMedioDiario:34, classeAbc:'A', compartilhado:true, ativo:true },
   { id:'garrafa_cap',sku:'EM-002', nome:'Garrafa Cappuccino',    tipo:'embalagem', categoria:'garrafa',    uom:'un', estoque:143, min:80,  custoMedio:23.83, fornecedorId:'f-premier', leadTimeDias:30, usoMedioDiario:12, classeAbc:'A', ativo:true },
-  { id:'rolha',      sku:'EM-003', nome:'Rolha',                 tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:6315, min:160, custoMedio:1.28,  fornecedorId:'f-premier', leadTimeDias:7,  usoMedioDiario:46, classeAbc:'B', compartilhado:true, ativo:true },
-  { id:'tubo_hb',    sku:'EM-004', nome:'Tubete Honey/Blended',  tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:1460, min:150, custoMedio:14.12, fornecedorId:'f-inoove',  leadTimeDias:30, usoMedioDiario:34, classeAbc:'A', compartilhado:true, ativo:true },
+  { id:'rolha_preta',sku:'EM-003', nome:'Rolha preta',           tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:6315, min:160, custoMedio:1.28,  fornecedorId:'f-premier', leadTimeDias:7,  usoMedioDiario:46, classeAbc:'B', compartilhado:true, ativo:true }, // João 22/06: rolha preta = Honey + Blended (a mesma)
+  { id:'rolha_bege', sku:'EM-019', nome:'Rolha bege',            tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:0,    min:160, custoMedio:1.28,  fornecedorId:'f-premier', leadTimeDias:7,  usoMedioDiario:12, classeAbc:'B', ativo:true }, // João 22/06: rolha bege = só Cappuccino. estoque=0 PLACEHOLDER — contar
+  { id:'tubo_honey', sku:'EM-004', nome:'Tubete Honey',          tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:1460, min:150, custoMedio:14.12, fornecedorId:'f-inoove',  leadTimeDias:30, usoMedioDiario:34, classeAbc:'A', ativo:true }, // João 22/06: tubete Honey ≠ tubete Blended (separados)
   { id:'tubo_cap',   sku:'EM-005', nome:'Tubete Cappuccino',     tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:1562, min:80,  custoMedio:11.36, fornecedorId:'f-inoove',  leadTimeDias:30, usoMedioDiario:12, classeAbc:'A', ativo:true },
   { id:'rotulo_honey',sku:'EM-006',nome:'Rótulo Honey',          tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:969, min:120, custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:22, classeAbc:'B', ativo:true },
-  { id:'rotulo_cap', sku:'EM-007', nome:'Rótulo Cappuccino',     tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:150, min:80,  custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:12, classeAbc:'C', ativo:true },
+  { id:'rotulo_cap', sku:'EM-007', nome:'Rótulo Cappuccino',     tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:150, min:80,  custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:12, classeAbc:'C', ativo:false }, // João 22/06: Cappuccino não tem rótulo — item desativado (fora do estoque ativo)
   { id:'rotulo_blend',sku:'EM-008',nome:'Rótulo Blended',        tipo:'embalagem', categoria:'rotulo',     uom:'un', estoque:696, min:50,  custoMedio:1.43,  fornecedorId:'f-graphix', leadTimeDias:7,  usoMedioDiario:9,  classeAbc:'C', ativo:true },
   { id:'ping_leao',  sku:'EM-009', nome:'Pingente Leão',         tipo:'embalagem', categoria:'pingente',   uom:'un', estoque:1800, min:120, custoMedio:2.95,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:34, classeAbc:'A', compartilhado:true, ativo:true }, // Honey + Cappuccino (contagem 18/06)
   { id:'ping_coroa', sku:'EM-010', nome:'Pingente Coroa',        tipo:'embalagem', categoria:'pingente',   uom:'un', estoque:3900, min:60,  custoMedio:2.95,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:9,  classeAbc:'A', ativo:true }, // Blended (contagem 18/06)
@@ -55,7 +56,7 @@ export const ITENS: Item[] = [
   { id:'caixa6',     sku:'EM-013', nome:'Caixa 6 unidades',      tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:30,  min:20,  custoMedio:3.30,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:3,  classeAbc:'C', ativo:true }, // João: caixa média R$3,30 (não separou por tamanho)
   { id:'caixa23',    sku:'EM-014', nome:'Caixa 2–3 unidades',    tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:15,  min:20,  custoMedio:3.30,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:4,  classeAbc:'C', ativo:true },
   { id:'caixa1',     sku:'EM-015', nome:'Caixa 1 unidade',       tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:84,  min:50,  custoMedio:3.30,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:9,  classeAbc:'C', ativo:true },
-  { id:'caixa_blended',sku:'EM-017',nome:'Estojo Blended',        tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:1654, min:50,  custoMedio:3.30,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:9,  classeAbc:'B', ativo:true }, // estojo individual do Blended (contagem 18/06)
+  { id:'caixa_blended',sku:'EM-017',nome:'Estojo Blended',        tipo:'embalagem', categoria:'caixa',      uom:'un', estoque:1654, min:50,  custoMedio:6.10,  fornecedorId:'f-fabiana', leadTimeDias:30, usoMedioDiario:9,  classeAbc:'B', ativo:true }, // estojo individual do Blended (contagem 18/06) — preço corrigido R$6,10 (João 22/06)
   { id:'colar',      sku:'EM-016', nome:'Colar / correntinha',   tipo:'embalagem', categoria:'fechamento', uom:'un', estoque:1875, min:150, custoMedio:1.30,  fornecedorId:'f-flavio',  leadTimeDias:30, usoMedioDiario:46, classeAbc:'B', compartilhado:true, ativo:true }, // contagem física 18/06: 1875
 
   // ── produto intermediário (LÍQUIDO PRONTO no tanque, em litros — pedido do João 11/06) ──
@@ -65,16 +66,16 @@ export const ITENS: Item[] = [
   { id:'granel_cappuccino', sku:'WIP-002', nome:'Granel Cappuccino (tanque)', tipo:'produto_intermediario', categoria:'granel', uom:'L', estoque:180, min:60,  custoMedio:12.03, usoMedioDiario:6,  classeAbc:'A', ativo:true },
 
   // ── produto acabado (custoMedio = CMV real/garrafa: líquido + embalagem + mão de obra R$4,50) ──
-  { id:'pa_honey',     sku:'PA-001', nome:'Mr. Lion Honey 750ml',      tipo:'produto_acabado', categoria:'honey',      uom:'un', estoque:21, min:60, custoMedio:45.26, fotoUrl:honeyImg,      usoMedioDiario:14, classeAbc:'A', ativo:true },
-  { id:'pa_cappuccino',sku:'PA-002', nome:'Mr. Lion Cappuccino 750ml', tipo:'produto_acabado', categoria:'cappuccino', uom:'un', estoque:6, min:40, custoMedio:54.40, fotoUrl:cappuccinoImg, usoMedioDiario:8,  classeAbc:'A', ativo:true },
-  { id:'pa_blended',   sku:'PA-003', nome:'Mr. Lion Blended 750ml',    tipo:'produto_acabado', categoria:'blended',    uom:'un', estoque:46, min:50, custoMedio:36.05, fotoUrl:blendedImg,    usoMedioDiario:11, classeAbc:'B', ativo:true }, // incompleto: receita líquida do Blended ainda não veio
+  { id:'pa_honey',     sku:'PA-001', nome:'Mr. Lion Honey 720ml',      tipo:'produto_acabado', categoria:'honey',      uom:'un', estoque:21, min:60, custoMedio:44.89, fotoUrl:honeyImg,      usoMedioDiario:14, classeAbc:'A', ativo:true }, // 720ml: (0,72×12,28) + emb 31,55 + MO 4,50 = 44,89
+  { id:'pa_cappuccino',sku:'PA-002', nome:'Mr. Lion Cappuccino 750ml', tipo:'produto_acabado', categoria:'cappuccino', uom:'un', estoque:6, min:40, custoMedio:52.97, fotoUrl:cappuccinoImg, usoMedioDiario:8,  classeAbc:'A', ativo:true }, // 52,97 = granel 9,02 (0,75×12,03) + emb 39,45 (garrafa 23,83 + rolha bege 1,28 + tubo 11,36 + pingente 2,95 + selo 0,03; SEM rótulo) + MO 4,50
+  { id:'pa_blended',   sku:'PA-003', nome:'Mr. Lion Blended 720ml',    tipo:'produto_acabado', categoria:'blended',    uom:'un', estoque:46, min:50, custoMedio:41.87, fotoUrl:blendedImg,    usoMedioDiario:11, classeAbc:'B', ativo:true }, // 41,87 = líquido 13,84 (malte 0,180×42,63=7,67 + álcool 0,540×11,42=6,17) + emb 23,53 (garrafa 11,74 + rolha preta 1,28 + rótulo 1,43 + pingente coroa 2,95 + estojo 6,10 + selo 0,03; Blended NÃO tem tubete — usa estojo) + MO 4,50 — incompleto: força de estoque do líquido (96%/56GL) a confirmar c/ João
 ]
 
 // ── Receitas / BOM — modelo de 2 ESTÁGIOS (pedido do João 11/06):
 //    MO-1 'liquido' = matéria-prima → granel (saída em L) · MO-2 'envase' = granel + embalagem → garrafa (un).
-//    Formulação REAL (foto João: batch 900L ÷ 1200 garrafas de 750ml → 0,75 L/garrafa).
-//    Os componentes da etapa 'liquido' são "por 1 LITRO de granel" = quantidade-por-garrafa ÷ 0,75.
-//    Mass-balance preservado: 1 garrafa = 0,75 L de granel, que por sua vez carrega a mesma matéria-prima de antes.
+//    Volume: Honey/Blended = 720ml → 0,72 L/garrafa (batch 900L ÷ 0,72 → 1250 garrafas). Cappuccino = 750ml → 0,75 L (garrafa_cap diferente).
+//    A quantidade de granel na receita de ENVASE é a fonte de verdade do enchimento (0,72 Honey/Blended · 0,75 Cappuccino).
+//    Mass-balance preservado: 1 garrafa = enchimento de granel, que por sua vez carrega a mesma matéria-prima de antes.
 //    A caixa de ENVIO não entra aqui (depende do tamanho do pedido) → ver caixaParaPedido() na engine.
 export const LITROS_POR_GARRAFA = 0.75
 
@@ -93,13 +94,13 @@ export const RECEITAS: Receita[] = [
   },
   {
     id:'rec-honey-envase', produtoId:'pa_honey', saidaId:'pa_honey', etapa:'envase',
-    nome:'Envase Honey 750ml', rendimento:1,
+    nome:'Envase Honey 720ml', rendimento:1,
     componentes:[
-      { itemId:'granel_honey', quantidade:0.75, uom:'L' },
+      { itemId:'granel_honey', quantidade:0.72, uom:'L' },
       { itemId:'garrafa_hb', quantidade:1, uom:'un' },
-      { itemId:'rolha', quantidade:1, uom:'un' },
+      { itemId:'rolha_preta', quantidade:1, uom:'un' },
       { itemId:'rotulo_honey', quantidade:1, uom:'un' },
-      { itemId:'tubo_hb', quantidade:1, uom:'un' },
+      { itemId:'tubo_honey', quantidade:1, uom:'un' },
       { itemId:'ping_leao', quantidade:1, uom:'un' },
       { itemId:'selo_ipi', quantidade:1, uom:'un' },
     ],
@@ -126,8 +127,7 @@ export const RECEITAS: Receita[] = [
     componentes:[
       { itemId:'granel_cappuccino', quantidade:0.75, uom:'L' },
       { itemId:'garrafa_cap', quantidade:1, uom:'un' },
-      { itemId:'rolha', quantidade:1, uom:'un' },
-      { itemId:'rotulo_cap', quantidade:1, uom:'un' },
+      { itemId:'rolha_bege', quantidade:1, uom:'un' }, // João 22/06: rolha bege (Cappuccino) — rótulo removido (Cappuccino não tem rótulo)
       { itemId:'tubo_cap', quantidade:1, uom:'un' },
       { itemId:'ping_leao', quantidade:1, uom:'un' },
       { itemId:'selo_ipi', quantidade:1, uom:'un' },
@@ -136,13 +136,18 @@ export const RECEITAS: Receita[] = [
   // ── BLENDED (etapa única — receita líquida ainda não recebida) ──
   {
     id:'rec-blended', produtoId:'pa_blended', saidaId:'pa_blended', etapa:'completa',
-    nome:'Blended 750ml', rendimento:1, incompleta:true,
+    nome:'Blended 720ml', rendimento:1, incompleta:true,
     componentes:[
-      // receita líquida do Blended ainda não recebida (impostos do whisky mudam ao terceirizar) — só embalagem por ora
+      // ── LÍQUIDO (João 22/06): por garrafa 720ml → Malte ABV40% 0,180 L (25%) + Álcool de cereais ABV40% 0,540 L (75%).
+      //    ⚠️ incompleta:true mantida DE PROPÓSITO: estes volumes estão na BASE ABV 40% (líquido final). O álcool
+      //    em estoque é 96% e o malte é 56GL — a conversão p/ a força de estoque (diluição) precisa ser confirmada
+      //    pelo João (ele mesmo disse que já passou um número de álcool errado antes). Travar a receita até ele
+      //    confirmar as quantidades reais em 96%/56GL.
+      { itemId:'malte', quantidade:0.180, uom:'L' },
+      { itemId:'alcool', quantidade:0.540, uom:'L' },
       { itemId:'garrafa_hb', quantidade:1, uom:'un' },
-      { itemId:'rolha', quantidade:1, uom:'un' },
+      { itemId:'rolha_preta', quantidade:1, uom:'un' },
       { itemId:'rotulo_blend', quantidade:1, uom:'un' },
-      { itemId:'tubo_hb', quantidade:1, uom:'un' },
       { itemId:'ping_coroa', quantidade:1, uom:'un' },
       { itemId:'caixa_blended', quantidade:1, uom:'un' },
       { itemId:'selo_ipi', quantidade:1, uom:'un' },
